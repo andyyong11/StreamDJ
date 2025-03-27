@@ -7,9 +7,9 @@ import './App.css';
 import Layout from './components/layout/Layout';
 
 // Pages
-import HomePage from './pages/HomePage';
-import PlaylistPage from './pages/PlaylistPage';
-import ProfilePage from './pages/ProfilePage';
+import HomePage from './pages/homePage';
+import PlaylistPage from './pages/playlistPage';
+import ProfilePage from './pages/profilePage';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 

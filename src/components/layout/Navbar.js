@@ -2,7 +2,7 @@ import React from 'react';
 import { Navbar, Nav, Container, Form, Button, InputGroup } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { FaSearch, FaBell, FaUser } from 'react-icons/fa';
-import logo from '../../assets/images/logo.png';
+import logo from '../../logo.svg';
 
 const NavigationBar = () => {
   return (
