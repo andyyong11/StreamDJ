@@ -41,7 +41,7 @@ const NavigationBar = () => {
             <Nav.Link as={Link} to="/notifications">
               <FaBell size={20} />
             </Nav.Link>
-            <Nav.Link as={Link} to="/profile">
+            <Nav.Link as={Link} to="/profile/:id">
               <FaUser size={20} />
             </Nav.Link>
           </Nav>
