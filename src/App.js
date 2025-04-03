@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 
@@ -13,28 +13,68 @@ import ProfilePage from './pages/ProfilePage';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 
-function App() {
+// Auth Context
+import { AuthProvider, useAuth } from './context/AuthContext';
+
+// Protected Route Component
+const ProtectedRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!user) {
+    return <Navigate to="/login" />;
+  }
+
+  return children;
+};
+
+// App Component
+const AppContent = () => {
   return (
-    <Router>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/" element={
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/" element={
+        <ProtectedRoute>
           <Layout>
             <HomePage />
           </Layout>
-        } />
-        <Route path="/playlist/:id" element={
+        </ProtectedRoute>
+      } />
+      <Route path="/playlist/:id" element={
+        <ProtectedRoute>
           <Layout>
             <PlaylistPage />
           </Layout>
-        } />
-        <Route path="/profile/:id" element={
+        </ProtectedRoute>
+      } />
+      <Route path="/profile" element={
+        <ProtectedRoute>
           <Layout>
             <ProfilePage />
           </Layout>
-        } />
-      </Routes>
+        </ProtectedRoute>
+      } />
+      <Route path="/profile/:id" element={
+        <ProtectedRoute>
+          <Layout>
+            <ProfilePage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+    </Routes>
+  );
+};
+
+function App() {
+  return (
+    <Router>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
     </Router>
   );
 }

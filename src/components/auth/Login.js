@@ -1,35 +1,41 @@
 import React, { useState } from 'react';
 import { Form, Button, Card, Container, Row, Col, Alert } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
-import {w ,FaGoogle, FaFacebook, FaApple } from 'react-icons/fa';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
-    // Simulate API call
     try {
-      // In a real app, you would call your authentication API here
-      console.log('Logging in with:', { email, password });
-      
-      // Simulate delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // For demo purposes, let's pretend login was successful
-      // In a real app, you would redirect to dashboard or home page
-      setLoading(false);
-      
-      // Redirect would happen here
-      window.location.href = '/';
+      const response = await fetch('http://localhost:5001/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Login failed');
+      }
+
+      await login(data.user, data.token);
+      navigate('/');
     } catch (err) {
-      setError('Invalid email or password. Please try again.');
+      setError(err.message);
+    } finally {
       setLoading(false);
     }
   };
@@ -82,25 +88,8 @@ const Login = () => {
                 <Link to="/forgot-password">Forgot password?</Link>
               </div>
 
-              <hr className="my-4" />
-
-              <div className="text-center">
-                <p>Or login with:</p>
-                <div className="d-flex justify-content-center gap-3">
-                  <Button variant="outline-primary">
-                    <FaGoogle /> Google
-                  </Button>
-                  <Button variant="outline-primary">
-                    <FaFacebook /> Facebook
-                  </Button>
-                  <Button variant="outline-dark">
-                    <FaApple /> Apple
-                  </Button>
-                </div>
-              </div>
-
               <div className="text-center mt-3">
-                <p>Don't have an account? <Link to="/register">Sign up</Link></p>
+                <p>Don't have an account? <Link to="/register">Sign Up</Link></p>
               </div>
             </Card.Body>
           </Card>

@@ -1,10 +1,19 @@
 import React from 'react';
-import { Navbar, Nav, Container, Form, Button, InputGroup } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
-import { FaSearch, FaBell, FaUser } from 'react-icons/fa';
-import logo from '../../assets/images/logo.png';
+import { Navbar, Nav, Container, Form, Button, InputGroup, NavDropdown } from 'react-bootstrap';
+import { Link, useNavigate } from 'react-router-dom';
+import { FaSearch, FaBell, FaUser, FaSignOutAlt } from 'react-icons/fa';
+import { useAuth } from '../../context/AuthContext';
+import logo from '../../logo.svg';
 
 const NavigationBar = () => {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   return (
     <Navbar bg="dark" variant="dark" expand="lg" className="mb-4">
       <Container>
@@ -41,9 +50,25 @@ const NavigationBar = () => {
             <Nav.Link as={Link} to="/notifications">
               <FaBell size={20} />
             </Nav.Link>
-            <Nav.Link as={Link} to="/profile">
-              <FaUser size={20} />
-            </Nav.Link>
+            <NavDropdown 
+              title={
+                <span>
+                  <FaUser size={20} />
+                </span>
+              } 
+              id="basic-nav-dropdown"
+              align="end"
+            >
+              <NavDropdown.Item as={Link} to="/profile">
+                <FaUser className="me-2" />
+                Profile
+              </NavDropdown.Item>
+              <NavDropdown.Divider />
+              <NavDropdown.Item onClick={handleLogout}>
+                <FaSignOutAlt className="me-2" />
+                Logout
+              </NavDropdown.Item>
+            </NavDropdown>
           </Nav>
         </Navbar.Collapse>
       </Container>
