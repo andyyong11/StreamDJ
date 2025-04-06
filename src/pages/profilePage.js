@@ -14,7 +14,7 @@ const ProfilePage = () => {
       followers: '1.2M',
       following: 345,
       avatar: 'https://via.placeholder.com/150',
-      banner: 'https://via.placeholder.com/1200x400',
+      banner: 'https://crlsolutions.com/wp-content/uploads/2018/01/temp-banner.png',
       bio: 'Bringing the best beats to your ears. Live DJ, music producer, and sound enthusiast.'
     },
     2: {
@@ -22,15 +22,15 @@ const ProfilePage = () => {
       followers: '980K',
       following: 210,
       avatar: 'https://via.placeholder.com/150',
-      banner: 'https://via.placeholder.com/1200x400',
+      banner: 'https://crlsolutions.com/wp-content/uploads/2018/01/temp-banner.png',
       bio: 'Hip Hop is life. Bringing the best rap beats and remixes to the stage.'
     },
     3: {
       name: 'ElectroQueen',
       followers: '1.5M',
       following: 500,
-      avatar: 'https://via.placeholder.com/150',
-      banner: 'https://via.placeholder.com/1200x400',
+      avatar: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQCJkAoQFnKSizD__XWUr1_RhK86R8E7h8I0g&s',
+      banner: 'https://i.etsystatic.com/34466454/r/il/730751/4475686453/il_fullxfull.4475686453_n0ds.jpg',
       bio: 'Electronic beats and house music to keep the party going all night.'
     }
   };
@@ -40,9 +40,9 @@ const ProfilePage = () => {
 
   // Mock playlists
   const playlists = [
-    { id: 1, title: 'My Favorite Mixes', tracks: 20, image: 'https://via.placeholder.com/300' },
-    { id: 2, title: 'Chill Out Sessions', tracks: 15, image: 'https://via.placeholder.com/300' },
-    { id: 3, title: 'Top Hits', tracks: 30, image: 'https://via.placeholder.com/300' },
+    { id: 1, title: 'My Favorite Mixes', tracks: 20, image: 'https://preview.redd.it/heres-some-playlist-icons-in-the-style-of-liked-songs-you-v0-cahrrr1is8ee1.png?width=473&format=png&auto=webp&s=e33bfdb466d30f69fa4209b41f90dc7e41f0e609' },
+    { id: 2, title: 'Chill Out Sessions', tracks: 15, image: 'https://lofigirl.com/wp-content/uploads/2023/02/DAY_UPDATE_ILLU.jpg' },
+    { id: 3, title: 'Top Hits', tracks: 30, image: 'https://i.scdn.co/image/ab67616d0000b273016d1a64505bc840c5e60469' },
   ];
 
   // Mock recent tracks
@@ -53,7 +53,7 @@ const ProfilePage = () => {
   ];
 
   return (
-    <Container style={{ paddingTop: '80px' }}>
+    <Container>
       {/* Profile Banner */}
       <Card className="mb-4">
         <Card.Img src={user.banner} alt="Profile Banner" className="rounded" />

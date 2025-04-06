@@ -23,7 +23,7 @@ const NavigationBar = () => {
             <Nav.Link as={Link} to="/">Home</Nav.Link>
             <Nav.Link as={Link} to="/discover">Discover</Nav.Link>
             <Nav.Link as={Link} to="/library">Library</Nav.Link>
-            <Nav.Link as={Link} to="/live">Live Streams</Nav.Link>
+            <Nav.Link as={Link} to="/liveStreams">Live Streams</Nav.Link>
           </Nav>
           <Form className="d-flex mx-auto" style={{ width: '40%' }}>
             <InputGroup>
