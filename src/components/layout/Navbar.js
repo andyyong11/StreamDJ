@@ -2,7 +2,7 @@ import React from 'react';
 import { Navbar, Nav, Container, Form, Button, InputGroup } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { FaSearch, FaBell, FaUser } from 'react-icons/fa';
-import logo from '../../assets/images/logo.png';
+import logo from '../../logo.svg';
 
 const NavigationBar = () => {
   return (
@@ -23,7 +23,7 @@ const NavigationBar = () => {
             <Nav.Link as={Link} to="/">Home</Nav.Link>
             <Nav.Link as={Link} to="/discover">Discover</Nav.Link>
             <Nav.Link as={Link} to="/library">Library</Nav.Link>
-            <Nav.Link as={Link} to="/live">Live Streams</Nav.Link>
+            <Nav.Link as={Link} to="/liveStreams">Live Streams</Nav.Link>
           </Nav>
           <Form className="d-flex mx-auto" style={{ width: '40%' }}>
             <InputGroup>
@@ -41,7 +41,7 @@ const NavigationBar = () => {
             <Nav.Link as={Link} to="/notifications">
               <FaBell size={20} />
             </Nav.Link>
-            <Nav.Link as={Link} to="/profile">
+            <Nav.Link as={Link} to="/profile/:id">
               <FaUser size={20} />
             </Nav.Link>
           </Nav>
