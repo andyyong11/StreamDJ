@@ -5,7 +5,7 @@ const trackModel = {
     async create(title, artist, duration, url) {
         try {
             return await db.one(
-                'INSERT INTO tracks (title, artist, duration, url) VALUES ($1, $2, $3, $4) RETURNING *',
+                'INSERT INTO "Track" ("Title", "Artist", "Duration", "URL") VALUES ($1, $2, $3, $4) RETURNING *',
                 [title, artist, duration, url]
             );
         } catch (error) {
@@ -16,7 +16,7 @@ const trackModel = {
     // Get track by ID
     async getById(id) {
         try {
-            return await db.one('SELECT * FROM tracks WHERE id = $1', [id]);
+            return await db.one('SELECT * FROM "Track" WHERE "TrackID" = $1', [id]);
         } catch (error) {
             throw new Error(`Error getting track: ${error.message}`);
         }
@@ -26,12 +26,12 @@ const trackModel = {
     async update(id, updates) {
         try {
             const setClause = Object.keys(updates)
-                .map((key, index) => `${key} = $${index + 2}`)
+                .map((key, index) => `"${key}" = $${index + 2}`)
                 .join(', ');
             const values = Object.values(updates);
             
             return await db.one(
-                `UPDATE tracks SET ${setClause} WHERE id = $1 RETURNING *`,
+                `UPDATE "Track" SET ${setClause} WHERE "TrackID" = $1 RETURNING *`,
                 [id, ...values]
             );
         } catch (error) {
@@ -43,9 +43,9 @@ const trackModel = {
     async delete(id) {
         try {
             // First remove from all playlists
-            await db.none('DELETE FROM playlist_tracks WHERE track_id = $1', [id]);
+            await db.none('DELETE FROM "PlaylistTrack" WHERE "TrackID" = $1', [id]);
             // Then delete the track
-            return await db.result('DELETE FROM tracks WHERE id = $1', [id]);
+            return await db.result('DELETE FROM "Track" WHERE "TrackID" = $1', [id]);
         } catch (error) {
             throw new Error(`Error deleting track: ${error.message}`);
         }
@@ -55,9 +55,9 @@ const trackModel = {
     async search(query, limit = 10, offset = 0) {
         try {
             return await db.any(`
-                SELECT * FROM tracks 
-                WHERE title ILIKE $1 OR artist ILIKE $1 
-                ORDER BY created_at DESC 
+                SELECT * FROM "Track" 
+                WHERE "Title" ILIKE $1 OR "Artist" ILIKE $1 
+                ORDER BY "CreatedAt" DESC 
                 LIMIT $2 OFFSET $3
             `, [`%${query}%`, limit, offset]);
         } catch (error) {
@@ -68,7 +68,7 @@ const trackModel = {
     // List all tracks
     async list(limit = 10, offset = 0) {
         try {
-            return await db.any('SELECT * FROM tracks ORDER BY created_at DESC LIMIT $1 OFFSET $2', 
+            return await db.any('SELECT * FROM "Track" ORDER BY "CreatedAt" DESC LIMIT $1 OFFSET $2', 
                 [limit, offset]
             );
         } catch (error) {
@@ -80,7 +80,7 @@ const trackModel = {
     async getByArtist(artist, limit = 10, offset = 0) {
         try {
             return await db.any(
-                'SELECT * FROM tracks WHERE artist ILIKE $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3',
+                'SELECT * FROM "Track" WHERE "Artist" ILIKE $1 ORDER BY "CreatedAt" DESC LIMIT $2 OFFSET $3',
                 [`%${artist}%`, limit, offset]
             );
         } catch (error) {
@@ -92,9 +92,9 @@ const trackModel = {
     async getTrackUsage(id) {
         try {
             return await db.one(`
-                SELECT COUNT(DISTINCT playlist_id) as playlist_count 
-                FROM playlist_tracks 
-                WHERE track_id = $1
+                SELECT COUNT(DISTINCT "PlaylistID") as playlist_count 
+                FROM "PlaylistTrack" 
+                WHERE "TrackID" = $1
             `, [id]);
         } catch (error) {
             throw new Error(`Error getting track usage: ${error.message}`);

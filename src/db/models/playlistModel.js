@@ -5,7 +5,7 @@ const playlistModel = {
     async create(name, userId, isPublic = true) {
         try {
             return await db.one(
-                'INSERT INTO playlists (name, user_id, is_public) VALUES ($1, $2, $3) RETURNING *',
+                'INSERT INTO "Playlist" ("Title", "UserID", "IsPublic") VALUES ($1, $2, $3) RETURNING *',
                 [name, userId, isPublic]
             );
         } catch (error) {
@@ -16,13 +16,13 @@ const playlistModel = {
     // Get playlist by ID with tracks
     async getById(id) {
         try {
-            const playlist = await db.one('SELECT * FROM playlists WHERE id = $1', [id]);
+            const playlist = await db.one('SELECT * FROM "Playlist" WHERE "PlaylistID" = $1', [id]);
             const tracks = await db.any(`
-                SELECT t.*, pt.position 
-                FROM tracks t 
-                JOIN playlist_tracks pt ON t.id = pt.track_id 
-                WHERE pt.playlist_id = $1 
-                ORDER BY pt.position
+                SELECT t.*, pt."Position" 
+                FROM "Track" t 
+                JOIN "PlaylistTrack" pt ON t."TrackID" = pt."TrackID" 
+                WHERE pt."PlaylistID" = $1 
+                ORDER BY pt."Position"
             `, [id]);
             return { ...playlist, tracks };
         } catch (error) {
@@ -33,7 +33,7 @@ const playlistModel = {
     // Get user's playlists
     async getByUserId(userId) {
         try {
-            return await db.any('SELECT * FROM playlists WHERE user_id = $1', [userId]);
+            return await db.any('SELECT * FROM "Playlist" WHERE "UserID" = $1', [userId]);
         } catch (error) {
             throw new Error(`Error getting user playlists: ${error.message}`);
         }
@@ -43,12 +43,12 @@ const playlistModel = {
     async update(id, updates) {
         try {
             const setClause = Object.keys(updates)
-                .map((key, index) => `${key} = $${index + 2}`)
+                .map((key, index) => `"${key}" = $${index + 2}`)
                 .join(', ');
             const values = Object.values(updates);
             
             return await db.one(
-                `UPDATE playlists SET ${setClause} WHERE id = $1 RETURNING *`,
+                `UPDATE "Playlist" SET ${setClause} WHERE "PlaylistID" = $1 RETURNING *`,
                 [id, ...values]
             );
         } catch (error) {
@@ -60,9 +60,9 @@ const playlistModel = {
     async delete(id) {
         try {
             // First delete all playlist_tracks entries
-            await db.none('DELETE FROM playlist_tracks WHERE playlist_id = $1', [id]);
+            await db.none('DELETE FROM "PlaylistTrack" WHERE "PlaylistID" = $1', [id]);
             // Then delete the playlist
-            return await db.result('DELETE FROM playlists WHERE id = $1', [id]);
+            return await db.result('DELETE FROM "Playlist" WHERE "PlaylistID" = $1', [id]);
         } catch (error) {
             throw new Error(`Error deleting playlist: ${error.message}`);
         }
@@ -72,7 +72,7 @@ const playlistModel = {
     async addTrack(playlistId, trackId, position) {
         try {
             return await db.one(
-                'INSERT INTO playlist_tracks (playlist_id, track_id, position) VALUES ($1, $2, $3) RETURNING *',
+                'INSERT INTO "PlaylistTrack" ("PlaylistID", "TrackID", "Position") VALUES ($1, $2, $3) RETURNING *',
                 [playlistId, trackId, position]
             );
         } catch (error) {
@@ -84,7 +84,7 @@ const playlistModel = {
     async removeTrack(playlistId, trackId) {
         try {
             return await db.result(
-                'DELETE FROM playlist_tracks WHERE playlist_id = $1 AND track_id = $2',
+                'DELETE FROM "PlaylistTrack" WHERE "PlaylistID" = $1 AND "TrackID" = $2',
                 [playlistId, trackId]
             );
         } catch (error) {
@@ -96,14 +96,14 @@ const playlistModel = {
     async listPublic(limit = 10, offset = 0) {
         try {
             return await db.any(`
-                SELECT p.*, u.username as owner_name, 
-                       COUNT(pt.track_id) as track_count 
-                FROM playlists p 
-                JOIN users u ON p.user_id = u.id 
-                LEFT JOIN playlist_tracks pt ON p.id = pt.playlist_id 
-                WHERE p.is_public = true 
-                GROUP BY p.id, u.username 
-                ORDER BY p.created_at DESC 
+                SELECT p.*, u."Username" as "Username", 
+                       COUNT(pt."TrackID") as "Quantity" 
+                FROM "Playlist" p 
+                JOIN "User" u ON p."UserID" = u."UserID" 
+                LEFT JOIN "PlaylistTrack" pt ON p."PlaylistID" = pt."PlaylistID" 
+                WHERE p."IsPublic" = true 
+                GROUP BY p."PlaylistID", u."Username" 
+                ORDER BY p."CreatedAt" DESC 
                 LIMIT $1 OFFSET $2
             `, [limit, offset]);
         } catch (error) {

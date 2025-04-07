@@ -29,8 +29,7 @@
     "dev": "concurrently \"npm run server\" \"npm start\"",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "migrate": "node src/db/migrate.js"
+    "eject": "react-scripts eject"
   },
   "eslintConfig": {
     "extends": [
