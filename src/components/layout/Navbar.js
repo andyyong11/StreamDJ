@@ -1,8 +1,9 @@
 import React from 'react';
 import { Navbar, Nav, Container, Form, Button, InputGroup } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { FaSearch, FaBell, FaUser } from 'react-icons/fa';
-import logo from '../../assets/images/logo.png';
+// Temporarily using react logo until you add your own logo
+import logo from '../../logo.svg';
 import { useAuth } from '../../context/AuthContext';
 
 const NavigationBar = () => {
@@ -50,9 +51,15 @@ const NavigationBar = () => {
             <Nav.Link as={Link} to="/notifications">
               <FaBell size={20} />
             </Nav.Link>
-            <Nav.Link as={Link} to="/profile">
-              <FaUser size={20} />
-            </Nav.Link>
+            {user ? (
+              <Nav.Link as={Link} to={`/profile/${user.id || 1}`}>
+                <FaUser size={20} />
+              </Nav.Link>
+            ) : (
+              <Nav.Link as={Link} to="/login">
+                <FaUser size={20} />
+              </Nav.Link>
+            )}
           </Nav>
         </Navbar.Collapse>
       </Container>

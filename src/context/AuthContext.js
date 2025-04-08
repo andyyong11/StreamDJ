@@ -1,47 +1,39 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const navigate = useNavigate();
+    const [token, setToken] = useState(null);
 
+    // Load auth state from localStorage on mount
     useEffect(() => {
-        // Check if user is logged in
         const storedUser = localStorage.getItem('user');
-        const token = localStorage.getItem('token');
-
-        if (storedUser && token) {
+        const storedToken = localStorage.getItem('token');
+        
+        if (storedUser && storedToken) {
             setUser(JSON.parse(storedUser));
+            setToken(storedToken);
         }
-        setLoading(false);
     }, []);
 
-    const login = (userData, token) => {
+    const login = (userData, authToken) => {
         setUser(userData);
+        setToken(authToken);
         localStorage.setItem('user', JSON.stringify(userData));
-        localStorage.setItem('token', token);
+        localStorage.setItem('token', authToken);
     };
 
     const logout = () => {
         setUser(null);
+        setToken(null);
         localStorage.removeItem('user');
         localStorage.removeItem('token');
-        navigate('/login');
-    };
-
-    const value = {
-        user,
-        login,
-        logout,
-        loading
     };
 
     return (
-        <AuthContext.Provider value={value}>
-            {!loading && children}
+        <AuthContext.Provider value={{ user, token, login, logout }}>
+            {children}
         </AuthContext.Provider>
     );
 };

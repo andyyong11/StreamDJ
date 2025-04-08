@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 
@@ -7,75 +7,61 @@ import './App.css';
 import Layout from './components/layout/Layout';
 
 // Pages
-import HomePage from './pages/HomePage';
-import PlaylistPage from './pages/PlaylistPage';
-import ProfilePage from './pages/ProfilePage';
+import HomePage from './pages/homePage';
+import ProfilePage from './pages/profilePage';
+import DiscoverPage from './pages/discoverPage';
+import LibraryPage from './pages/libraryPage';
+import LiveStreamsPage from './pages/liveStreamsPage';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 
-// Auth Context
-import { AuthProvider, useAuth } from './context/AuthContext';
+// Auth
+import PrivateRoute from './components/auth/PrivateRoute';
 
-// Protected Route Component
-const ProtectedRoute = ({ children }) => {
-  const { user, loading } = useAuth();
-  
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
-  if (!user) {
-    return <Navigate to="/login" />;
-  }
-
-  return children;
-};
-
-// App Component
-const AppContent = () => {
-  return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/" element={
-        <ProtectedRoute>
-          <Layout>
-            <HomePage />
-          </Layout>
-        </ProtectedRoute>
-      } />
-      <Route path="/playlist/:id" element={
-        <ProtectedRoute>
-          <Layout>
-            <PlaylistPage />
-          </Layout>
-        </ProtectedRoute>
-      } />
-      <Route path="/profile" element={
-        <ProtectedRoute>
-          <Layout>
-            <ProfilePage />
-          </Layout>
-        </ProtectedRoute>
-      } />
-      <Route path="/profile/:id" element={
-        <ProtectedRoute>
-          <Layout>
-            <ProfilePage />
-          </Layout>
-        </ProtectedRoute>
-      } />
-    </Routes>
-  );
-};
+// Context
+import { AuthProvider } from './context/AuthContext';
 
 function App() {
   return (
-    <Router>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/" element={
+            <Layout>
+              <HomePage />
+            </Layout>
+          } />
+          <Route path="/profile/:id" element={
+            <PrivateRoute>
+              <Layout>
+                <ProfilePage />
+              </Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/discover" element={
+            <Layout>
+              <DiscoverPage />
+            </Layout>
+          } />
+          <Route path="/library" element={
+            <PrivateRoute>
+              <Layout>
+                <LibraryPage />
+              </Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/liveStreams" element={
+            <PrivateRoute>
+              <Layout>
+                <LiveStreamsPage />
+              </Layout>
+            </PrivateRoute>
+          } />
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }
 
