@@ -6,10 +6,10 @@ import { FaPlay, FaHeart, FaMusic, FaHeadphones, FaMicrophone, FaEllipsisH } fro
 const HomePage = () => {
   // Mock data for featured content
   const featuredPlaylists = [
-    { id: 1, title: 'Summer Hits 2023', creator: 'StreamDJ', image: 'https://via.placeholder.com/300', tracks: 25 },
-    { id: 2, title: 'Chill Vibes', creator: 'DJ Relaxx', image: 'https://via.placeholder.com/300', tracks: 18 },
-    { id: 3, title: 'Workout Mix', creator: 'FitBeats', image: 'https://via.placeholder.com/300', tracks: 32 },
-    { id: 4, title: 'EDM Anthems', creator: 'ElectroMaster', image: 'https://via.placeholder.com/300', tracks: 40 }
+    { id: 1, title: 'Summer Hits 2023', creator: 'StreamDJ', image: 'https://thumbs.dreamstime.com/b/happy-new-year-happy-new-year-greeting-card-colorful-fireworks-sparkling-burning-number-beautiful-holiday-web-banner-248472064.jpg', tracks: 25 },
+    { id: 2, title: 'Chill Vibes', creator: 'DJ Relaxx', image: 'https://lofigirl.com/wp-content/uploads/2023/02/DAY_UPDATE_ILLU.jpg', tracks: 18 },
+    { id: 3, title: 'Workout Mix', creator: 'FitBeats', image: 'https://thumbs.dreamstime.com/b/weightlifter-clapping-hands-preparing-workout-gym-focus-dust-112033565.jpg', tracks: 32 },
+    { id: 4, title: 'EDM Anthems', creator: 'ElectroMaster', image: 'https://www.ikmultimedia.com/products/stedm/main-banner/mobile.jpg', tracks: 40 }
   ];
 
   const liveStreams = [
