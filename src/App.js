@@ -20,6 +20,7 @@ import PrivateRoute from './components/auth/PrivateRoute';
 
 // Context
 import { AuthProvider } from './context/AuthContext';
+import UploadPage from './pages/UploadPage';
 
 function App() {
   return (
@@ -56,6 +57,13 @@ function App() {
             <PrivateRoute>
               <Layout>
                 <LiveStreamsPage />
+              </Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/upload:id" element={
+            <PrivateRoute>
+              <Layout>
+                <UploadPage />
               </Layout>
             </PrivateRoute>
           } />

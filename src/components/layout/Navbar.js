@@ -1,8 +1,7 @@
 import React from 'react';
 import { Navbar, Nav, Container, Form, Button, InputGroup } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaSearch, FaBell, FaUser } from 'react-icons/fa';
-// Temporarily using react logo until you add your own logo
+import { FaSearch, FaBell, FaUser, FaUpload } from 'react-icons/fa';
 import logo from '../../logo.svg';
 import { useAuth } from '../../context/AuthContext';
 
@@ -35,7 +34,7 @@ const NavigationBar = () => {
             <Nav.Link as={Link} to="/library">Library</Nav.Link>
             <Nav.Link as={Link} to="/liveStreams">Live Streams</Nav.Link>
             {user && (
-              <Nav.Link as={Link} to="/upload">
+              <Nav.Link as={Link} to="/upload:id">
                 <FaUpload className="me-1" />
                 Upload Music
               </Nav.Link>
