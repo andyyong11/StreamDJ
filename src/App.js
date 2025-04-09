@@ -15,39 +15,53 @@ import LiveStreamsPage from './pages/liveStreamsPage';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 
+// Auth
+import PrivateRoute from './components/auth/PrivateRoute';
+
+// Context
+import { AuthProvider } from './context/AuthContext';
+
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/" element={
-          <Layout>
-            <HomePage />
-          </Layout>
-        } />
-        <Route path="/profile/:id" element={
-          <Layout>
-            <ProfilePage />
-          </Layout>
-        } />
-        <Route path="/discover" element={
-          <Layout>
-            <DiscoverPage />
-          </Layout>
-        } />
-        <Route path="/library" element={
-          <Layout>
-            <LibraryPage />
-          </Layout>
-        } />
-        <Route path="/liveStreams" element={
-          <Layout>
-            <LiveStreamsPage />
-          </Layout>
-        } />
-      </Routes>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/" element={
+            <Layout>
+              <HomePage />
+            </Layout>
+          } />
+          <Route path="/profile/:id" element={
+            <PrivateRoute>
+              <Layout>
+                <ProfilePage />
+              </Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/discover" element={
+            <Layout>
+              <DiscoverPage />
+            </Layout>
+          } />
+          <Route path="/library" element={
+            <PrivateRoute>
+              <Layout>
+                <LibraryPage />
+              </Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/liveStreams" element={
+            <PrivateRoute>
+              <Layout>
+                <LiveStreamsPage />
+              </Layout>
+            </PrivateRoute>
+          } />
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }
 
