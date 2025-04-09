@@ -14,6 +14,7 @@ import LibraryPage from './pages/libraryPage';
 import LiveStreamsPage from './pages/liveStreamsPage';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
+import UploadPage from './pages/uploadPage'; // ⬅️ Capitalized
 
 function App() {
   return (
@@ -44,6 +45,11 @@ function App() {
         <Route path="/liveStreams" element={
           <Layout>
             <LiveStreamsPage />
+          </Layout>
+        } />
+        <Route path="/upload" element={
+          <Layout>
+            <UploadPage />
           </Layout>
         } />
       </Routes>
