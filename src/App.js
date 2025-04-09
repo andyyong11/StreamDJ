@@ -59,6 +59,11 @@ function App() {
               </Layout>
             </PrivateRoute>
           } />
+          <Route path="/upload" element={
+            <Layout>
+              <UploadPage />
+            </Layout>
+        } />
         </Routes>
       </Router>
     </AuthProvider>
