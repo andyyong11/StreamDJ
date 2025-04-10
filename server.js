@@ -10,6 +10,7 @@ const authRoutes = require('./src/routes/authRoutes');
 const userRoutes = require('./src/routes/userRoutes');
 const playlistRoutes = require('./src/routes/playlistRoutes');
 const trackRoutes = require('./src/routes/trackRoutes');
+const streamRoutes = require('./src/routes/streamRoutes');
 
 // Import middleware
 const { auth } = require('./src/middleware/auth');
@@ -63,6 +64,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', auth, userRoutes);
 app.use('/api/tracks', trackRoutes);
 app.use('/api/playlists', playlistRoutes);
+app.use('/api/streams', streamRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {

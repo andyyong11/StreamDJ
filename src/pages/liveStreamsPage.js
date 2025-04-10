@@ -20,9 +20,9 @@ const LiveStreamsPage = () => {
           ...(token && { 'Authorization': `Bearer ${token}` })
         };
 
-        const response = await fetch('http://localhost:5001/api/streams/live', { headers });
+        const response = await fetch('http://localhost:5001/api/streams', { headers });
         if (!response.ok) {
-          throw new Error('Failed to fetch live streams');
+          throw new Error(`Failed to fetch live streams: ${response.statusText}`);
         }
         const data = await response.json();
         setLiveStreams(data);
