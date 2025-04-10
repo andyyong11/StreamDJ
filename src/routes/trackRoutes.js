@@ -22,12 +22,13 @@ const upload = multer({ storage });
 const express = require('express');
 const router = express.Router();
 const { trackModel } = require('../db/models');
+const { auth } = require('../middleware/auth');
 
 // Get all tracks
 router.get('/', async (req, res) => {
     try {
         const { limit = 10, offset = 0 } = req.query;
-        const tracks = await trackModel.list(parseInt(limit), parseInt(offset));
+        const tracks = await trackModel.getAll(parseInt(limit), parseInt(offset));
         res.json(tracks);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -80,35 +81,78 @@ router.get('/:id/usage', async (req, res) => {
     }
 });
 
-// Create new track
-router.post('/', async (req, res) => {
+// Upload a new track (requires authentication)
+router.post('/', auth, async (req, res) => {
     try {
-        const { title, artist, duration, url } = req.body;
-        const newTrack = await trackModel.create(title, artist, duration, url);
-        res.status(201).json(newTrack);
+        const { title, genre, duration, filePath, coverArt } = req.body;
+        const userId = req.user.id;
+        
+        if (!title || !genre || !duration || !filePath) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        const track = await trackModel.create(userId, title, genre, duration, filePath, coverArt);
+        res.status(201).json(track);
     } catch (error) {
-        res.status(400).json({ error: error.message });
+        res.status(500).json({ error: error.message });
     }
 });
 
-// Update track
-router.put('/:id', async (req, res) => {
+// Like a track (requires authentication)
+router.post('/:id/like', auth, async (req, res) => {
     try {
-        const updates = req.body;
-        const updatedTrack = await trackModel.update(req.params.id, updates);
-        res.json(updatedTrack);
+        const trackId = req.params.id;
+        const userId = req.user.id;
+        
+        await trackModel.like(userId, trackId);
+        res.json({ success: true, message: 'Track liked' });
     } catch (error) {
-        res.status(400).json({ error: error.message });
+        res.status(500).json({ error: error.message });
     }
 });
 
-// Delete track
-router.delete('/:id', async (req, res) => {
+// Unlike a track (requires authentication)
+router.delete('/:id/like', auth, async (req, res) => {
     try {
-        await trackModel.delete(req.params.id);
-        res.status(204).send();
+        const trackId = req.params.id;
+        const userId = req.user.id;
+        
+        await trackModel.unlike(userId, trackId);
+        res.json({ success: true, message: 'Track unliked' });
     } catch (error) {
-        res.status(400).json({ error: error.message });
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Record a play for a track (requires authentication)
+router.post('/:id/play', auth, async (req, res) => {
+    try {
+        const trackId = req.params.id;
+        const userId = req.user.id;
+        
+        await trackModel.recordPlay(userId, trackId);
+        res.json({ success: true, message: 'Play recorded' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Delete a track (requires authentication and ownership)
+router.delete('/:id', auth, async (req, res) => {
+    try {
+        const trackId = req.params.id;
+        const userId = req.user.id;
+        
+        // Check if user owns the track
+        const track = await trackModel.getById(trackId);
+        if (track.UserID !== userId) {
+            return res.status(403).json({ error: 'You can only delete your own tracks' });
+        }
+        
+        await trackModel.delete(trackId);
+        res.json({ success: true, message: 'Track deleted' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
 });
 

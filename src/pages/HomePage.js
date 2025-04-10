@@ -1,38 +1,84 @@
-import React from 'react';
-import { Container, Row, Col, Card, Button, Carousel, Badge } from 'react-bootstrap';
+import React, { useState, useEffect } from 'react';
+import { Container, Row, Col, Card, Button, Carousel } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { FaPlay, FaHeart, FaMusic, FaHeadphones, FaMicrophone, FaEllipsisH } from 'react-icons/fa';
+import { useAuth } from '../context/AuthContext';
 
 const HomePage = () => {
-  // Mock data for featured content
-  const featuredPlaylists = [
-    { id: 1, title: 'Summer Hits 2023', creator: 'StreamDJ', image: 'https://thumbs.dreamstime.com/b/happy-new-year-happy-new-year-greeting-card-colorful-fireworks-sparkling-burning-number-beautiful-holiday-web-banner-248472064.jpg', tracks: 25 },
-    { id: 2, title: 'Chill Vibes', creator: 'DJ Relaxx', image: 'https://lofigirl.com/wp-content/uploads/2023/02/DAY_UPDATE_ILLU.jpg', tracks: 18 },
-    { id: 3, title: 'Workout Mix', creator: 'FitBeats', image: 'https://thumbs.dreamstime.com/b/weightlifter-clapping-hands-preparing-workout-gym-focus-dust-112033565.jpg', tracks: 32 },
-    { id: 4, title: 'EDM Anthems', creator: 'ElectroMaster', image: 'https://www.ikmultimedia.com/products/stedm/main-banner/mobile.jpg', tracks: 40 }
-  ];
+  const { token, loading } = useAuth();
+  const [featuredPlaylists, setFeaturedPlaylists] = useState([]);
+  const [popularTracks, setPopularTracks] = useState([]);
+  const [contentLoading, setContentLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const liveStreams = [
-    { id: 1, title: 'Friday Night Party', dj: 'DJ Sparkle', listeners: 1243, image: 'https://via.placeholder.com/300' },
-    { id: 2, title: 'Ambient Sounds', dj: 'ChillWave', listeners: 856, image: 'https://via.placeholder.com/300' },
-    { id: 3, title: 'Hip Hop Mix', dj: 'BeatMaster', listeners: 2105, image: 'https://via.placeholder.com/300' }
-  ];
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!token) return;
+      
+      try {
+        setContentLoading(true);
+        setError(null);
+        
+        const headers = {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        };
 
-  const topArtists = [
-    { id: 1, name: 'ElectroQueen', genre: 'Electronic', image: 'https://via.placeholder.com/150', followers: '1.2M' },
-    { id: 2, name: 'BeatMaster', genre: 'Hip Hop', image: 'https://via.placeholder.com/150', followers: '980K' },
-    { id: 3, name: 'RockLegend', genre: 'Rock', image: 'https://via.placeholder.com/150', followers: '1.5M' },
-    { id: 4, name: 'JazzMaster', genre: 'Jazz', image: 'https://via.placeholder.com/150', followers: '750K' },
-    { id: 5, name: 'PopStar', genre: 'Pop', image: 'https://via.placeholder.com/150', followers: '2.3M' }
-  ];
+        try {
+          // Fetch featured playlists
+          const playlistsResponse = await fetch('http://localhost:5001/api/playlists?limit=4', { headers });
+          
+          if (playlistsResponse.ok) {
+            const playlistsData = await playlistsResponse.json();
+            setFeaturedPlaylists(playlistsData);
+          } else {
+            console.log('Failed to fetch playlists:', playlistsResponse.status);
+            if (playlistsResponse.status === 401) {
+              setError('Authentication required to view content');
+            }
+          }
+        } catch (err) {
+          console.error('Error fetching playlists:', err);
+        }
 
-  const recentTracks = [
-    { id: 1, title: 'Summer Groove', artist: 'BeachDJ', duration: '3:45', plays: 1250000 },
-    { id: 2, title: 'Midnight City', artist: 'Urban Beats', duration: '4:12', plays: 980000 },
-    { id: 3, title: 'Chill Wave', artist: 'Ambient Master', duration: '5:30', plays: 750000 },
-    { id: 4, title: 'Dance Floor', artist: 'Party Mix', duration: '3:22', plays: 2100000 },
-    { id: 5, title: 'Deep House', artist: 'Club Masters', duration: '6:15', plays: 1800000 }
-  ];
+        try {
+          // Fetch popular tracks
+          const tracksResponse = await fetch('http://localhost:5001/api/tracks?limit=5', { headers });
+          
+          if (tracksResponse.ok) {
+            const tracksData = await tracksResponse.json();
+            setPopularTracks(tracksData);
+          } else {
+            console.log('Failed to fetch tracks:', tracksResponse.status);
+          }
+        } catch (err) {
+          console.error('Error fetching tracks:', err);
+        }
+
+      } catch (err) {
+        console.error('Error in data fetching:', err);
+        setError(err.message);
+      } finally {
+        setContentLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [token]);
+
+  // Format duration from seconds to mm:ss
+  const formatDuration = (seconds) => {
+    if (!seconds) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const noContentMessage = (
+    <div className="text-center my-4">
+      <p className="text-muted">No content available</p>
+    </div>
+  );
 
   return (
     <Container>
@@ -63,137 +109,117 @@ const HomePage = () => {
             <h3>Live DJ Sessions</h3>
             <p>Join live streams from top DJs around the world.</p>
             <Button variant="primary">Join Now</Button>
+            {!token ? (
+              <>
+                <Button as={Link} to="/login" variant="primary" className="me-2">Log In</Button>
+                <Button as={Link} to="/register" variant="outline-light">Sign Up</Button>
+              </>
+            ) : (
+              <>
+                <Button variant="primary" className="me-2">Start Listening</Button>
+                <Button variant="outline-light">Explore</Button>
+              </>
+            )}
           </Carousel.Caption>
         </Carousel.Item>
       </Carousel>
 
-      {/* Featured Playlists */}
-      <section className="mb-5">
-        <h2 className="mb-4">Featured Playlists</h2>
-        <Row>
-          {featuredPlaylists.map(playlist => (
-            <Col md={3} key={playlist.id} className="mb-4">
-              <Card className="h-100 shadow-sm">
-                <Card.Img variant="top" src={playlist.image} />
-                <Card.Body>
-                  <Card.Title>{playlist.title}</Card.Title>
-                  <Card.Text>
-                    By {playlist.creator} • {playlist.tracks} tracks
-                  </Card.Text>
-                  <div className="d-flex justify-content-between">
-                    <Button variant="success" size="sm">
-                      <FaPlay className="me-1" /> Play
-                    </Button>
-                    <Button variant="outline-danger" size="sm">
-                      <FaHeart />
-                    </Button>
-                  </div>
-                </Card.Body>
-              </Card>
-            </Col>
-          ))}
-        </Row>
-        <div className="text-center mt-3">
-          <Button variant="outline-primary" as={Link} to="/playlists">View All Playlists</Button>
+      {error && (
+        <div className="alert alert-danger" role="alert">
+          {error}
         </div>
-      </section>
+      )}
 
-      {/* Live Streams */}
-      <section className="mb-5">
-        <h2 className="mb-4">Live Now</h2>
-        <Row>
-          {liveStreams.map(stream => (
-            <Col md={4} key={stream.id} className="mb-4">
-              <Card className="h-100 shadow-sm">
-                <div className="position-relative">
-                  <Card.Img variant="top" src={stream.image} />
-                  <Badge 
-                    bg="danger" 
-                    className="position-absolute top-0 start-0 m-2"
-                  >
-                    LIVE
-                  </Badge>
-                  <Badge 
-                    bg="dark" 
-                    className="position-absolute bottom-0 end-0 m-2"
-                  >
-                    <FaHeadphones className="me-1" /> {stream.listeners.toLocaleString()}
-                  </Badge>
-                </div>
-                <Card.Body>
-                  <Card.Title>{stream.title}</Card.Title>
-                  <Card.Text>
-                    By {stream.dj}
-                  </Card.Text>
-                  <Button variant="primary" className="w-100">
-                    Join Stream
-                  </Button>
-                </Card.Body>
-              </Card>
-            </Col>
-          ))}
-        </Row>
-        <div className="text-center mt-3">
-          <Button variant="outline-primary" as={Link} to="/live">View All Live Streams</Button>
+      {!token && !loading && (
+        <div className="alert alert-info mb-4" role="alert">
+          <Link to="/login" className="alert-link">Log in</Link> or <Link to="/register" className="alert-link">sign up</Link> to access your personalized music experience!
         </div>
-      </section>
+      )}
 
-      {/* Top Artists */}
-      <section className="mb-5">
-        <h2 className="mb-4">Top Artists</h2>
-        <Row className="justify-content-center">
-          {topArtists.map(artist => (
-            <Col md={2} key={artist.id} className="mb-4 text-center">
-              <img 
-                src={artist.image} 
-                alt={artist.name} 
-                className="rounded-circle mb-2"
-                style={{ width: '120px', height: '120px' }}
-              />
-              <h5>{artist.name}</h5>
-              <p className="text-muted small">{artist.genre}</p>
-              <p className="small">{artist.followers} followers</p>
-            </Col>
-          ))}
-        </Row>
-      </section>
-
-      {/* Recent Tracks */}
-      <section className="mb-5">
-        <h2 className="mb-4">Popular Tracks</h2>
-        <Card>
-          <Card.Body>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Title</th>
-                  <th>Artist</th>
-                  <th>Duration</th>
-                  <th>Plays</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentTracks.map((track, index) => (
-                  <tr key={track.id}>
-                    <td>{index + 1}</td>
-                    <td>{track.title}</td>
-                    <td>{track.artist}</td>
-                    <td>{track.duration}</td>
-                    <td>{track.plays.toLocaleString()}</td>
-                    <td>
-                      <Button variant="link" className="p-0">
-                        <FaEllipsisH />
-                      </Button>
-                    </td>
-                  </tr>
+      {contentLoading ? (
+        <div className="text-center my-5">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="mt-2">Loading content...</p>
+        </div>
+      ) : (
+        <>
+          {/* Featured Playlists */}
+          <section className="mb-5">
+            <h2 className="mb-4">Featured Playlists</h2>
+            {featuredPlaylists.length > 0 ? (
+              <Row>
+                {featuredPlaylists.map(playlist => (
+                  <Col md={3} key={playlist.PlaylistID} className="mb-4">
+                    <Card className="h-100 shadow-sm">
+                      <Card.Img variant="top" src="https://via.placeholder.com/300" />
+                      <Card.Body>
+                        <Card.Title>{playlist.Title}</Card.Title>
+                        <Card.Text>
+                          By {playlist.Username} • {playlist.Quantity} tracks
+                        </Card.Text>
+                        <div className="d-flex justify-content-between">
+                          <Button variant="success" size="sm">
+                            <FaPlay className="me-1" /> Play
+                          </Button>
+                          <Button variant="outline-danger" size="sm">
+                            <FaHeart />
+                          </Button>
+                        </div>
+                      </Card.Body>
+                    </Card>
+                  </Col>
                 ))}
-              </tbody>
-            </table>
-          </Card.Body>
-        </Card>
-      </section>
+              </Row>
+            ) : (
+              noContentMessage
+            )}
+            <div className="text-center mt-3">
+              <Button variant="outline-primary" as={Link} to="/discover">View All Playlists</Button>
+            </div>
+          </section>
+
+          {/* Popular Tracks */}
+          <section className="mb-5">
+            <h2 className="mb-4">Popular Tracks</h2>
+            {popularTracks.length > 0 ? (
+              <Card>
+                <Card.Body>
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Title</th>
+                        <th>Artist</th>
+                        <th>Duration</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {popularTracks.map((track, index) => (
+                        <tr key={track.TrackID}>
+                          <td>{index + 1}</td>
+                          <td>{track.Title}</td>
+                          <td>{track.Artist}</td>
+                          <td>{formatDuration(track.Duration)}</td>
+                          <td>
+                            <Button variant="link" className="p-0">
+                              <FaEllipsisH />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </Card.Body>
+              </Card>
+            ) : (
+              noContentMessage
+            )}
+          </section>
+        </>
+      )}
 
       {/* Features Section */}
       <section className="mb-5">
