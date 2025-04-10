@@ -1,3 +1,24 @@
+const fs = require('fs');
+const path = require('path');
+const multer = require('multer');
+
+// Multer setup for audio and cover uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const isAudio = file.fieldname === 'audioFile';
+    const folder = isAudio ? 'uploads/audio' : 'uploads/covers';
+    fs.mkdirSync(folder, { recursive: true });
+    cb(null, folder);
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + '-' + file.originalname);
+  },
+});
+
+const upload = multer({ storage });
+
+// ====================================================
+
 const express = require('express');
 const router = express.Router();
 const { trackModel } = require('../db/models');
@@ -135,4 +156,41 @@ router.delete('/:id', auth, async (req, res) => {
     }
 });
 
-module.exports = router; 
+
+
+// =======================================new uploard route
+
+// Upload track with audio + cover art
+router.post('/upload', upload.fields([
+    { name: 'audioFile', maxCount: 1 },
+    { name: 'coverArt', maxCount: 1 }
+  ]), async (req, res) => {
+    try {
+      const { title, genre, duration, userId } = req.body;
+      const audioFile = req.files.audioFile?.[0];
+      const coverArtFile = req.files.coverArt?.[0];
+  
+      if (!audioFile || !coverArtFile) {
+        return res.status(400).json({ error: 'Audio and cover art files are required.' });
+      }
+  
+      const filePath = audioFile.path;
+      const coverArtBuffer = fs.readFileSync(coverArtFile.path);
+  
+      const newTrack = await trackModel.create(
+        parseInt(userId),
+        title,
+        genre,
+        duration,
+        filePath,
+        coverArtBuffer
+      );
+  
+      res.status(201).json({ message: 'Track uploaded successfully!', track: newTrack });
+    } catch (error) {
+      console.error('Upload error:', error.message);
+      res.status(500).json({ error: 'Upload failed.' });
+    }
+  });
+  
+  module.exports = router; 

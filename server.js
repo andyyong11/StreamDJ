@@ -61,7 +61,10 @@ app.use('/api/auth', authRoutes);
 
 // Protected routes
 app.use('/api/users', auth, userRoutes);
+app.use('/api/playlists', auth, playlistRoutes);
+// app.use('/api/tracks', auth, trackRoutes);
 app.use('/api/tracks', trackRoutes);
+//app.use('/api/tracks', trackRoutes);
 app.use('/api/playlists', playlistRoutes);
 
 // Health check route

@@ -87,13 +87,28 @@ const HomePage = () => {
         <Carousel.Item>
           <img
             className="d-block w-100"
-            src="https://via.placeholder.com/1200x400"
+            src="https://crossfadr.com/wp-content/uploads/2018/10/deephousepic.jpg" // example Unsplash direct image
             alt="First slide"
-            style={{ borderRadius: '10px' }}
+            style={{ height: '400px', objectFit: 'cover', borderRadius: '10px' }}
           />
           <Carousel.Caption>
             <h3>Welcome to StreamDJ</h3>
             <p>Your ultimate music streaming platform for DJs and music lovers.</p>
+            <Button variant="primary" className="me-2">Start Listening</Button>
+            <Button variant="outline-light">Explore</Button>
+          </Carousel.Caption>
+        </Carousel.Item>
+        <Carousel.Item>
+          <img
+            className="d-block w-100"
+            src="https://t3.ftcdn.net/jpg/04/08/99/00/240_F_408990068_A8QzYIfgChv66j71u5eavcIKA6NC2ML3.jpg"
+            alt="Second slide"
+            style={{ height: '400px', objectFit: 'cover', borderRadius: '10px' }}
+          />
+          <Carousel.Caption>
+            <h3>Live DJ Sessions</h3>
+            <p>Join live streams from top DJs around the world.</p>
+            <Button variant="primary">Join Now</Button>
             {!token ? (
               <>
                 <Button as={Link} to="/login" variant="primary" className="me-2">Log In</Button>
