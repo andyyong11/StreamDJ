@@ -31,7 +31,7 @@ const UploadTrackForm = () => {
     body.append('audioFile', formData.audioFile);
     body.append('coverArt', formData.coverArt);
 
-    const res = await fetch('http://localhost:3000/upload-track', {
+    const res = await fetch('http://localhost:5001/api/tracks/upload', {
       method: 'POST',
       body,
     });
