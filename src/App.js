@@ -7,8 +7,8 @@ import './App.css';
 import Layout from './components/layout/Layout';
 
 // Pages
-import HomePage from './pages/homePage';
-import ProfilePage from './pages/profilePage';
+import HomePage from './pages/HomePage';
+import ProfilePage from './pages/ProfilePage';
 import DiscoverPage from './pages/discoverPage';
 import LibraryPage from './pages/libraryPage';
 import LiveStreamsPage from './pages/liveStreamsPage';
