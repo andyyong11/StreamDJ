@@ -61,8 +61,8 @@ app.use('/api/auth', authRoutes);
 
 // Protected routes
 app.use('/api/users', auth, userRoutes);
-app.use('/api/playlists', auth, playlistRoutes);
-app.use('/api/tracks', auth, trackRoutes);
+app.use('/api/tracks', trackRoutes);
+app.use('/api/playlists', playlistRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {
@@ -80,5 +80,7 @@ const PORT = process.env.PORT || 5001;
 
 // Server Setup
 app.listen(PORT, () => {
-    console.log(`Server started on port ${PORT}`);
-}); 
+    console.log(`Server is running on port ${PORT}`);
+});
+
+module.exports = app; 

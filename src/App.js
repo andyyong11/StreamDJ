@@ -16,7 +16,7 @@ import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 
 // Auth
-import PrivateRoute from './components/auth/PrivateRoute';
+import AuthWrapper from './components/auth/AuthWrapper';
 
 // Context
 import { AuthProvider } from './context/AuthContext';
@@ -29,35 +29,39 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/" element={
-            <Layout>
-              <HomePage />
-            </Layout>
+            <AuthWrapper>
+              <Layout>
+                <HomePage />
+              </Layout>
+            </AuthWrapper>
           } />
           <Route path="/profile/:id" element={
-            <PrivateRoute>
+            <AuthWrapper requireAuth>
               <Layout>
                 <ProfilePage />
               </Layout>
-            </PrivateRoute>
+            </AuthWrapper>
           } />
           <Route path="/discover" element={
-            <Layout>
-              <DiscoverPage />
-            </Layout>
+            <AuthWrapper>
+              <Layout>
+                <DiscoverPage />
+              </Layout>
+            </AuthWrapper>
           } />
           <Route path="/library" element={
-            <PrivateRoute>
+            <AuthWrapper requireAuth>
               <Layout>
                 <LibraryPage />
               </Layout>
-            </PrivateRoute>
+            </AuthWrapper>
           } />
           <Route path="/liveStreams" element={
-            <PrivateRoute>
+            <AuthWrapper requireAuth>
               <Layout>
                 <LiveStreamsPage />
               </Layout>
-            </PrivateRoute>
+            </AuthWrapper>
           } />
         </Routes>
       </Router>
