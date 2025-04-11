@@ -16,9 +16,6 @@ import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import UploadPage from './pages/uploadPage';
 
-// Auth
-import AuthWrapper from './components/auth/AuthWrapper';
-
 // Context
 import { AuthProvider } from './context/AuthContext';
 
@@ -30,28 +27,19 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/" element={
-            <AuthWrapper>
-              <Layout>
-                <HomePage />
-              </Layout>
-            </AuthWrapper>
+            <Layout>
+              <HomePage />
+            </Layout>
           } />
           <Route path="/profile/:id" element={
             <Layout>
               <ProfilePage />
             </Layout>
-            <AuthWrapper requireAuth>
-              <Layout>
-                <ProfilePage />
-              </Layout>
-            </AuthWrapper>
           } />
           <Route path="/discover" element={
-            <AuthWrapper>
-              <Layout>
-                <DiscoverPage />
-              </Layout>
-            </AuthWrapper>
+            <Layout>
+              <DiscoverPage />
+            </Layout>
           } />
           <Route path="/library" element={
             <Layout>
@@ -67,18 +55,6 @@ function App() {
             <Layout>
               <UploadPage />
             </Layout>
-            <AuthWrapper requireAuth>
-              <Layout>
-                <LibraryPage />
-              </Layout>
-            </AuthWrapper>
-          } />
-          <Route path="/liveStreams" element={
-            <AuthWrapper requireAuth>
-              <Layout>
-                <LiveStreamsPage />
-              </Layout>
-            </AuthWrapper>
           } />
         </Routes>
       </Router>
