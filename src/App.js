@@ -57,11 +57,9 @@ function App() {
             </AuthWrapper>
           } />
           <Route path="/liveStreams" element={
-            <AuthWrapper requireAuth>
-              <Layout>
-                <LiveStreamsPage />
-              </Layout>
-            </AuthWrapper>
+            <Layout>
+              <LiveStreamsPage />
+            </Layout>
           } />
         </Routes>
       </Router>

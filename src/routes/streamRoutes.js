@@ -3,6 +3,7 @@ const router = express.Router();
 const { streamModel } = require('../db/models');
 const { auth } = require('../middleware/auth');
 
+// Public routes - no authentication required
 // Get all active streams
 router.get('/', async (req, res) => {
     try {
@@ -23,7 +24,8 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// Start a new stream (requires authentication)
+// Protected routes - authentication required
+// Start a new stream
 router.post('/', auth, async (req, res) => {
     try {
         const { title, description } = req.body;
@@ -40,7 +42,7 @@ router.post('/', auth, async (req, res) => {
     }
 });
 
-// End a stream (requires authentication)
+// End a stream
 router.post('/:id/end', auth, async (req, res) => {
     try {
         const streamId = req.params.id;
@@ -52,6 +54,35 @@ router.post('/:id/end', auth, async (req, res) => {
         }
         
         res.json({ success: true, message: 'Stream ended successfully' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Chat functionality
+router.post('/:id/chat', auth, async (req, res) => {
+    try {
+        const { message } = req.body;
+        const streamId = req.params.id;
+        const userId = req.user.id;
+
+        if (!message) {
+            return res.status(400).json({ error: 'Message is required' });
+        }
+
+        const chatMessage = await streamModel.addChatMessage(streamId, userId, message);
+        res.status(201).json(chatMessage);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get chat messages for a stream
+router.get('/:id/chat', async (req, res) => {
+    try {
+        const streamId = req.params.id;
+        const messages = await streamModel.getChatMessages(streamId);
+        res.json(messages);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

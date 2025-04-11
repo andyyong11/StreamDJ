@@ -1,6 +1,6 @@
 import React from 'react';
-import { Navbar, Nav, Container, Form, Button, InputGroup } from 'react-bootstrap';
-import { Link, useNavigate } from 'react-router-dom';
+import { Navbar, Nav, Container, Form, Button, InputGroup, NavDropdown } from 'react-bootstrap';
+import { Link } from 'react-router-dom';
 import { FaSearch, FaBell, FaUser } from 'react-icons/fa';
 // Temporarily using react logo until you add your own logo
 import logo from '../../logo.svg';
@@ -8,11 +8,9 @@ import { useAuth } from '../../context/AuthContext';
 
 const NavigationBar = () => {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
   };
 
   return (
@@ -52,9 +50,15 @@ const NavigationBar = () => {
               <FaBell size={20} />
             </Nav.Link>
             {user ? (
-              <Nav.Link as={Link} to={`/profile/${user.id || 1}`}>
-                <FaUser size={20} />
-              </Nav.Link>
+              <NavDropdown 
+                title={<FaUser size={20} />} 
+                id="basic-nav-dropdown"
+                align="end"
+              >
+                <NavDropdown.Item as={Link} to={`/profile/${user.id || 1}`}>Profile</NavDropdown.Item>
+                <NavDropdown.Divider />
+                <NavDropdown.Item onClick={handleLogout}>Logout</NavDropdown.Item>
+              </NavDropdown>
             ) : (
               <Nav.Link as={Link} to="/login">
                 <FaUser size={20} />
