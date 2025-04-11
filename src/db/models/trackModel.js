@@ -142,17 +142,13 @@ const trackModel = {
         }
     },
 
-    // Search tracks (title, genre, artist username)
+    // Search tracks
     async search(query, limit = 10, offset = 0) {
         try {
             return await db.any(`
-                SELECT t.*, u."Username" AS "ArtistName"
-                FROM "Track" t
-                JOIN "User" u ON t."UserID" = u."UserID"
-                WHERE t."Title" ILIKE $1 
-                OR t."Genre" ILIKE $1 
-                OR u."Username" ILIKE $1
-                ORDER BY t."CreatedAt" DESC 
+                SELECT * FROM "Track" 
+                WHERE "Title" ILIKE $1 OR "Artist" ILIKE $1 
+                ORDER BY "CreatedAt" DESC 
                 LIMIT $2 OFFSET $3
             `, [`%${query}%`, limit, offset]);
         } catch (error) {
