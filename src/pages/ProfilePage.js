@@ -1,86 +1,176 @@
-import React from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Card, Button, Badge } from 'react-bootstrap';
-import { FaHeart, FaMusic, FaUserFriends, FaPlay, FaEllipsisH } from 'react-icons/fa';
+import { FaHeart, FaMusic, FaUserFriends, FaPlay, FaEllipsisH, FaSignOutAlt } from 'react-icons/fa';
+import { useAuth } from '../context/AuthContext';
 
 const ProfilePage = () => {
-  // Get the profile ID from the URL
   const { id } = useParams();
+  const { user: authUser, token, logout } = useAuth();
+  const navigate = useNavigate();
+  const [profileData, setProfileData] = useState(null);
+  const [playlists, setPlaylists] = useState([]);
+  const [recentTracks, setRecentTracks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Mock user data based on ID
-  const users = {
-    1: {
-      name: 'DJ Sparkle',
-      followers: '1.2M',
-      following: 345,
-      avatar: 'https://via.placeholder.com/150',
-      banner: 'https://crlsolutions.com/wp-content/uploads/2018/01/temp-banner.png',
-      bio: 'Bringing the best beats to your ears. Live DJ, music producer, and sound enthusiast.'
-    },
-    2: {
-      name: 'BeatMaster',
-      followers: '980K',
-      following: 210,
-      avatar: 'https://via.placeholder.com/150',
-      banner: 'https://crlsolutions.com/wp-content/uploads/2018/01/temp-banner.png',
-      bio: 'Hip Hop is life. Bringing the best rap beats and remixes to the stage.'
-    },
-    3: {
-      name: 'ElectroQueen',
-      followers: '1.5M',
-      following: 500,
-      avatar: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQCJkAoQFnKSizD__XWUr1_RhK86R8E7h8I0g&s',
-      banner: 'https://i.etsystatic.com/34466454/r/il/730751/4475686453/il_fullxfull.4475686453_n0ds.jpg',
-      bio: 'Electronic beats and house music to keep the party going all night.'
-    }
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
   };
 
-  // Get user data; if ID is not found, default to user 1
-  const user = users[id] || users[1];
+  // Format duration from seconds to mm:ss
+  const formatDuration = (seconds) => {
+    if (!seconds) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
-  // Mock playlists
-  const playlists = [
-    { id: 1, title: 'My Favorite Mixes', tracks: 20, image: 'https://preview.redd.it/heres-some-playlist-icons-in-the-style-of-liked-songs-you-v0-cahrrr1is8ee1.png?width=473&format=png&auto=webp&s=e33bfdb466d30f69fa4209b41f90dc7e41f0e609' },
-    { id: 2, title: 'Chill Out Sessions', tracks: 15, image: 'https://lofigirl.com/wp-content/uploads/2023/02/DAY_UPDATE_ILLU.jpg' },
-    { id: 3, title: 'Top Hits', tracks: 30, image: 'https://i.scdn.co/image/ab67616d0000b273016d1a64505bc840c5e60469' },
-  ];
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      if (!token) return;
 
-  // Mock recent tracks
-  const recentTracks = [
-    { id: 1, title: 'Summer Groove', duration: '3:45', plays: 1250000 },
-    { id: 2, title: 'Midnight City', duration: '4:12', plays: 980000 },
-    { id: 3, title: 'Chill Wave', duration: '5:30', plays: 750000 },
-  ];
+      try {
+        setLoading(true);
+        setError(null);
+
+        const headers = {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        };
+
+        // Fetch user profile data
+        try {
+          const profileResponse = await fetch(`http://localhost:5001/api/users/${id}`, { headers });
+          if (!profileResponse.ok) {
+            if (profileResponse.status === 404) {
+              throw new Error('User not found');
+            }
+            throw new Error('Failed to fetch profile data');
+          }
+          const profileData = await profileResponse.json();
+          setProfileData(profileData);
+        } catch (err) {
+          console.error('Error fetching profile data:', err);
+          setError(err.message);
+          setProfileData(null);
+          return; // Stop further requests if user data can't be fetched
+        }
+
+        // Fetch user's playlists
+        try {
+          const playlistsResponse = await fetch(`http://localhost:5001/api/users/${id}/playlists`, { headers });
+          if (playlistsResponse.ok) {
+            const playlistsData = await playlistsResponse.json();
+            setPlaylists(playlistsData);
+          } else {
+            console.error('Failed to fetch playlists:', playlistsResponse.status);
+            setPlaylists([]);
+          }
+        } catch (err) {
+          console.error('Error fetching playlists:', err);
+          setPlaylists([]);
+        }
+
+        // Fetch user's recent tracks
+        try {
+          const tracksResponse = await fetch(`http://localhost:5001/api/users/${id}/recent-tracks`, { headers });
+          if (tracksResponse.ok) {
+            const tracksData = await tracksResponse.json();
+            setRecentTracks(tracksData);
+          } else {
+            console.error('Failed to fetch recent tracks:', tracksResponse.status);
+            setRecentTracks([]);
+          }
+        } catch (err) {
+          console.error('Error fetching recent tracks:', err);
+          setRecentTracks([]);
+        }
+
+      } catch (err) {
+        console.error('Error fetching profile data:', err);
+        setError('Failed to load profile data. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfileData();
+  }, [id, token]);
+
+  if (loading) {
+    return (
+      <Container>
+        <div className="text-center my-5">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </div>
+          <p className="mt-2">Loading profile...</p>
+        </div>
+      </Container>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container>
+        <div className="alert alert-danger my-5" role="alert">
+          {error}
+        </div>
+      </Container>
+    );
+  }
+
+  if (!profileData) {
+    return (
+      <Container>
+        <div className="alert alert-warning my-5" role="alert">
+          User not found
+        </div>
+      </Container>
+    );
+  }
 
   return (
     <Container>
       {/* Profile Banner */}
       <Card className="mb-4">
-        <Card.Img src={user.banner} alt="Profile Banner" className="rounded" />
+        <Card.Img 
+          src={profileData.BannerImage || "https://crlsolutions.com/wp-content/uploads/2018/01/temp-banner.png"} 
+          alt="Profile Banner" 
+          className="rounded" 
+        />
         <Card.ImgOverlay className="d-flex flex-column justify-content-end">
           <Row className="align-items-center">
             <Col md={3} className="text-center">
               <img
-                src={user.avatar}
-                alt={user.name}
+                src={profileData.Avatar || "https://via.placeholder.com/150"}
+                alt={profileData.Username}
                 className="rounded-circle border border-white"
                 style={{ width: '120px', height: '120px' }}
               />
             </Col>
             <Col md={6}>
-              <h2 className="text-white">{user.name}</h2>
-              <p className="text-light">{user.bio}</p>
+              <h2 className="text-white">{profileData.Username}</h2>
+              <p className="text-light">{profileData.Bio || 'No bio available'}</p>
               <Badge bg="primary" className="me-2">
-                <FaUserFriends /> {user.followers} Followers
+                <FaUserFriends /> {profileData.FollowerCount || 0} Followers
               </Badge>
               <Badge bg="secondary">
-                <FaMusic /> {user.following} Following
+                <FaMusic /> {profileData.FollowingCount || 0} Following
               </Badge>
             </Col>
             <Col md={3} className="text-end">
-              <Button variant="danger" className="me-2">
-                <FaHeart /> Follow
-              </Button>
+              {authUser && authUser.id === parseInt(id) ? (
+                <Button variant="danger" onClick={handleLogout} className="mb-2 d-block ms-auto">
+                  <FaSignOutAlt /> Logout
+                </Button>
+              ) : (
+                <Button variant="danger" className="me-2">
+                  <FaHeart /> Follow
+                </Button>
+              )}
               <Button variant="light">
                 <FaEllipsisH />
               </Button>
@@ -89,60 +179,68 @@ const ProfilePage = () => {
         </Card.ImgOverlay>
       </Card>
 
-      {/* My Playlists */}
+      {/* User's Playlists */}
       <section className="mb-5">
-        <h3 className="mb-4">{user.name}'s Playlists</h3>
-        <Row>
-          {playlists.map(playlist => (
-            <Col md={4} key={playlist.id} className="mb-4">
-              <Card className="shadow-sm">
-                <Card.Img variant="top" src={playlist.image} />
-                <Card.Body>
-                  <Card.Title>{playlist.title}</Card.Title>
-                  <Card.Text>{playlist.tracks} tracks</Card.Text>
-                  <Button variant="success" size="sm">
-                    <FaPlay className="me-1" /> Play
-                  </Button>
-                </Card.Body>
-              </Card>
-            </Col>
-          ))}
-        </Row>
+        <h3 className="mb-4">{profileData.Username}'s Playlists</h3>
+        {playlists.length > 0 ? (
+          <Row>
+            {playlists.map(playlist => (
+              <Col md={4} key={playlist.PlaylistID} className="mb-4">
+                <Card className="shadow-sm">
+                  <Card.Img variant="top" src="https://via.placeholder.com/300" />
+                  <Card.Body>
+                    <Card.Title>{playlist.Title}</Card.Title>
+                    <Card.Text>{playlist.Quantity || 0} tracks</Card.Text>
+                    <Button variant="success" size="sm">
+                      <FaPlay className="me-1" /> Play
+                    </Button>
+                  </Card.Body>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        ) : (
+          <p className="text-muted">No playlists available</p>
+        )}
       </section>
 
       {/* Recently Played Tracks */}
       <section className="mb-5">
-        <h3 className="mb-4">Recently Played by {user.name}</h3>
-        <Card>
-          <Card.Body>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Title</th>
-                  <th>Duration</th>
-                  <th>Plays</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentTracks.map((track, index) => (
-                  <tr key={track.id}>
-                    <td>{index + 1}</td>
-                    <td>{track.title}</td>
-                    <td>{track.duration}</td>
-                    <td>{track.plays.toLocaleString()}</td>
-                    <td>
-                      <Button variant="link" className="p-0">
-                        <FaEllipsisH />
-                      </Button>
-                    </td>
+        <h3 className="mb-4">Recently Played by {profileData.Username}</h3>
+        {recentTracks.length > 0 ? (
+          <Card>
+            <Card.Body>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Title</th>
+                    <th>Duration</th>
+                    <th>Plays</th>
+                    <th></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card.Body>
-        </Card>
+                </thead>
+                <tbody>
+                  {recentTracks.map((track, index) => (
+                    <tr key={track.TrackID}>
+                      <td>{index + 1}</td>
+                      <td>{track.Title}</td>
+                      <td>{formatDuration(track.Duration)}</td>
+                      <td>{track.PlayCount?.toLocaleString() || 0}</td>
+                      <td>
+                        <Button variant="link" className="p-0">
+                          <FaEllipsisH />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card.Body>
+          </Card>
+        ) : (
+          <p className="text-muted">No recently played tracks</p>
+        )}
       </section>
     </Container>
   );
