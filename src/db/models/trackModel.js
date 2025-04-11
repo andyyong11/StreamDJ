@@ -3,7 +3,6 @@ const db = require('../config');
 const trackModel = {
     // Create a new track
     async create(userId, title, genre, duration, filePath, coverArtBuffer) {
-    async create(userId, title, genre, duration, filePath, coverArt = null) {
         try {
             const now = new Date();
             return await db.one(
@@ -12,8 +11,6 @@ const trackModel = {
                  VALUES ($1, $2, $3, $4, $5, $6, NOW())
                  RETURNING *`,
                 [userId, title, genre, duration, filePath, coverArtBuffer]
-                'INSERT INTO "Track" ("UserID", "Title", "Genre", "Duration", "FilePath", "CoverArt", "CreatedAt") VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-                [userId, title, genre, duration, filePath, coverArt, now]
             );
         } catch (error) {
             throw new Error(`Error creating track: ${error.message}`);
