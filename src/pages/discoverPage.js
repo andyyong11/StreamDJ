@@ -1,15 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Container, Row, Col, Card, Button, Badge } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { FaPlay, FaHeart, FaMusic } from 'react-icons/fa';
-import { useAuth } from '../context/AuthContext';
 
 const DiscoverPage = () => {
-  const { token } = useAuth();
-  const [trendingPlaylists, setTrendingPlaylists] = useState([]);
-  const [newReleases, setNewReleases] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // Mock data
+  const trendingPlaylists = [
+    { id: 1, title: 'Global Top 50', image: 'https://via.placeholder.com/300', creator: 'StreamDJ', tracks: 50 },
+    { id: 2, title: 'Hip Hop Heat', image: 'https://via.placeholder.com/300', creator: 'RapVibes', tracks: 40 },
+    { id: 3, title: 'Electronic Essentials', image: 'https://via.placeholder.com/300', creator: 'ElectroMaster', tracks: 35 },
+    { id: 4, title: 'Jazz Lounge', image: 'https://via.placeholder.com/300', creator: 'SmoothJazz', tracks: 25 }
+  ];
 
   const genres = [
     { id: 1, name: 'Hip Hop', image: 'https://via.placeholder.com/250x150?text=Hip+Hop' },
@@ -19,86 +20,25 @@ const DiscoverPage = () => {
     { id: 5, name: 'Rock', image: 'https://via.placeholder.com/250x150?text=Rock' }
   ];
 
-  // Format duration from seconds to mm:ss
-  const formatDuration = (seconds) => {
-    if (!seconds) return '0:00';
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const headers = {
-          'Content-Type': 'application/json',
-          ...(token && { 'Authorization': `Bearer ${token}` })
-        };
-
-        // Fetch trending playlists
-        const playlistsResponse = await fetch('http://localhost:5001/api/playlists?limit=4', { headers });
-        if (!playlistsResponse.ok) {
-          throw new Error('Failed to fetch playlists');
-        }
-        const playlistsData = await playlistsResponse.json();
-        setTrendingPlaylists(playlistsData);
-
-        // Fetch new releases (latest tracks)
-        const tracksResponse = await fetch('http://localhost:5001/api/tracks?limit=3&sort=created_at', { headers });
-        if (!tracksResponse.ok) {
-          throw new Error('Failed to fetch tracks');
-        }
-        const tracksData = await tracksResponse.json();
-        setNewReleases(tracksData);
-
-      } catch (err) {
-        console.error('Error fetching data:', err);
-        setError('Failed to load content. Please try again later.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [token]);
-
-  if (loading) {
-    return (
-      <Container style={{ paddingTop: '80px' }}>
-        <div className="text-center">
-          <div className="spinner-border text-primary" role="status">
-            <span className="visually-hidden">Loading...</span>
-          </div>
-          <p className="mt-2">Loading content...</p>
-        </div>
-      </Container>
-    );
-  }
+  const newReleases = [
+    { id: 1, title: 'Skybound', artist: 'NovaBeats', image: 'https://via.placeholder.com/300', duration: '3:42' },
+    { id: 2, title: 'Midnight Drive', artist: 'NightVibe', image: 'https://via.placeholder.com/300', duration: '4:15' },
+    { id: 3, title: 'Electric Dreams', artist: 'SynthWave', image: 'https://via.placeholder.com/300', duration: '3:58' }
+  ];
 
   return (
     <Container style={{ paddingTop: '80px' }}>
-      {error && (
-        <div className="alert alert-danger" role="alert">
-          {error}
-        </div>
-      )}
-
       {/* Trending Playlists */}
       <section className="mb-5">
         <h2 className="mb-4">Trending Playlists</h2>
         <Row>
-          {trendingPlaylists.map(playlist => (
-            <Col md={3} key={playlist.PlaylistID} className="mb-4">
+          {trendingPlaylists.map(pl => (
+            <Col md={3} key={pl.id} className="mb-4">
               <Card className="h-100 shadow-sm">
-                <Card.Img variant="top" src="https://via.placeholder.com/300" />
+                <Card.Img variant="top" src={pl.image} />
                 <Card.Body>
-                  <Card.Title>{playlist.Title}</Card.Title>
-                  <Card.Text>
-                    By {playlist.Username || 'Unknown'} • {playlist.Quantity || 0} tracks
-                  </Card.Text>
+                  <Card.Title>{pl.title}</Card.Title>
+                  <Card.Text>By {pl.creator} • {pl.tracks} tracks</Card.Text>
                   <div className="d-flex justify-content-between">
                     <Button variant="success" size="sm">
                       <FaPlay className="me-1" /> Play
@@ -135,15 +75,15 @@ const DiscoverPage = () => {
       <section className="mb-5">
         <h2 className="mb-4">New Releases</h2>
         <Row>
-          {newReleases.map(track => (
-            <Col md={4} key={track.TrackID} className="mb-4">
+          {newReleases.map(release => (
+            <Col md={4} key={release.id} className="mb-4">
               <Card className="h-100 shadow-sm">
-                <Card.Img variant="top" src={track.CoverArt || "https://via.placeholder.com/300"} />
+                <Card.Img variant="top" src={release.image} />
                 <Card.Body>
-                  <Card.Title>{track.Title}</Card.Title>
-                  <Card.Text>By {track.Artist || 'Unknown Artist'}</Card.Text>
+                  <Card.Title>{release.title}</Card.Title>
+                  <Card.Text>By {release.artist}</Card.Text>
                   <div className="d-flex justify-content-between align-items-center">
-                    <span><FaMusic className="me-1" /> {formatDuration(track.Duration)}</span>
+                    <span><FaMusic className="me-1" /> {release.duration}</span>
                     <Button variant="primary" size="sm">
                       <FaPlay className="me-1" /> Play
                     </Button>
