@@ -1,140 +1,120 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Navbar, Nav, Container, Form, Button, InputGroup } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
-import { FaSearch, FaBell, FaUser, FaUpload } from 'react-icons/fa';
+import { Link, useNavigate } from 'react-router-dom';
+import { FaSearch, FaUpload } from 'react-icons/fa';
 import logo from '../../logo.svg';
 import { useAuth } from '../../context/AuthContext';
+import UserDropdown from '../auth/UserDropdown';
+import './Navbar.css';
 
 const NavigationBar = ({ onTrackSelect }) => {
   const { user } = useAuth();
-
+  const navigate = useNavigate();
   const [query, setQuery] = useState('');
+  const [showResults, setShowResults] = useState(false);
   const [results, setResults] = useState({
     tracks: [],
     artists: [],
     playlists: []
   });
 
-  useEffect(() => {
-    const fetchResults = async () => {
-      if (query.length > 1) {
-        try {
-          const res = await fetch(`http://localhost:5001/api/tracks/search-all?query=${encodeURIComponent(query)}`);
-          const data = await res.json();
-          setResults({
-            tracks: data.tracks || [],
-            artists: data.artists || [],
-            playlists: data.playlists || []
-          });
-        } catch (err) {
-          console.error('Search error:', err);
-          setResults({ tracks: [], artists: [], playlists: [] });
-        }
-      } else {
-        setResults({ tracks: [], artists: [], playlists: [] });
-      }
-    };
-
-    const delay = setTimeout(fetchResults, 300);
-    return () => clearTimeout(delay);
-  }, [query]);
-
   return (
-    <Navbar bg="dark" variant="dark" expand="lg" className="mb-4 position-relative">
-      <Container>
-        <Navbar.Brand as={Link} to="/">
+    <Navbar bg="dark" variant="dark" expand="lg" className="navbar-custom">
+      <Container fluid="lg">
+        <Navbar.Brand as={Link} to="/" className="d-flex align-items-center">
           <img src={logo} alt="StreamDJ Logo" height="30" className="d-inline-block align-top me-2" />
           StreamDJ
         </Navbar.Brand>
-        <Navbar.Toggle aria-controls="basic-navbar-nav" />
-        <Navbar.Collapse id="basic-navbar-nav">
+        
+        <Navbar.Toggle aria-controls="navbar-nav" />
+        <Navbar.Collapse id="navbar-nav">
           <Nav className="me-auto">
             <Nav.Link as={Link} to="/">Home</Nav.Link>
             <Nav.Link as={Link} to="/discover">Discover</Nav.Link>
             <Nav.Link as={Link} to="/library">Library</Nav.Link>
-            <Nav.Link as={Link} to="/liveStreams">Live Streams</Nav.Link>
-            <Nav.Link as={Link} to="/upload"><FaUpload className="me-1" /> Upload</Nav.Link>
+            <Nav.Link as={Link} to="/streams">Live Streams</Nav.Link>
           </Nav>
 
-          <Form className="d-flex mx-auto position-relative" style={{ width: '40%' }}>
-            <InputGroup>
-              <Form.Control
-                type="search"
-                placeholder="Search for tracks, artists, or playlists"
-                aria-label="Search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-              <Button variant="outline-light">
-                <FaSearch />
-              </Button>
-            </InputGroup>
+          <div className="nav-search-container">
+            <Form className="d-flex align-items-center position-relative w-100">
+              <InputGroup>
+                <Form.Control
+                  type="search"
+                  placeholder="Search for tracks, artists, or playlists"
+                  aria-label="Search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onFocus={() => setShowResults(true)}
+                />
+                <Button variant="outline-light">
+                  <FaSearch />
+                </Button>
+              </InputGroup>
 
-            {(results?.tracks?.length || results?.artists?.length || results?.playlists?.length) > 0 && (
-              <div className="position-absolute bg-white text-dark p-2 rounded shadow" style={{
-                top: '100%',
-                left: 0,
-                width: '100%',
-                zIndex: 1050,
-                maxHeight: '300px',
-                overflowY: 'auto'
-              }}>
-                {results.tracks.length > 0 && (
-                  <>
-                    <div className="fw-bold mb-1">🎵 Tracks</div>
-                    {results.tracks.map(track => (
-                      <div key={`track-${track.TrackID}`} className="mb-2 cursor-pointer" onClick={() => onTrackSelect?.(track)}>
-                        <div className="d-flex justify-content-between align-items-center">
-                          <div>
-                            <strong>{track.Title}</strong>
-                            <div className="text-muted small">{track.Artist}</div>
+              {showResults && (results.tracks.length > 0 || results.artists.length > 0 || results.playlists.length > 0) && (
+                <div className="search-results-dropdown">
+                  {results.tracks.length > 0 && (
+                    <div className="results-section">
+                      <h6 className="results-title">Tracks</h6>
+                      {results.tracks.map(track => (
+                        <div key={`track-${track.TrackID}`} className="search-result-item" onClick={() => onTrackSelect?.(track)}>
+                          <div className="d-flex justify-content-between align-items-center">
+                            <div>
+                              <div className="result-title">{track.Title}</div>
+                              <div className="result-subtitle">{track.Artist}</div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </>
-                )}
+                      ))}
+                    </div>
+                  )}
 
-                {results.artists.length > 0 && (
-                  <>
-                    <div className="fw-bold mt-2 mb-1">👤 Artists</div>
-                    {results.artists.map(artist => (
-                      <div key={`artist-${artist.UserID}`} className="mb-2 border-bottom pb-1">
-                        {artist.Username}
-                      </div>
-                    ))}
-                  </>
-                )}
+                  {results.artists.length > 0 && (
+                    <div className="results-section">
+                      <h6 className="results-title">Artists</h6>
+                      {results.artists.map(artist => (
+                        <div key={`artist-${artist.UserID}`} className="search-result-item">
+                          {artist.Username}
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
-                {results.playlists.length > 0 && (
-                  <>
-                    <div className="fw-bold mt-2 mb-1">📂 Playlists</div>
-                    {results.playlists.map(playlist => (
-                      <div key={`playlist-${playlist.PlaylistID}`} className="mb-2 border-bottom pb-1">
-                        <strong>{playlist.Title}</strong><br />
-                        <small className="text-muted">User ID: {playlist.UserID}</small>
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
-            )}
-          </Form>
+                  {results.playlists.length > 0 && (
+                    <div className="results-section">
+                      <h6 className="results-title">Playlists</h6>
+                      {results.playlists.map(playlist => (
+                        <div key={`playlist-${playlist.PlaylistID}`} className="search-result-item">
+                          <div className="result-title">{playlist.Title}</div>
+                          <div className="result-subtitle">by {playlist.Username}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </Form>
+          </div>
 
-          <Nav>
-            <Nav.Link as={Link} to="/notifications">
-              <FaBell size={20} />
-            </Nav.Link>
+          <div className="user-actions">
             {user ? (
-              <Nav.Link as={Link} to={`/profile/${user.id || 1}`}>
-                <FaUser size={20} />
-              </Nav.Link>
+              <>
+                <Link to="/upload" className="upload-btn">
+                  <FaUpload /> Upload
+                </Link>
+                <UserDropdown user={user} />
+              </>
             ) : (
-              <Nav.Link as={Link} to="/login">
-                <FaUser size={20} />
-              </Nav.Link>
+              <>
+                <Button as={Link} to="/login" variant="outline-light">
+                  Sign In
+                </Button>
+                <Button as={Link} to="/register" variant="success">
+                  Sign Up
+                </Button>
+              </>
             )}
-          </Nav>
+          </div>
         </Navbar.Collapse>
       </Container>
     </Navbar>
@@ -142,149 +122,3 @@ const NavigationBar = ({ onTrackSelect }) => {
 };
 
 export default NavigationBar;
-
-
-// import React, { useState, useEffect } from 'react';
-// import { Navbar, Nav, Container, Form, Button, InputGroup } from 'react-bootstrap';
-// import { Link } from 'react-router-dom';
-// import { FaSearch, FaBell, FaUser, FaUpload } from 'react-icons/fa';
-// import logo from '../../logo.svg';
-// import { useAuth } from '../../context/AuthContext';
-
-// const NavigationBar = ({ onTrackSelect }) => {
-//   const { user } = useAuth();
-
-//   const [query, setQuery] = useState('');
-//   const [results, setResults] = useState({
-//     tracks: [],
-//     artists: [],
-//     playlists: []
-//   });
-
-//   useEffect(() => {
-//     const fetchResults = async () => {
-//       if (query.length > 1) {
-//         try {
-//           const res = await fetch(`http://localhost:5001/api/tracks/search-all?query=${encodeURIComponent(query)}`);
-//           const data = await res.json();
-//           setResults({
-//             tracks: data.tracks || [],
-//             artists: data.artists || [],
-//             playlists: data.playlists || []
-//           });
-//         } catch (err) {
-//           console.error('Search error:', err);
-//           setResults({ tracks: [], artists: [], playlists: [] });
-//         }
-//       } else {
-//         setResults({ tracks: [], artists: [], playlists: [] });
-//       }
-//     };
-
-//     const delay = setTimeout(fetchResults, 300);
-//     return () => clearTimeout(delay);
-//   }, [query]);
-
-//   return (
-//     <Navbar bg="dark" variant="dark" expand="lg" className="mb-4 position-relative">
-//       <Container>
-//         <Navbar.Brand as={Link} to="/">
-//           <img src={logo} alt="StreamDJ Logo" height="30" className="d-inline-block align-top me-2" />
-//           StreamDJ
-//         </Navbar.Brand>
-//         <Navbar.Toggle aria-controls="basic-navbar-nav" />
-//         <Navbar.Collapse id="basic-navbar-nav">
-//           <Nav className="me-auto">
-//             <Nav.Link as={Link} to="/">Home</Nav.Link>
-//             <Nav.Link as={Link} to="/discover">Discover</Nav.Link>
-//             <Nav.Link as={Link} to="/library">Library</Nav.Link>
-//             <Nav.Link as={Link} to="/liveStreams">Live Streams</Nav.Link>
-//             <Nav.Link as={Link} to="/upload"><FaUpload className="me-1" /> Upload</Nav.Link>
-//           </Nav>
-
-//           <Form className="d-flex mx-auto position-relative" style={{ width: '40%' }}>
-//             <InputGroup>
-//               <Form.Control
-//                 type="search"
-//                 placeholder="Search for tracks, artists, or playlists"
-//                 aria-label="Search"
-//                 value={query}
-//                 onChange={(e) => setQuery(e.target.value)}
-//               />
-//               <Button variant="outline-light">
-//                 <FaSearch />
-//               </Button>
-//             </InputGroup>
-
-//             {(results?.tracks?.length || results?.artists?.length || results?.playlists?.length) > 0 && (
-//               <div className="position-absolute bg-white text-dark p-2 rounded shadow" style={{
-//                 top: '100%',
-//                 left: 0,
-//                 width: '100%',
-//                 zIndex: 1050,
-//                 maxHeight: '300px',
-//                 overflowY: 'auto'
-//               }}>
-//                 {results.tracks.length > 0 && (
-//                   <>
-//                     <div className="fw-bold mb-1">🎵 Tracks</div>
-//                     {results.tracks.map(track => (
-//                       <div key={`track-${track.TrackID}`} className="mb-2 cursor-pointer" onClick={() => onTrackSelect(track)}>
-//                         <div className="d-flex justify-content-between align-items-center">
-//                           <div>
-//                             <strong>{track.Title}</strong>
-//                             <div className="text-muted small">{track.Artist}</div>
-//                           </div>
-//                         </div>
-//                       </div>
-//                     ))}
-//                   </>
-//                 )}
-
-//                 {results.artists.length > 0 && (
-//                   <>
-//                     <div className="fw-bold mt-2 mb-1">👤 Artists</div>
-//                     {results.artists.map(artist => (
-//                       <div key={`artist-${artist.UserID}`} className="mb-2 border-bottom pb-1">
-//                         {artist.Username}
-//                       </div>
-//                     ))}
-//                   </>
-//                 )}
-
-//                 {results.playlists.length > 0 && (
-//                   <>
-//                     <div className="fw-bold mt-2 mb-1">📂 Playlists</div>
-//                     {results.playlists.map(playlist => (
-//                       <div key={`playlist-${playlist.PlaylistID}`} className="mb-2 border-bottom pb-1">
-//                         <strong>{playlist.Title}</strong><br />
-//                         <small className="text-muted">User ID: {playlist.UserID}</small>
-//                       </div>
-//                     ))}
-//                   </>
-//                 )}
-//               </div>
-//             )}
-//           </Form>
-
-//           <Nav>
-//             <Nav.Link as={Link} to="/notifications">
-//               <FaBell size={20} />
-//             </Nav.Link>
-//             {user ? (
-//               <Nav.Link as={Link} to={`/profile/${user.id || 1}`}>
-//                 <FaUser size={20} />
-//               </Nav.Link>
-//             ) : (
-//               <Nav.Link as={Link} to="/login">
-//                 <FaUser size={20} />
-//               </Nav.Link>
-//             )}
-//           </Nav>
-//         </Navbar.Collapse>
-//       </Container>
-//     </Navbar>
-//   );
-// };
-
-// export default NavigationBar;
