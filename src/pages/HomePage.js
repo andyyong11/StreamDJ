@@ -1,7 +1,8 @@
 import React from 'react';
 import { Container, Row, Col, Card, Button, Carousel, Badge } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import { FaPlay, FaHeart, FaMusic, FaHeadphones, FaMicrophone, FaEllipsisH } from 'react-icons/fa';
+import { FaPlay, FaHeart, FaMusic, FaHeadphones, FaMicrophone, FaEllipsisH, FaUsers, FaStar } from 'react-icons/fa';
+import '../App.css';
 
 const HomePage = () => {
   // Mock data for featured content
@@ -35,194 +36,188 @@ const HomePage = () => {
   ];
 
   return (
-    <Container>
+    <div className="home-page">
       {/* Hero Banner */}
-      <Carousel className="mb-5">
-        <Carousel.Item>
-          <img
-            className="d-block w-100"
-            src="https://crossfadr.com/wp-content/uploads/2018/10/deephousepic.jpg" // example Unsplash direct image
-            alt="First slide"
-            style={{ height: '400px', objectFit: 'cover', borderRadius: '10px' }}
-          />
-          <Carousel.Caption>
-            <h3>Welcome to StreamDJ</h3>
-            <p>Your ultimate music streaming platform for DJs and music lovers.</p>
-            <Button variant="primary" className="me-2">Start Listening</Button>
-            <Button variant="outline-light">Explore</Button>
-          </Carousel.Caption>
-        </Carousel.Item>
-        <Carousel.Item>
-          <img
-            className="d-block w-100"
-            src="https://t3.ftcdn.net/jpg/04/08/99/00/240_F_408990068_A8QzYIfgChv66j71u5eavcIKA6NC2ML3.jpg"
-            alt="Second slide"
-            style={{ height: '400px', objectFit: 'cover', borderRadius: '10px' }}
-          />
-          <Carousel.Caption>
-            <h3>Live DJ Sessions</h3>
-            <p>Join live streams from top DJs around the world.</p>
-            <Button variant="primary">Join Now</Button>
-          </Carousel.Caption>
-        </Carousel.Item>
-      </Carousel>
+      <div className="hero-section">
+        <Carousel className="hero-carousel">
+          <Carousel.Item>
+            <img
+              className="d-block w-100"
+              src="https://crossfadr.com/wp-content/uploads/2018/10/deephousepic.jpg"
+              alt="First slide"
+            />
+            <Carousel.Caption className="hero-caption">
+              <h1>Welcome to StreamDJ</h1>
+              <p>Your ultimate music streaming platform for DJs and music lovers.</p>
+              <div className="hero-buttons">
+                <Button variant="primary" size="lg" className="me-3">
+                  <FaPlay className="me-2" /> Start Listening
+                </Button>
+                <Button variant="outline-light" size="lg">Explore</Button>
+              </div>
+            </Carousel.Caption>
+          </Carousel.Item>
+          <Carousel.Item>
+            <img
+              className="d-block w-100"
+              src="https://t3.ftcdn.net/jpg/04/08/99/00/240_F_408990068_A8QzYIfgChv66j71u5eavcIKA6NC2ML3.jpg"
+              alt="Second slide"
+            />
+            <Carousel.Caption className="hero-caption">
+              <h1>Live DJ Sessions</h1>
+              <p>Join live streams from top DJs around the world.</p>
+              <Button variant="primary" size="lg">
+                <FaHeadphones className="me-2" /> Join Now
+              </Button>
+            </Carousel.Caption>
+          </Carousel.Item>
+        </Carousel>
+      </div>
 
-      {/* Featured Playlists */}
-      <section className="mb-5">
-        <h2 className="mb-4">Featured Playlists</h2>
-        <Row>
-          {featuredPlaylists.map(playlist => (
-            <Col md={3} key={playlist.id} className="mb-4">
-              <Card className="h-100 shadow-sm">
-                <Card.Img variant="top" src={playlist.image} />
-                <Card.Body>
-                  <Card.Title>{playlist.title}</Card.Title>
-                  <Card.Text>
-                    By {playlist.creator} • {playlist.tracks} tracks
-                  </Card.Text>
-                  <div className="d-flex justify-content-between">
-                    <Button variant="success" size="sm">
-                      <FaPlay className="me-1" /> Play
-                    </Button>
-                    <Button variant="outline-danger" size="sm">
-                      <FaHeart />
-                    </Button>
-                  </div>
-                </Card.Body>
-              </Card>
-            </Col>
-          ))}
-        </Row>
-        <div className="text-center mt-3">
-          <Button variant="outline-primary" as={Link} to="/playlists">View All Playlists</Button>
-        </div>
-      </section>
-
-      {/* Live Streams */}
-      <section className="mb-5">
-        <h2 className="mb-4">Live Now</h2>
-        <Row>
-          {liveStreams.map(stream => (
-            <Col md={4} key={stream.id} className="mb-4">
-              <Card className="h-100 shadow-sm">
-                <div className="position-relative">
-                  <Card.Img variant="top" src={stream.image} />
-                  <Badge 
-                    bg="danger" 
-                    className="position-absolute top-0 start-0 m-2"
-                  >
-                    LIVE
-                  </Badge>
-                  <Badge 
-                    bg="dark" 
-                    className="position-absolute bottom-0 end-0 m-2"
-                  >
-                    <FaHeadphones className="me-1" /> {stream.listeners.toLocaleString()}
-                  </Badge>
-                </div>
-                <Card.Body>
-                  <Card.Title>{stream.title}</Card.Title>
-                  <Card.Text>
-                    By {stream.dj}
-                  </Card.Text>
-                  <Button variant="primary" className="w-100">
-                    Join Stream
-                  </Button>
-                </Card.Body>
-              </Card>
-            </Col>
-          ))}
-        </Row>
-        <div className="text-center mt-3">
-          <Button variant="outline-primary" as={Link} to="/live">View All Live Streams</Button>
-        </div>
-      </section>
-
-      {/* Top Artists */}
-      <section className="mb-5">
-        <h2 className="mb-4">Top Artists</h2>
-        <Row className="justify-content-center">
-          {topArtists.map(artist => (
-            <Col md={2} key={artist.id} className="mb-4 text-center">
-              <img 
-                src={artist.image} 
-                alt={artist.name} 
-                className="rounded-circle mb-2"
-                style={{ width: '120px', height: '120px' }}
-              />
-              <h5>{artist.name}</h5>
-              <p className="text-muted small">{artist.genre}</p>
-              <p className="small">{artist.followers} followers</p>
-            </Col>
-          ))}
-        </Row>
-      </section>
-
-      {/* Recent Tracks */}
-      <section className="mb-5">
-        <h2 className="mb-4">Popular Tracks</h2>
-        <Card>
-          <Card.Body>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Title</th>
-                  <th>Artist</th>
-                  <th>Duration</th>
-                  <th>Plays</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentTracks.map((track, index) => (
-                  <tr key={track.id}>
-                    <td>{index + 1}</td>
-                    <td>{track.title}</td>
-                    <td>{track.artist}</td>
-                    <td>{track.duration}</td>
-                    <td>{track.plays.toLocaleString()}</td>
-                    <td>
-                      <Button variant="link" className="p-0">
-                        <FaEllipsisH />
+      <Container>
+        {/* Featured Playlists */}
+        <section className="page-section">
+          <div className="section-header">
+            <h2 className="section-title">Featured Playlists</h2>
+            <p className="section-subtitle">Curated collections for every mood</p>
+          </div>
+          <Row className="g-4">
+            {featuredPlaylists.map(playlist => (
+              <Col md={3} key={playlist.id}>
+                <Card className="playlist-card h-100">
+                  <Card.Img variant="top" src={playlist.image} />
+                  <Card.Body>
+                    <Card.Title>{playlist.title}</Card.Title>
+                    <Card.Text className="text-muted">By {playlist.creator}</Card.Text>
+                    <Badge bg="light" text="dark" className="mb-3">
+                      {playlist.tracks} tracks
+                    </Badge>
+                    <div className="card-actions">
+                      <Button variant="primary" size="sm">
+                        <FaPlay className="me-2" /> Play
                       </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card.Body>
-        </Card>
-      </section>
+                      <Button variant="outline-secondary" size="sm">
+                        <FaHeart />
+                      </Button>
+                    </div>
+                  </Card.Body>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </section>
 
-      {/* Features Section */}
-      <section className="mb-5">
-        <h2 className="text-center mb-4">Why Choose StreamDJ?</h2>
-        <Row>
-          <Col md={4} className="text-center mb-4">
-            <div className="p-3">
-              <FaMusic className="display-4 mb-3 text-primary" />
-              <h4>Millions of Tracks</h4>
-              <p>Access to a vast library of music from around the world.</p>
-            </div>
-          </Col>
-          <Col md={4} className="text-center mb-4">
-            <div className="p-3">
-              <FaHeadphones className="display-4 mb-3 text-primary" />
-              <h4>High Quality Audio</h4>
-              <p>Enjoy crystal clear sound with our premium audio quality.</p>
-            </div>
-          </Col>
-          <Col md={4} className="text-center mb-4">
-            <div className="p-3">
-              <FaMicrophone className="display-4 mb-3 text-primary" />
-              <h4>Live DJ Sessions</h4>
-              <p>Experience live performances from top DJs around the globe.</p>
-            </div>
-          </Col>
-        </Row>
-      </section>
-    </Container>
+        {/* Live Streams */}
+        <section className="page-section">
+          <div className="section-header">
+            <h2 className="section-title">Live Now</h2>
+            <p className="section-subtitle">Join the party with live DJ sessions</p>
+          </div>
+          <Row className="g-4">
+            {liveStreams.map(stream => (
+              <Col md={4} key={stream.id}>
+                <Card className="stream-card h-100">
+                  <Card.Img variant="top" src={stream.image} />
+                  <div className="live-badge">LIVE</div>
+                  <Card.Body>
+                    <Card.Title>{stream.title}</Card.Title>
+                    <Card.Text className="text-muted">By {stream.dj}</Card.Text>
+                    <div className="stream-stats">
+                      <span>
+                        <FaUsers className="me-2" />
+                        {stream.listeners.toLocaleString()} listeners
+                      </span>
+                    </div>
+                    <Button variant="primary" className="w-100">
+                      <FaHeadphones className="me-2" /> Join Stream
+                    </Button>
+                  </Card.Body>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </section>
+
+        {/* Features Section */}
+        <section className="features-section">
+          <div className="section-header text-center">
+            <h2 className="section-title">Why Choose StreamDJ?</h2>
+            <p className="section-subtitle">Experience music like never before</p>
+          </div>
+          <Row className="g-4">
+            <Col md={4}>
+              <div className="feature-card">
+                <FaMusic className="feature-icon" />
+                <h3>Millions of Tracks</h3>
+                <p>Access to a vast library of music from around the world.</p>
+              </div>
+            </Col>
+            <Col md={4}>
+              <div className="feature-card">
+                <FaHeadphones className="feature-icon" />
+                <h3>High Quality Audio</h3>
+                <p>Enjoy crystal clear sound with our premium audio quality.</p>
+              </div>
+            </Col>
+            <Col md={4}>
+              <div className="feature-card">
+                <FaMicrophone className="feature-icon" />
+                <h3>Live DJ Sessions</h3>
+                <p>Experience live performances from top DJs around the globe.</p>
+              </div>
+            </Col>
+          </Row>
+        </section>
+
+        {/* Popular Tracks */}
+        <section className="page-section">
+          <div className="section-header">
+            <h2 className="section-title">Popular Tracks</h2>
+            <p className="section-subtitle">What's hot right now</p>
+          </div>
+          <Card className="tracks-card">
+            <Card.Body>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Title</th>
+                    <th>Artist</th>
+                    <th>Duration</th>
+                    <th>Plays</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentTracks.map((track, index) => (
+                    <tr key={track.id}>
+                      <td>{index + 1}</td>
+                      <td>
+                        <div className="d-flex align-items-center">
+                          <FaPlay className="me-2 text-primary" />
+                          {track.title}
+                        </div>
+                      </td>
+                      <td>{track.artist}</td>
+                      <td>{track.duration}</td>
+                      <td>
+                        <FaUsers className="me-2" />
+                        {track.plays.toLocaleString()}
+                      </td>
+                      <td>
+                        <Button variant="link" className="p-0">
+                          <FaEllipsisH />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card.Body>
+          </Card>
+        </section>
+      </Container>
+    </div>
   );
 };
 
