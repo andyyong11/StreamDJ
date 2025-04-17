@@ -4,10 +4,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FaSearch, FaBell, FaUser, FaUpload, FaSignOutAlt } from 'react-icons/fa';
 import logo from '../../logo.svg';
 import { useAuth } from '../../context/AuthContext';
+import LoginModal from '../auth/LoginModal';
+import RegisterModal from '../auth/RegisterModal';
 
 const NavigationBar = ({ onTrackSelect }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [showLogin, setShowLogin] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState({
@@ -50,6 +54,7 @@ const NavigationBar = ({ onTrackSelect }) => {
   };
 
   return (
+    <>
     <Navbar bg="dark" variant="dark" expand="lg" className="mb-4 position-relative">
       <Container>
         <Navbar.Brand as={Link} to="/">
@@ -68,12 +73,6 @@ const NavigationBar = ({ onTrackSelect }) => {
               </>
             )}
             <Nav.Link as={Link} to="/liveStreams">Live Streams</Nav.Link>
-            {user && (
-              <Nav.Link as={Link} to="/upload:id">
-                <FaUpload className="me-1" />
-                Upload Music
-              </Nav.Link>
-            )}
           </Nav>
 
           <Form className="d-flex mx-auto position-relative" style={{ width: '40%' }}>
@@ -162,13 +161,13 @@ const NavigationBar = ({ onTrackSelect }) => {
                     </Dropdown.Item>
                   </Dropdown.Menu>
                 </Dropdown>
-              </>
+                </>
             ) : (
               <div className="d-flex gap-2">
-                <Button as={Link} to="/login" variant="outline-light" size="sm">
+                <Button variant="outline-light" size="sm" onClick={() => setShowLogin(true)}>
                   Sign In
                 </Button>
-                <Button as={Link} to="/register" variant="primary" size="sm">
+                <Button variant="outline-light" size="sm" onClick={() => setShowRegister(true)}>
                   Sign Up
                 </Button>
               </div>
@@ -177,6 +176,11 @@ const NavigationBar = ({ onTrackSelect }) => {
         </Navbar.Collapse>
       </Container>
     </Navbar>
+
+    {/* Auth Models */}
+    <LoginModal show={showLogin} handleClose={() => setShowLogin(false)} />
+    <RegisterModal show={showRegister} handleClose={() => setShowRegister(false)} />
+    </>
   );
 };
 

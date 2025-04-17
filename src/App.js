@@ -11,9 +11,9 @@ import HomePage from './pages/HomePage';
 import ProfilePage from './pages/ProfilePage';
 import DiscoverPage from './pages/DiscoverPage';
 import LibraryPage from './pages/LibraryPage';
-import LiveStreamsPage from './pages/liveStreamsPage';
-import Login from './components/auth/Login';
-import Register from './components/auth/Register';
+import LiveStreamsPage from './pages/LiveStreamsPage';
+import LoginModal from './components/auth/LoginModal';
+import RegisterModal from './components/auth/RegisterModal';
 import UploadPage from './pages/UploadPage';
 
 // Components
@@ -21,7 +21,6 @@ import PrivateRoute from './components/auth/PrivateRoute';
 
 // Context
 import { AuthProvider } from './context/AuthContext';
-import UploadPage from './pages/UploadPage';
 
 function App() {
   const [currentTrack, setCurrentTrack] = useState(null);
@@ -34,8 +33,8 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          <Route path="/login" element={<LoginModal />} />
+          <Route path="/register" element={<RegisterModal />} />
           <Route
             path="/"
             element={
