@@ -16,6 +16,9 @@ import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import UploadPage from './pages/UploadPage';
 
+// Components
+import PrivateRoute from './components/auth/PrivateRoute';
+
 // Context
 import { AuthProvider } from './context/AuthContext';
 
@@ -76,7 +79,9 @@ function App() {
             path="/upload"
             element={
               <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
-                <UploadPage />
+                <PrivateRoute>
+                  <UploadPage />
+                </PrivateRoute>
               </Layout>
             }
           />
