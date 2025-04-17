@@ -1,7 +1,7 @@
 import React from 'react';
 import { Container, Row, Col, Card, Button } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import { FaPlay, FaHeart } from 'react-icons/fa';
+import { FaPlay, FaHeart, FaMusic } from 'react-icons/fa';
 
 const LibraryPage = () => {
   // Mock data
@@ -22,25 +22,25 @@ const LibraryPage = () => {
   ];
 
   return (
-    <Container>
-      {/* Your Playlists */}
-      <section>
+    <Container style={{ paddingTop: '80px' }}>
+      {/* Saved Playlists */}
+      <section className="mb-5">
         <h2 className="mb-4">Your Playlists</h2>
         <Row>
           {savedPlaylists.map(playlist => (
-            <Col md={4} key={playlist.id}>
-              <Card className="simple-card mb-4">
+            <Col md={3} key={playlist.id} className="mb-4">
+              <Card className="h-100 shadow-sm">
                 <Card.Img variant="top" src={playlist.image} />
                 <Card.Body>
-                  <h5>{playlist.title}</h5>
-                  <p className="text-muted">
+                  <Card.Title>{playlist.title}</Card.Title>
+                  <Card.Text>
                     By {playlist.creator} • {playlist.tracks} tracks
-                  </p>
+                  </Card.Text>
                   <div className="d-flex justify-content-between">
-                    <Button variant="success" className="neon-play-btn">
-                      <FaPlay /> Play
+                    <Button variant="success" size="sm">
+                      <FaPlay className="me-1" /> Play
                     </Button>
-                    <Button variant="outline-danger" className="like-btn">
+                    <Button variant="outline-danger" size="sm">
                       <FaHeart />
                     </Button>
                   </div>
@@ -52,44 +52,53 @@ const LibraryPage = () => {
       </section>
 
       {/* Liked Tracks */}
-      <section>
+      <section className="mb-5">
         <h2 className="mb-4">Liked Tracks</h2>
-        <table className="table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Title</th>
-              <th>Artist</th>
-              <th>Duration</th>
-            </tr>
-          </thead>
-          <tbody>
-            {likedTracks.map((track, index) => (
-              <tr key={track.id}>
-                <td>{index + 1}</td>
-                <td>{track.title}</td>
-                <td>{track.artist}</td>
-                <td>{track.duration}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <Card className="shadow-sm">
+          <Card.Body>
+            <table className="table table-hover">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Title</th>
+                  <th>Artist</th>
+                  <th>Duration</th>
+                </tr>
+              </thead>
+              <tbody>
+                {likedTracks.map((track, index) => (
+                  <tr key={track.id}>
+                    <td>{index + 1}</td>
+                    <td>{track.title}</td>
+                    <td>{track.artist}</td>
+                    <td>{track.duration}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card.Body>
+        </Card>
       </section>
 
       {/* Followed Artists */}
-      <section>
+      <section className="mb-5">
         <h2 className="mb-4">Followed Artists</h2>
         <Row>
           {followedArtists.map(artist => (
-            <Col md={4} key={artist.id}>
-              <Card className="text-center simple-card mb-4">
-                <Card.Body>
-                  <h3>{artist.name}</h3>
-                  <p>{artist.followers} followers</p>
-                  <Button variant="outline-primary" as={Link} to={`/profile/${artist.id}`}>
-                    View Profile
-                  </Button>
-                </Card.Body>
+            <Col md={3} key={artist.id} className="mb-4 text-center">
+              <Card className="h-100 shadow-sm p-3">
+                <img
+                  src={artist.image}
+                  alt={artist.name}
+                  className="rounded-circle mb-2"
+                  style={{ width: '100px', height: '100px' }}
+                />
+                <h5>{artist.name}</h5>
+                <p className="text-muted">{artist.genre}</p>
+                <p className="small">{artist.followers} followers</p>
+                <Button variant="outline-primary" size="sm" as={Link} to={`/profile/${artist.id}`}>
+                  View Profile
+                </Button>
               </Card>
             </Col>
           ))}

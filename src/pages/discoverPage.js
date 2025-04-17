@@ -40,7 +40,7 @@ const DiscoverPage = () => {
                   <Card.Title>{pl.title}</Card.Title>
                   <Card.Text>By {pl.creator} • {pl.tracks} tracks</Card.Text>
                   <div className="d-flex justify-content-between">
-                    <Button variant="primary" size="sm">
+                    <Button variant="success" size="sm">
                       <FaPlay className="me-1" /> Play
                     </Button>
                     <Button variant="outline-danger" size="sm">
