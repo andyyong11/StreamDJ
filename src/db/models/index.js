@@ -6,4 +6,4 @@ module.exports = {
     userModel,
     playlistModel,
     trackModel
-}; 
+};
