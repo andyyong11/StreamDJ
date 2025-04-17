@@ -1,13 +1,11 @@
 import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { Container, Row, Col, Card, Button, Badge } from 'react-bootstrap';
-import { FaHeart, FaMusic, FaUserFriends, FaPlay, FaEllipsisH, FaSignOutAlt } from 'react-icons/fa';
-import { useAuth } from '../context/AuthContext';
+import { FaHeart, FaMusic, FaUserFriends, FaPlay, FaEllipsisH } from 'react-icons/fa';
 
 const ProfilePage = () => {
+  // Get the profile ID from the URL
   const { id } = useParams();
-  const navigate = useNavigate();
-  const { user, logout } = useAuth();
 
   // Mock user data based on ID
   const users = {
@@ -38,12 +36,7 @@ const ProfilePage = () => {
   };
 
   // Get user data; if ID is not found, default to user 1
-  const profileData = users[id] || users[1];
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
+  const user = users[id] || users[1];
 
   // Mock playlists
   const playlists = [
@@ -63,37 +56,31 @@ const ProfilePage = () => {
     <Container>
       {/* Profile Banner */}
       <Card className="mb-4">
-        <Card.Img src={profileData.banner} alt="Profile Banner" className="rounded" />
+        <Card.Img src={user.banner} alt="Profile Banner" className="rounded" />
         <Card.ImgOverlay className="d-flex flex-column justify-content-end">
           <Row className="align-items-center">
             <Col md={3} className="text-center">
               <img
-                src={profileData.avatar}
-                alt={profileData.name}
+                src={user.avatar}
+                alt={user.name}
                 className="rounded-circle border border-white"
                 style={{ width: '120px', height: '120px' }}
               />
             </Col>
             <Col md={6}>
-              <h2 className="text-white">{profileData.name}</h2>
-              <p className="text-light">{profileData.bio}</p>
+              <h2 className="text-white">{user.name}</h2>
+              <p className="text-light">{user.bio}</p>
               <Badge bg="primary" className="me-2">
-                <FaUserFriends /> {profileData.followers} Followers
+                <FaUserFriends /> {user.followers} Followers
               </Badge>
               <Badge bg="secondary">
-                <FaMusic /> {profileData.following} Following
+                <FaMusic /> {user.following} Following
               </Badge>
             </Col>
             <Col md={3} className="text-end">
-              {user && user.username === id ? (
-                <Button variant="danger" className="me-2" onClick={handleLogout}>
-                  <FaSignOutAlt /> Logout
-                </Button>
-              ) : (
-                <Button variant="danger" className="me-2">
-                  <FaHeart /> Follow
-                </Button>
-              )}
+              <Button variant="danger" className="me-2">
+                <FaHeart /> Follow
+              </Button>
               <Button variant="light">
                 <FaEllipsisH />
               </Button>
@@ -104,7 +91,7 @@ const ProfilePage = () => {
 
       {/* My Playlists */}
       <section className="mb-5">
-        <h3 className="mb-4">{profileData.name}'s Playlists</h3>
+        <h3 className="mb-4">{user.name}'s Playlists</h3>
         <Row>
           {playlists.map(playlist => (
             <Col md={4} key={playlist.id} className="mb-4">
@@ -125,7 +112,7 @@ const ProfilePage = () => {
 
       {/* Recently Played Tracks */}
       <section className="mb-5">
-        <h3 className="mb-4">Recently Played by {profileData.name}</h3>
+        <h3 className="mb-4">Recently Played by {user.name}</h3>
         <Card>
           <Card.Body>
             <table className="table">

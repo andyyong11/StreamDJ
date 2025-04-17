@@ -2,16 +2,13 @@ import React from 'react';
 import NavigationBar from './Navbar';
 import Footer from './Footer';
 import MusicPlayer from '../player/MusicPlayer';
-import './Layout.css';
 
 const Layout = ({ children, onTrackSelect, currentTrack }) => {
   return (
-    <div className={`layout-container ${currentTrack ? 'music-player-active' : ''}`}>
+    <div className="d-flex flex-column min-vh-100">
       <NavigationBar onTrackSelect={onTrackSelect} />
-      <main className="main-content">
-        <div className="content-wrapper">
-          {children}
-        </div>
+      <main className="flex-grow-1">
+        {children}
       </main>
       {currentTrack && <MusicPlayer track={currentTrack} />}
       <Footer />
