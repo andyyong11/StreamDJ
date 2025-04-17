@@ -9,12 +9,12 @@ import Layout from './components/layout/Layout';
 // Pages
 import HomePage from './pages/HomePage';
 import ProfilePage from './pages/ProfilePage';
-import DiscoverPage from './pages/discoverPage';
-import LibraryPage from './pages/libraryPage';
-import LiveStreamsPage from './pages/liveStreamsPage';
+import DiscoverPage from './pages/DiscoverPage';
+import LibraryPage from './pages/LibraryPage';
+import LiveStreamsPage from './pages/LiveStreamsPage';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
-import UploadPage from './pages/uploadPage';
+import UploadPage from './pages/UploadPage';
 
 // Context
 import { AuthProvider } from './context/AuthContext';
@@ -65,7 +65,7 @@ function App() {
             }
           />
           <Route
-            path="/liveStreams"
+            path="/streams"
             element={
               <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
                 <LiveStreamsPage />
