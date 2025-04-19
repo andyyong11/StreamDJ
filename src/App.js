@@ -15,6 +15,8 @@ import LiveStreamsPage from './pages/LiveStreamsPage';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import UploadPage from './pages/UploadPage';
+import StreamPlayerPage from './pages/StreamPlayerPage';
+import CreateStreamPage from './pages/CreateStreamPage';
 
 // Components
 import PrivateRoute from './components/auth/PrivateRoute';
@@ -81,6 +83,24 @@ function App() {
               <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
                 <PrivateRoute>
                   <UploadPage />
+                </PrivateRoute>
+              </Layout>
+            }
+          />
+          <Route
+            path="/stream/:streamId"
+            element={
+              <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+                <StreamPlayerPage />
+              </Layout>
+            }
+          />
+          <Route
+            path="/create-stream"
+            element={
+              <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+                <PrivateRoute>
+                  <CreateStreamPage />
                 </PrivateRoute>
               </Layout>
             }

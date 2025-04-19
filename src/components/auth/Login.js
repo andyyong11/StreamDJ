@@ -31,9 +31,20 @@ const Login = () => {
         throw new Error(data.error || 'Login failed');
       }
 
-      await login(data.user, data.token);
+      // Ensure we have the correct user data structure
+      const userData = {
+        id: data.user.UserID || data.user.id, // Handle both possible formats
+        email: data.user.Email || data.user.email,
+        name: data.user.Username || data.user.name,
+        ...data.user
+      };
+
+      // Store both the user data and token
+      await login(userData, data.token);
+      console.log('Logged in as user:', userData);
       navigate('/');
     } catch (err) {
+      console.error('Login error:', err);
       setError(err.message);
     } finally {
       setLoading(false);
