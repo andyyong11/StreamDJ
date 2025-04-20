@@ -17,7 +17,7 @@ const Register = () => {
   const [touchedFields, setTouchedFields] = useState({});
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { } = useAuth();
 
   const validateField = (name, value) => {
     const errors = [];

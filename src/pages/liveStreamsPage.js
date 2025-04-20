@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Button, Badge, Modal, Alert } from 'react-bootstrap';
-import { FaHeadphones, FaMicrophone, FaCopy } from 'react-icons/fa';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Container, Row, Col, Card, Button, Badge, Modal, Alert, Form } from 'react-bootstrap';
+import { FaHeadphones, FaMicrophone, FaCopy, FaEye } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import socketService from '../services/socket';
@@ -10,11 +10,20 @@ const LiveStreamsPage = () => {
   const [streams, setStreams] = useState([]);
   const [showStreamInfo, setShowStreamInfo] = useState(false);
   const [error, setError] = useState('');
+  const [streamTitle, setStreamTitle] = useState('');
   const [streamConfig, setStreamConfig] = useState({
     rtmpUrl: 'rtmp://localhost:1935/live',
     streamKey: ''
   });
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
+  const [requestCooldown, setRequestCooldown] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [currentTitle, setCurrentTitle] = useState('');
+  const [pendingStreamKey, setPendingStreamKey] = useState('');
+  const [pendingStreamTitle, setPendingStreamTitle] = useState('');
 
   useEffect(() => {
     // Connect to socket
@@ -25,6 +34,8 @@ const LiveStreamsPage = () => {
       try {
         console.log('Fetching active streams...');
         const response = await fetch('http://localhost:5001/api/streams/active', {
+          method: 'GET',
+          credentials: 'include',
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json',
@@ -32,9 +43,9 @@ const LiveStreamsPage = () => {
           }
         });
         
-        console.log('Active streams response status:', response.status);
         if (!response.ok) {
-          throw new Error('Failed to fetch streams');
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to fetch streams');
         }
         
         const data = await response.json();
@@ -47,11 +58,11 @@ const LiveStreamsPage = () => {
           listeners: stream.ListenerCount || 0,
           startTime: stream.StartTime,
           status: stream.Status,
-          streamKey: stream.StreamKey // Make sure we're getting the stream key
+          streamKey: stream.StreamKey
         })));
       } catch (error) {
         console.error('Error fetching streams:', error);
-        setError('Failed to fetch active streams');
+        setError(error.message || 'Failed to fetch active streams');
       }
     };
 
@@ -60,6 +71,40 @@ const LiveStreamsPage = () => {
     // Listen for stream events
     socket.on('stream_started', (newStream) => {
       console.log('New stream started:', newStream);
+      
+      // Check if this is our pending stream
+      if (user && newStream.UserID === user.id && newStream.StreamKey === pendingStreamKey) {
+        console.log('Our stream started successfully with key:', pendingStreamKey);
+        
+        // If we have a pending title different from the default, update it
+        if (pendingStreamTitle && pendingStreamTitle !== newStream.Title) {
+          console.log('Updating stream with our custom title:', pendingStreamTitle);
+          
+          // Update the stream title via API
+          updateStreamTitle(newStream.LiveStreamID, pendingStreamTitle);
+          
+          // Add the stream with our pending title for immediate UI update
+          setStreams(prevStreams => [...prevStreams, {
+            id: newStream.LiveStreamID,
+            title: pendingStreamTitle, // Use our pending title
+            dj: newStream.UserID,
+            listeners: newStream.ListenerCount || 0,
+            startTime: newStream.StartTime,
+            status: newStream.Status,
+            streamKey: newStream.StreamKey
+          }]);
+          
+          // Show success message
+          setSuccessMessage(`Stream started successfully with title "${pendingStreamTitle}"!`);
+          
+          // Clear pending data
+          setPendingStreamKey('');
+          setPendingStreamTitle('');
+          return;
+        }
+      }
+      
+      // Normal handling for other streams
       setStreams(prevStreams => [...prevStreams, {
         id: newStream.LiveStreamID,
         title: newStream.Title,
@@ -76,60 +121,325 @@ const LiveStreamsPage = () => {
       setStreams(prevStreams => prevStreams.filter(stream => stream.id !== streamId));
     });
 
+    // Listen for stream title updates
+    socket.on('stream_updated', (updatedStream) => {
+      console.log('Stream updated:', updatedStream);
+      setStreams(prevStreams => prevStreams.map(stream => 
+        stream.id === updatedStream.LiveStreamID 
+          ? {
+              ...stream,
+              title: updatedStream.Title
+            }
+          : stream
+      ));
+    });
+
     return () => {
       socket.off('stream_started');
       socket.off('stream_ended');
+      socket.off('stream_updated');
     };
-  }, [token]);
+  }, [token, user, pendingStreamKey, pendingStreamTitle]);
+
+  // Function to update stream title via API
+  const updateStreamTitle = async (streamId, title) => {
+    try {
+      const response = await fetch(`http://localhost:5001/api/streams/${streamId}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ title })
+      });
+      
+      if (!response.ok) {
+        console.error('Failed to update stream title:', response.status);
+      } else {
+        console.log('Stream title updated successfully');
+      }
+    } catch (error) {
+      console.error('Error updating stream title:', error);
+    }
+  };
+
+  useEffect(() => {
+    console.log('Stream config updated:', streamConfig);
+  }, [streamConfig]);
+
+  // Clear success message after 5 seconds
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => {
+        setSuccessMessage('');
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
+
+  // Load saved title from localStorage on component mount
+  useEffect(() => {
+    const savedTitle = localStorage.getItem('streamTitle');
+    if (savedTitle) {
+      setStreamTitle(savedTitle);
+      setCurrentTitle(savedTitle);
+    }
+  }, []);
 
   const handleCopyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
   };
 
-  const handleGetStreamKey = async () => {
+  // Helper function to handle rate limiting
+  const handleRateLimitedRequest = async (requestFn, errorMessage) => {
+    // Don't make requests if we're in cooldown
+    if (requestCooldown) {
+      setError('Please wait a moment before requesting another stream key');
+      return null;
+    }
+
+    try {
+      setRequestCooldown(true);
+      const result = await requestFn();
+      return result;
+    } catch (error) {
+      // Special handling for rate limit errors
+      if (error.message && error.message.includes('429')) {
+        setError('You have made too many requests. Please wait a minute and try again.');
+        // Set a longer cooldown for rate limit errors
+        setTimeout(() => setRequestCooldown(false), 60000); // 1 minute cooldown
+      } else {
+        setError(errorMessage || error.message || 'An error occurred');
+        // Set a shorter cooldown for other errors
+        setTimeout(() => setRequestCooldown(false), 5000); // 5 second cooldown
+      }
+      return null;
+    }
+  };
+
+  const handleGetStreamKey = useCallback(async () => {
     try {
       setError('');
-      console.log('Requesting stream key...');
+      setIsLoading(true);
+      console.log('Opening stream configuration modal...');
       
-      // Get the latest token from localStorage
-      const currentToken = localStorage.getItem('token');
-      
-      if (!currentToken) {
+      if (!token) {
         setError('You must be logged in to get a stream key');
+        setIsLoading(false);
         return;
       }
 
+      // Show the modal first
+      setShowStreamInfo(true);
+      
+      // Use the existing title if available, otherwise use default
+      // This way we keep the custom title between sessions
+      let titleToUse = streamTitle.trim();
+      
+      if (!titleToUse) {
+        // If no title is set yet, check if we have a saved one
+        titleToUse = currentTitle || `Stream ${new Date().toLocaleString()}`;
+        setStreamTitle(titleToUse);
+      }
+      
+      // Save the title to localStorage for persistence
+      localStorage.setItem('streamTitle', titleToUse);
+      
+      // Use the rate-limited request handler
+      const makeRequest = async () => {
+        console.log('Requesting stream key with title:', titleToUse);
+        
+        const response = await fetch('http://localhost:5001/api/streams/key', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({ title: titleToUse })
+        });
+        
+        console.log('Stream key API response status:', response.status);
+        
+        if (response.status === 429) {
+          // Extract the message from the response if possible, or create a default message
+          const text = await response.text();
+          console.log('Rate limit response:', text);
+          throw new Error('429: ' + (text || 'Too many requests. Please wait and try again.'));
+        }
+        
+        if (!response.ok) {
+          // For non-429 errors, try to parse as JSON
+          try {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `Server error: ${response.status}`);
+          } catch (e) {
+            // If we can't parse as JSON, just use the status text
+            throw new Error(`Server error: ${response.status} ${response.statusText}`);
+          }
+        }
+        
+        // If we got here, the request was successful
+        const data = await response.json();
+        
+        if (!data.data?.streamKey) {
+          throw new Error('No stream key received from server');
+        }
+        
+        return data.data.streamKey;
+      };
+      
+      const streamKey = await handleRateLimitedRequest(
+        makeRequest, 
+        'Failed to get stream key'
+      );
+      
+      if (streamKey) {
+        console.log('Setting stream key to:', streamKey);
+        setStreamConfig({
+          rtmpUrl: 'rtmp://localhost:1935/live',
+          streamKey: streamKey
+        });
+        
+        // Store the pending stream key and title
+        setPendingStreamKey(streamKey);
+        setPendingStreamTitle(titleToUse);
+        
+        setRetryCount(0); // Reset retry count on success
+        setCurrentTitle(titleToUse);
+        setLastUpdated(new Date());
+      }
+    } catch (error) {
+      console.error('Error in handleGetStreamKey:', error);
+      setError(error.message || 'An error occurred');
+    } finally {
+      setIsLoading(false);
+      // Release cooldown after a short delay
+      setTimeout(() => setRequestCooldown(false), 3000);
+    }
+  }, [token, streamTitle, currentTitle, requestCooldown]);
+
+  const handleTitleUpdate = useCallback(async () => {
+    if (!streamTitle.trim()) {
+      setError('Please enter a valid title');
+      return;
+    }
+    
+    if (requestCooldown) {
+      setError('Please wait a moment before updating the title again');
+      return;
+    }
+    
+    setIsLoading(true);
+    setError('');
+    setSuccessMessage('');
+    
+    // Use the rate-limited request handler
+    const makeRequest = async () => {
+      console.log('Updating title to:', streamTitle);
+      
       const response = await fetch('http://localhost:5001/api/streams/key', {
         method: 'POST',
+        credentials: 'include',
         headers: {
-          'Authorization': currentToken,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
           'Accept': 'application/json'
-        }
+        },
+        body: JSON.stringify({ title: streamTitle })
       });
-
-      console.log('Stream key response status:', response.status);
+      
+      if (response.status === 429) {
+        const text = await response.text();
+        console.log('Rate limit response:', text);
+        throw new Error('429: ' + (text || 'Too many requests. Please wait and try again.'));
+      }
       
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to get stream key');
+        try {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `Server error: ${response.status}`);
+        } catch (e) {
+          throw new Error(`Server error: ${response.status} ${response.statusText}`);
+        }
       }
-
+      
       const data = await response.json();
-      console.log('Stream key response:', data);
-
+      
       if (!data.data?.streamKey) {
         throw new Error('No stream key received from server');
       }
-
-      setStreamConfig(prev => ({
-        ...prev,
-        streamKey: data.data.streamKey
-      }));
-      setShowStreamInfo(true);
+      
+      return data.data.streamKey;
+    };
+    
+    try {
+      const streamKey = await handleRateLimitedRequest(
+        makeRequest,
+        'Failed to update stream title'
+      );
+      
+      if (streamKey) {
+        console.log('Updated stream key:', streamKey);
+        setStreamConfig({
+          rtmpUrl: 'rtmp://localhost:1935/live',
+          streamKey: streamKey
+        });
+        
+        // Update pending stream information
+        setPendingStreamKey(streamKey);
+        setPendingStreamTitle(streamTitle);
+        
+        setRetryCount(0); // Reset retry count on success
+        setError('');
+        
+        // Add success confirmation
+        setSuccessMessage(`Stream title updated to "${streamTitle}" successfully!`);
+        setLastUpdated(new Date());
+        setCurrentTitle(streamTitle);
+        
+        // Save the title to localStorage for persistence
+        localStorage.setItem('streamTitle', streamTitle);
+      }
     } catch (error) {
-      console.error('Error getting stream key:', error);
-      setError(error.message || 'Failed to get stream key');
+      console.error('Error updating title:', error);
+      setError(error.message || 'Failed to update stream title');
+    } finally {
+      setIsLoading(false);
+      // Release cooldown after a short delay
+      setTimeout(() => setRequestCooldown(false), 3000);
+    }
+  }, [token, streamTitle, requestCooldown]);
+
+  // Add a function to clear/reset the title
+  const handleResetTitle = useCallback(() => {
+    const newTitle = `Stream ${new Date().toLocaleString()}`;
+    setStreamTitle(newTitle);
+    setCurrentTitle(newTitle);
+    localStorage.setItem('streamTitle', newTitle);
+    setSuccessMessage("Title reset to default");
+  }, []);
+
+  // Add retry functionality
+  const handleRetry = async () => {
+    if (retryCount >= 3) {
+      setError('Maximum retry attempts reached. Please try again later.');
+      return;
+    }
+    
+    setRetryCount(prev => prev + 1);
+    console.log(`Retry attempt ${retryCount + 1}/3`);
+    
+    // Wait a bit longer between retries
+    await new Promise(resolve => setTimeout(resolve, 5000 * (retryCount + 1)));
+    
+    if (streamConfig.streamKey) {
+      await handleTitleUpdate();
+    } else {
+      await handleGetStreamKey();
     }
   };
 
@@ -192,6 +502,10 @@ const LiveStreamsPage = () => {
                     >
                       Join Stream
                     </Button>
+                    <div className="d-flex align-items-center text-danger">
+                      <FaEye className="me-1" /> 
+                      <strong>{stream.listeners}</strong>
+                    </div>
                   </div>
                 </Card.Body>
               </Card>
@@ -204,60 +518,150 @@ const LiveStreamsPage = () => {
       {user ? (
         <>
           <div className="text-center mt-4">
-            <Button variant="success" size="lg" onClick={handleGetStreamKey}>
-              <FaMicrophone className="me-2" /> Get Stream Configuration
+            <Button 
+              variant="success" 
+              size="lg" 
+              onClick={handleGetStreamKey}
+              disabled={isLoading || requestCooldown}
+            >
+              {isLoading ? 'Loading...' : (
+                <><FaMicrophone className="me-2" /> Start Streaming!</>
+              )}
             </Button>
+            {requestCooldown && <div className="text-muted mt-2">Please wait before making another request</div>}
           </div>
 
-          <Modal show={showStreamInfo} onHide={() => setShowStreamInfo(false)}>
-            <Modal.Header closeButton>
+          <Modal show={showStreamInfo} onHide={() => !isLoading && setShowStreamInfo(false)} size="lg">
+            <Modal.Header closeButton={!isLoading}>
               <Modal.Title>Stream Configuration</Modal.Title>
             </Modal.Header>
             <Modal.Body>
-              <h5>OBS Settings</h5>
-              <p>Use these settings in OBS to start streaming:</p>
+              {error && (
+                <Alert variant="danger" className="mb-3">
+                  {error}
+                  {error.includes('429') && (
+                    <div className="mt-2">
+                      <Button 
+                        variant="outline-danger" 
+                        size="sm" 
+                        onClick={handleRetry}
+                        disabled={isLoading || requestCooldown || retryCount >= 3}
+                      >
+                        Retry ({retryCount}/3)
+                      </Button>
+                    </div>
+                  )}
+                </Alert>
+              )}
               
-              <div className="mb-3">
-                <strong>RTMP URL:</strong>
-                <div className="d-flex align-items-center">
-                  <input 
-                    type="text" 
-                    className="form-control" 
-                    value={streamConfig.rtmpUrl} 
-                    readOnly 
-                  />
-                  <Button 
-                    variant="outline-secondary" 
-                    className="ms-2"
-                    onClick={() => handleCopyToClipboard(streamConfig.rtmpUrl)}
-                  >
-                    <FaCopy />
-                  </Button>
-                </div>
-              </div>
+              {successMessage && (
+                <Alert variant="success" className="mb-3" dismissible onClose={() => setSuccessMessage('')}>
+                  {successMessage}
+                </Alert>
+              )}
+              
+              <Row>
+                <Col md={6}>
+                  <Form className="mb-3">
+                    <Form.Group className="mb-3">
+                      <Form.Label>Stream Title</Form.Label>
+                      <Form.Control
+                        type="text"
+                        placeholder="Enter your stream title"
+                        value={streamTitle}
+                        onChange={(e) => setStreamTitle(e.target.value)}
+                        maxLength={50}
+                        disabled={isLoading || requestCooldown}
+                      />
+                      <Form.Text className="text-muted">
+                        Give your stream a descriptive title (max 50 characters)
+                      </Form.Text>
+                    </Form.Group>
+                    
+                    {/* Current title display */}
+                    {currentTitle && (
+                      <div className="mb-3 p-2 bg-light rounded border">
+                        <strong>Current Title:</strong> {currentTitle}
+                        {lastUpdated && (
+                          <div className="mt-1 small text-muted">
+                            Last updated: {lastUpdated.toLocaleTimeString()}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    <div className="d-flex gap-2">
+                      <Button 
+                        variant="primary" 
+                        onClick={handleTitleUpdate}
+                        disabled={!streamTitle.trim() || isLoading || requestCooldown}
+                      >
+                        {isLoading ? 'Updating...' : 'Update Title'}
+                      </Button>
+                      
+                      <Button 
+                        variant="outline-secondary" 
+                        size="sm"
+                        onClick={handleResetTitle}
+                        disabled={isLoading || requestCooldown}
+                      >
+                        Reset Title
+                      </Button>
+                    </div>
+                  </Form>
+                </Col>
+                
+                <Col md={6}>
+                  <h5>OBS Settings</h5>
+                  <p>Use these settings in OBS to start streaming:</p>
+                  
+                  <div className="mb-3">
+                    <strong>RTMP URL:</strong>
+                    <div className="d-flex align-items-center">
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        value={streamConfig.rtmpUrl} 
+                        readOnly 
+                      />
+                      <Button 
+                        variant="outline-secondary" 
+                        className="ms-2"
+                        onClick={() => handleCopyToClipboard(streamConfig.rtmpUrl)}
+                      >
+                        <FaCopy />
+                      </Button>
+                    </div>
+                  </div>
 
-              <div className="mb-3">
-                <strong>Stream Key:</strong>
-                <div className="d-flex align-items-center">
-                  <input 
-                    type="text" 
-                    className="form-control" 
-                    value={streamConfig.streamKey} 
-                    readOnly 
-                  />
-                  <Button 
-                    variant="outline-secondary" 
-                    className="ms-2"
-                    onClick={() => handleCopyToClipboard(streamConfig.streamKey)}
-                  >
-                    <FaCopy />
-                  </Button>
-                </div>
-              </div>
-
-              <div className="alert alert-info">
+                  <div className="mb-3">
+                    <strong>Stream Key:</strong>
+                    <div className="d-flex align-items-center">
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        value={streamConfig.streamKey || ''}
+                        readOnly 
+                      />
+                      <Button 
+                        variant="outline-secondary" 
+                        className="ms-2"
+                        onClick={() => handleCopyToClipboard(streamConfig.streamKey)}
+                        disabled={!streamConfig.streamKey}
+                      >
+                        <FaCopy />
+                      </Button>
+                    </div>
+                    {isLoading && <div className="text-center mt-2">Loading stream key...</div>}
+                    {requestCooldown && <div className="text-center mt-2 text-warning">Rate limit cooldown active</div>}
+                  </div>
+                </Col>
+              </Row>
+              
+              <div className="alert alert-info mt-3">
                 <strong>Instructions:</strong>
                 <ol className="mb-0">
+                  <li>Enter a title for your stream</li>
                   <li>Open OBS Studio</li>
                   <li>Go to Settings → Stream</li>
                   <li>Select "Custom" as Service</li>
@@ -271,7 +675,11 @@ const LiveStreamsPage = () => {
               </div>
             </Modal.Body>
             <Modal.Footer>
-              <Button variant="secondary" onClick={() => setShowStreamInfo(false)}>
+              <Button 
+                variant="secondary" 
+                onClick={() => setShowStreamInfo(false)}
+                disabled={isLoading}
+              >
                 Close
               </Button>
             </Modal.Footer>

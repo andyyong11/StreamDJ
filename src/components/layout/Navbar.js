@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Navbar, Nav, Container, Form, Button, InputGroup, Dropdown } from 'react-bootstrap';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { FaSearch, FaBell, FaUser, FaUpload, FaSignOutAlt } from 'react-icons/fa';
 import logo from '../../logo.svg';
 import { useAuth } from '../../context/AuthContext';
 
 const NavigationBar = ({ onTrackSelect }) => {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState({

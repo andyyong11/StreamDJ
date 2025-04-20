@@ -53,7 +53,8 @@ module.exports = (pool, streamKeyService) => {
   router.post('/key', authenticateToken, async (req, res) => {
     try {
       const userId = req.user.id;
-      const result = await streamKeyService.generateStreamKey(userId);
+      const { title } = req.body;
+      const result = await streamKeyService.generateStreamKey(userId, title);
       
       res.json({
         success: true,
@@ -110,6 +111,107 @@ module.exports = (pool, streamKeyService) => {
   router.post('/end/:streamKey', async (req, res) => {
     try {
       const { streamKey } = req.params;
+      const stream = await streamKeyService.deactivateStreamKey(streamKey);
+      
+      res.json({
+        success: true,
+        data: stream
+      });
+    } catch (error) {
+      console.error('Error ending stream:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to end stream'
+      });
+    }
+  });
+
+  // Update stream details
+  router.put('/:streamId', authenticateToken, async (req, res) => {
+    try {
+      const { streamId } = req.params;
+      const { title } = req.body;
+      const userId = req.user.id;
+
+      // Verify the user owns this stream
+      const streamCheck = await pool.query(
+        `SELECT "UserID" FROM public."LiveStream" WHERE "LiveStreamID" = $1`,
+        [streamId]
+      );
+      
+      if (streamCheck.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: 'Stream not found'
+        });
+      }
+      
+      if (streamCheck.rows[0].UserID !== userId) {
+        return res.status(403).json({
+          success: false,
+          error: 'You do not have permission to update this stream'
+        });
+      }
+
+      // Update the stream (only title since Description doesn't exist)
+      const result = await pool.query(
+        `UPDATE public."LiveStream" 
+         SET "Title" = $1
+         WHERE "LiveStreamID" = $2 
+         RETURNING *`,
+        [title, streamId]
+      );
+
+      // Get the updated stream data
+      const updatedStream = result.rows[0];
+      
+      // Emit socket event for real-time updates
+      if (req.app.get('io')) {
+        req.app.get('io').emit('stream_updated', updatedStream);
+      }
+
+      res.json({
+        success: true,
+        data: updatedStream
+      });
+    } catch (error) {
+      console.error('Error updating stream:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to update stream'
+      });
+    }
+  });
+
+  // End a stream by ID (for stream owner)
+  router.post('/:streamId/end', authenticateToken, async (req, res) => {
+    try {
+      const { streamId } = req.params;
+      const userId = req.user.id;
+
+      // Verify the user owns this stream
+      const streamCheck = await pool.query(
+        `SELECT "UserID", "StreamKey" FROM public."LiveStream" 
+         WHERE "LiveStreamID" = $1`,
+        [streamId]
+      );
+      
+      if (streamCheck.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: 'Stream not found'
+        });
+      }
+      
+      if (streamCheck.rows[0].UserID !== userId) {
+        return res.status(403).json({
+          success: false,
+          error: 'You do not have permission to end this stream'
+        });
+      }
+
+      // End the stream
+      const streamKey = streamCheck.rows[0].StreamKey;
       const stream = await streamKeyService.deactivateStreamKey(streamKey);
       
       res.json({
