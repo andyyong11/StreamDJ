@@ -1,6 +1,5 @@
 import React from 'react';
-import { Container, Row, Col, Card, Button, Badge } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
+import { Container, Row, Col, Card, Button } from 'react-bootstrap';
 import { FaPlay, FaHeart, FaMusic } from 'react-icons/fa';
 
 const DiscoverPage = () => {
