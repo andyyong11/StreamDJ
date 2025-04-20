@@ -1,7 +1,7 @@
 import React from 'react';
 import { Container, Row, Col, Card, Button } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import { FaPlay, FaHeart, FaMusic } from 'react-icons/fa';
+import { FaPlay, FaHeart } from 'react-icons/fa';
 
 const LibraryPage = () => {
   // Mock data
