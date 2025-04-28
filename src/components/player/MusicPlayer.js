@@ -1,3 +1,4 @@
+import { useAuth } from '../../context/AuthContext';
 import React, { useState, useEffect, useRef } from 'react';
 import { Container, Row, Col, ProgressBar, Button } from 'react-bootstrap';
 import {
@@ -6,6 +7,7 @@ import {
 } from 'react-icons/fa';
 
 const MusicPlayer = ({ track }) => {
+  const { user } = useAuth(); // (Temporary) Can be removed if it's not working
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [volume, setVolume] = useState(80);
@@ -17,17 +19,39 @@ const MusicPlayer = ({ track }) => {
   const audioRef = useRef(null);
 
   const togglePlay = () => setIsPlaying(!isPlaying);
-  const toggleFavorite = () => setIsFavorite(!isFavorite);
+  // const toggleFavorite = () => setIsFavorite(!isFavorite);
+
+  // ========================= Updated ToggleFavorite Function Starts ============================================
+  const toggleFavorite = async () => {
+    if (!track || !user) return;
+  
+    const endpoint = isFavorite ? 'unlike' : 'like';
+  
+    try {
+      const res = await fetch(`http://localhost:5001/api/tracks/${track.TrackID}/${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id })
+      });
+  
+      if (res.ok) {
+        setIsFavorite(!isFavorite);
+      } else {
+        console.error('Failed to toggle like');
+      }
+    } catch (err) {
+      console.error('Error toggling like:', err);
+    }
+  };  
+// ==================================== ENDS HERE  ================================
 
   const formatTime = (seconds) => {
     if (isNaN(seconds)) return '0:00';
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = Math.floor(seconds % 60);
-
     const paddedMins = hrs > 0 ? String(mins).padStart(2, '0') : mins;
     const paddedSecs = String(secs).padStart(2, '0');
-
     return hrs > 0 ? `${hrs}:${paddedMins}:${paddedSecs}` : `${mins}:${paddedSecs}`;
   };
 
@@ -45,22 +69,55 @@ const MusicPlayer = ({ track }) => {
       const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
       const handleEnded = () => {
         setIsPlaying(false);
-        setCurrentTime(0); // reset the progress bar
-      }; // when song ends, stop the playing state
-  
+        setCurrentTime(0);
+      };
       audio.addEventListener('timeupdate', handleTimeUpdate);
-      audio.addEventListener('ended', handleEnded); // ✅ new event
-  
+      audio.addEventListener('ended', handleEnded);
       return () => {
         audio.removeEventListener('timeupdate', handleTimeUpdate);
-        audio.removeEventListener('ended', handleEnded); // ✅ clean up
+        audio.removeEventListener('ended', handleEnded);
       };
     }
   }, [track]);
 
+  useEffect(() => {
+    const fetchLikeStatus = async () => {
+      if (!track || !user) return;
+      try {
+        const res = await fetch(`http://localhost:5001/api/tracks/${track.TrackID}/like-status?userId=${user.id}`);
+        const data = await res.json();
+        setIsFavorite(data.liked);
+      } catch (err) {
+        console.error('Failed to fetch like status:', err);
+      }
+    };
+  
+    fetchLikeStatus();
+  }, [track, user]);  
+
+  useEffect(() => {
+    const logPlay = async () => {
+      try {
+        if (track && isPlaying) {
+          await fetch(`http://localhost:5001/api/tracks/${track.TrackID}/play`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: track.UserID || null })
+          });
+        }
+      } catch (err) {
+        console.error('Failed to log track play:', err);
+      }
+    };
+    logPlay();
+  }, [track, isPlaying]);
+
   if (!track) return null;
 
-  const filename = track.FilePath.split('\\').pop();
+  const audioSrc = `http://localhost:5001/${track.FilePath?.replace(/\\/g, '/')}`;
+  const coverArtSrc = track.CoverArt
+    ? `http://localhost:5001/${track.CoverArt.replace(/\\/g, '/')}`
+    : '/default-cover.jpg';
 
   return (
     <div className="fixed-bottom bg-dark text-light py-2 border-top">
@@ -69,15 +126,19 @@ const MusicPlayer = ({ track }) => {
           {/* Track Info */}
           <Col md={3} className="d-flex align-items-center">
             <img
-              src={`/uploads/coverart/${filename.replace('.mp3', '.jpg')}`}
+              src={coverArtSrc}
               alt={`${track.Title} cover`}
               className="me-3"
               style={{ width: '60px', height: '60px', objectFit: 'cover' }}
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = '/default-cover.jpg';
+              }}
             />
-            <div>
-              <h6 className="mb-0">{track.Title}</h6>
-              <small className="text-muted">{track.Artist}</small>
-            </div>
+<div className="d-flex flex-column">
+  <h6 className="mb-1">{track.Title}</h6>
+  <small style={{ color: 'white' }}>{track.Artist}</small>
+</div>
             <Button variant="link" className="text-light ms-3" onClick={toggleFavorite}>
               <FaHeart color={isFavorite ? 'red' : 'white'} />
             </Button>
@@ -107,7 +168,6 @@ const MusicPlayer = ({ track }) => {
             {/* Progress Bar */}
             <div className="d-flex align-items-center position-relative" style={{ height: '30px' }}>
               <small className="text-muted me-2">{formatTime(currentTime)}</small>
-
               <div style={{ flexGrow: 1, position: 'relative' }}>
                 <ProgressBar
                   now={(currentTime / (audioRef.current?.duration || 1)) * 100}
@@ -147,7 +207,6 @@ const MusicPlayer = ({ track }) => {
                   </div>
                 )}
               </div>
-
               <small className="text-muted ms-2">{formatTime(audioRef.current?.duration || 0)}</small>
             </div>
           </Col>
@@ -168,7 +227,7 @@ const MusicPlayer = ({ track }) => {
           </Col>
         </Row>
 
-        <audio ref={audioRef} src={`/uploads/audio/${filename}`} />
+        <audio ref={audioRef} src={audioSrc} />
       </Container>
     </div>
   );
