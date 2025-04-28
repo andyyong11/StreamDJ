@@ -3,7 +3,6 @@ import { Container, Row, Col, Card, Button, Form } from 'react-bootstrap';
 import { FaUpload, FaFileAudio, FaImage } from 'react-icons/fa';
 
 const UploadTrackForm = () => {
-  const [users, setUsers] = useState([]); // Make sure it's initialized as array
   const [formData, setFormData] = useState({
     userId: 1,
     title: '',
@@ -20,10 +19,9 @@ const UploadTrackForm = () => {
       try {
         const res = await fetch('http://localhost:5001/api/users');
         const data = await res.json();
-        setUsers(Array.isArray(data) ? data : []); // Safety check
+        // We don't need to store users anymore since we're not using them
       } catch (error) {
         console.error('Error fetching users:', error);
-        setUsers([]); // fallback
       }
     };
     fetchUsers();
@@ -36,11 +34,6 @@ const UploadTrackForm = () => {
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
-  };
-
-  const handleFeaturedChange = (e) => {
-    const selectedOptions = Array.from(e.target.selectedOptions).map((o) => o.value);
-    setFormData((prev) => ({ ...prev, featuredArtists: selectedOptions }));
   };
 
   const handleSubmit = async (e) => {

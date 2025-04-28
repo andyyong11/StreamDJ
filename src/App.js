@@ -13,12 +13,16 @@ import Layout from './components/layout/Layout';
 // Pages
 import HomePage from './pages/HomePage';
 import ProfilePage from './pages/ProfilePage';
-import DiscoverPage from './pages/discoverPage';
-import LibraryPage from './pages/libraryPage';
-import LiveStreamsPage from './pages/liveStreamsPage';
-import Login from './components/auth/Login';
-import Register from './components/auth/Register';
-import UploadPage from './pages/uploadPage';
+import DiscoverPage from './pages/DiscoverPage';
+import LibraryPage from './pages/LibraryPage';
+import LiveStreamsPage from './pages/LiveStreamsPage';
+import LoginModal from './components/auth/LoginModal';
+import RegisterModal from './components/auth/RegisterModal';
+import UploadPage from './pages/UploadPage';
+import StreamPlayerPage from './pages/StreamPlayerPage';
+
+// Components
+import PrivateRoute from './components/auth/PrivateRoute';
 
 // Context
 import { AuthProvider } from './context/AuthContext';
@@ -34,8 +38,8 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          <Route path="/login" element={<LoginModal />} />
+          <Route path="/register" element={<RegisterModal />} />
           <Route
             path="/"
             element={
@@ -80,7 +84,17 @@ function App() {
             path="/upload"
             element={
               <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
-                <UploadPage />
+                <PrivateRoute>
+                  <UploadPage />
+                </PrivateRoute>
+              </Layout>
+            }
+          />
+          <Route
+            path="/stream/:streamId"
+            element={
+              <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+                <StreamPlayerPage />
               </Layout>
             }
           />

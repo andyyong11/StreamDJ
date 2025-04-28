@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Navbar, Nav, Container, Form, Button, InputGroup } from 'react-bootstrap';
-import { Link } from 'react-router-dom';
-import { FaSearch, FaBell, FaUser, FaUpload } from 'react-icons/fa';
+import { Navbar, Nav, Container, Form, Button, InputGroup, Dropdown } from 'react-bootstrap';
+import { Link, useNavigate } from 'react-router-dom';
+import { FaSearch, FaBell, FaUser, FaUpload, FaSignOutAlt } from 'react-icons/fa';
 import logo from '../../logo.svg';
 import { useAuth } from '../../context/AuthContext';
+import LoginModal from '../auth/LoginModal';
+import RegisterModal from '../auth/RegisterModal';
 
 const NavigationBar = ({ onTrackSelect }) => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [showLogin, setShowLogin] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState({
@@ -39,7 +44,17 @@ const NavigationBar = ({ onTrackSelect }) => {
     return () => clearTimeout(delay);
   }, [query]);
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+      // Don't navigate, just let the component re-render with the new auth state
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+  };
+
   return (
+    <>
     <Navbar bg="dark" variant="dark" expand="lg" className="mb-4 position-relative">
       <Container>
         <Navbar.Brand as={Link} to="/">
@@ -51,9 +66,13 @@ const NavigationBar = ({ onTrackSelect }) => {
           <Nav className="me-auto">
             <Nav.Link as={Link} to="/">Home</Nav.Link>
             <Nav.Link as={Link} to="/discover">Discover</Nav.Link>
-            <Nav.Link as={Link} to="/library">Library</Nav.Link>
+            {user && (
+              <>
+                <Nav.Link as={Link} to="/library">Library</Nav.Link>
+                <Nav.Link as={Link} to="/upload"><FaUpload className="me-1" /> Upload</Nav.Link>
+              </>
+            )}
             <Nav.Link as={Link} to="/liveStreams">Live Streams</Nav.Link>
-            <Nav.Link as={Link} to="/upload"><FaUpload className="me-1" /> Upload</Nav.Link>
           </Nav>
 
           <Form className="d-flex mx-auto position-relative" style={{ width: '40%' }}>
@@ -122,22 +141,46 @@ const NavigationBar = ({ onTrackSelect }) => {
           </Form>
 
           <Nav>
-            <Nav.Link as={Link} to="/notifications">
-              <FaBell size={20} />
-            </Nav.Link>
             {user ? (
-              <Nav.Link as={Link} to={`/profile/${user.id || 1}`}>
-                <FaUser size={20} />
-              </Nav.Link>
+              <>
+                <Nav.Link as={Link} to="/notifications">
+                  <FaBell size={20} />
+                </Nav.Link>
+                <Dropdown align="end">
+                  <Dropdown.Toggle variant="dark" id="user-dropdown" className="d-flex align-items-center">
+                    <FaUser size={20} className="me-2" />
+                    {user.username}
+                  </Dropdown.Toggle>
+                  <Dropdown.Menu>
+                    <Dropdown.Item as={Link} to={`/profile/${user.id}`}>
+                      <FaUser className="me-2" /> Profile
+                    </Dropdown.Item>
+                    <Dropdown.Divider />
+                    <Dropdown.Item onClick={handleLogout}>
+                      <FaSignOutAlt className="me-2" /> Logout
+                    </Dropdown.Item>
+                  </Dropdown.Menu>
+                </Dropdown>
+                </>
             ) : (
-              <Nav.Link as={Link} to="/login">
-                <FaUser size={20} />
-              </Nav.Link>
+              <div className="d-flex gap-2">
+                <Button variant="outline-light" size="sm" onClick={() => setShowLogin(true)}>
+                  Sign In
+                </Button>
+                <Button variant="outline-light" size="sm" onClick={() => setShowRegister(true)}>
+                  Sign Up
+                </Button>
+              </div>
             )}
           </Nav>
         </Navbar.Collapse>
       </Container>
     </Navbar>
+
+    {/* Auth Models */}
+    <LoginModal show={showLogin} handleClose={() => setShowLogin(false)} />
+    <RegisterModal show={showRegister} handleClose={() => setShowRegister(false)} />
+    </>
   );
 };
 

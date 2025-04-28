@@ -36,3 +36,121 @@
     transform: rotate(360deg);
   }
 }
+
+/* Live Streams Page Styles */
+.live-streams-page {
+  padding: 2rem 0;
+  background-color: var(--bg-dark);
+  min-height: 100vh;
+}
+
+.stream-card {
+  background-color: var(--bg-darker);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  transition: transform 0.2s;
+}
+
+.stream-card:hover {
+  transform: translateY(-5px);
+}
+
+.stream-card .card-img-top {
+  border-radius: 12px 12px 0 0;
+  height: 200px;
+  object-fit: cover;
+}
+
+.current-stream-player {
+  background-color: var(--bg-darker);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  margin-bottom: 2rem;
+}
+
+.current-stream-player img {
+  border-radius: 8px;
+  max-width: 100%;
+}
+
+.volume-slider {
+  -webkit-appearance: none;
+  height: 4px;
+  background: var(--border-color);
+  border-radius: 2px;
+  outline: none;
+}
+
+.volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  background: var(--accent-color);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.volume-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.current-track-info {
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 0.5rem;
+  border-radius: 6px;
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 768px) {
+  .live-streams-page {
+    padding: 1rem;
+  }
+
+  .current-stream-player .col-md-2 {
+    margin-bottom: 1rem;
+  }
+
+  .current-stream-player .col-md-4 {
+    margin-bottom: 1rem;
+  }
+
+  .stream-card .card-img-top {
+    height: 150px;
+  }
+}
+
+/* Chat Styles */
+.chat-card {
+  background-color: var(--bg-darker);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+}
+
+.chat-messages {
+  height: 300px;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+}
+
+.chat-messages .list-group-item {
+  padding: 0.5rem 0;
+  color: var(--text-color);
+}
+
+.chat-messages::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+  background: var(--bg-darker);
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+.chat-messages::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-color);
+}
