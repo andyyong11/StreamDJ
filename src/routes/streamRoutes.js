@@ -69,6 +69,78 @@ module.exports = (pool, streamKeyService) => {
     }
   });
 
+  // Update title of active stream by user ID
+  router.post('/updateTitle', authenticateToken, async (req, res) => {
+    try {
+      const { userId, title } = req.body;
+      
+      if (!title) {
+        return res.status(400).json({
+          success: false,
+          error: 'Title is required'
+        });
+      }
+      
+      // Verify the authenticated user matches the requested userId
+      if (req.user.id !== userId) {
+        return res.status(403).json({
+          success: false,
+          error: 'You do not have permission to update this stream title'
+        });
+      }
+      
+      console.log(`Attempting to update title for user ${userId} to "${title}"`);
+      
+      // Find any active or scheduled stream for this user
+      const result = await pool.query(
+        `SELECT * FROM public."LiveStream" 
+         WHERE "UserID" = $1 AND "Status" IN ('active', 'scheduled')
+         ORDER BY "StartTime" DESC LIMIT 1`,
+        [userId]
+      );
+      
+      if (result.rows.length === 0) {
+        console.log(`No active or scheduled stream found for user ${userId}`);
+        return res.status(404).json({
+          success: false,
+          error: 'No active or scheduled stream found for this user'
+        });
+      }
+      
+      const streamId = result.rows[0].LiveStreamID;
+      console.log(`Found stream ${streamId} with status ${result.rows[0].Status} for user ${userId}`);
+      
+      // Update the stream title
+      const updateResult = await pool.query(
+        `UPDATE public."LiveStream" 
+         SET "Title" = $1
+         WHERE "LiveStreamID" = $2 
+         RETURNING *`,
+        [title, streamId]
+      );
+      
+      const updatedStream = updateResult.rows[0];
+      console.log(`Updated stream ${streamId} title to "${title}"`);
+      
+      // Emit socket event for real-time updates
+      if (req.app.get('io')) {
+        req.app.get('io').emit('stream_updated', updatedStream);
+        console.log('Emitted stream_updated event');
+      }
+      
+      res.json({
+        success: true,
+        data: updatedStream
+      });
+    } catch (error) {
+      console.error('Error updating stream title:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to update stream title'
+      });
+    }
+  });
+
   // Validate a stream key
   router.get('/validate/:streamKey', async (req, res) => {
     try {

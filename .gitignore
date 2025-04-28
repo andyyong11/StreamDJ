@@ -24,3 +24,9 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# media files
+/media/live/
+/media/live/*
+*.ts
+*.m3u8

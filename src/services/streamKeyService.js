@@ -154,7 +154,7 @@ class StreamKeyService {
     try {
       console.log('Attempting to activate stream with key:', streamKey);
       
-      // First, check if the stream exists and get its current status
+      // First, check if the stream exists and get its current status and title
       const stream = await this.db.oneOrNone(
         `SELECT * FROM public."LiveStream" 
          WHERE "StreamKey" = $1`,
@@ -174,7 +174,11 @@ class StreamKeyService {
         return stream;
       }
 
-      // Update the stream status to active
+      // Save the original stream title
+      const originalTitle = stream.Title;
+      console.log('Preserving original title:', originalTitle);
+
+      // Update the stream status to active while keeping the original title
       const updatedStream = await this.db.oneOrNone(
         `UPDATE public."LiveStream" 
          SET "Status" = 'active',
@@ -188,6 +192,21 @@ class StreamKeyService {
 
       if (updatedStream) {
         console.log('Successfully activated stream:', updatedStream);
+        // Double-check that the title was preserved
+        if (updatedStream.Title !== originalTitle) {
+          console.log('Title was changed during activation, fixing it...');
+          const fixedStream = await this.db.oneOrNone(
+            `UPDATE public."LiveStream" 
+             SET "Title" = $1
+             WHERE "StreamKey" = $2
+             RETURNING *`,
+            [originalTitle, streamKey]
+          );
+          if (fixedStream) {
+            console.log('Successfully restored original title:', fixedStream);
+            return fixedStream;
+          }
+        }
         return updatedStream;
       } else {
         console.log('Failed to activate stream - no rows updated');

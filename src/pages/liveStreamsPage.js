@@ -185,11 +185,37 @@ const LiveStreamsPage = () => {
     if (savedTitle) {
       setStreamTitle(savedTitle);
       setCurrentTitle(savedTitle);
+    } else {
+      // Set default title
+      const defaultTitle = `Stream ${new Date().toLocaleString()}`;
+      setStreamTitle(defaultTitle);
     }
   }, []);
 
   const handleCopyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
+  };
+
+  // Simplified to go directly to stream configuration
+  const handleStartStream = () => {
+    setError('');
+    if (!token) {
+      setError('You must be logged in to get a stream key');
+      return;
+    }
+    
+    // If we already have a title from localStorage, use it
+    if (streamTitle.trim()) {
+      setCurrentTitle(streamTitle);
+    } else {
+      // Set a default title
+      const defaultTitle = `Stream ${new Date().toLocaleString()}`;
+      setStreamTitle(defaultTitle);
+      setCurrentTitle(defaultTitle);
+    }
+    
+    // Go directly to the stream configuration
+    handleGetStreamKey();
   };
 
   // Helper function to handle rate limiting
@@ -234,18 +260,8 @@ const LiveStreamsPage = () => {
       // Show the modal first
       setShowStreamInfo(true);
       
-      // Use the existing title if available, otherwise use default
-      // This way we keep the custom title between sessions
+      // Use the existing title
       let titleToUse = streamTitle.trim();
-      
-      if (!titleToUse) {
-        // If no title is set yet, check if we have a saved one
-        titleToUse = currentTitle || `Stream ${new Date().toLocaleString()}`;
-        setStreamTitle(titleToUse);
-      }
-      
-      // Save the title to localStorage for persistence
-      localStorage.setItem('streamTitle', titleToUse);
       
       // Use the rate-limited request handler
       const makeRequest = async () => {
@@ -320,99 +336,10 @@ const LiveStreamsPage = () => {
       // Release cooldown after a short delay
       setTimeout(() => setRequestCooldown(false), 3000);
     }
-  }, [token, streamTitle, currentTitle, requestCooldown]);
-
-  const handleTitleUpdate = useCallback(async () => {
-    if (!streamTitle.trim()) {
-      setError('Please enter a valid title');
-      return;
-    }
-    
-    if (requestCooldown) {
-      setError('Please wait a moment before updating the title again');
-      return;
-    }
-    
-    setIsLoading(true);
-    setError('');
-    setSuccessMessage('');
-    
-    // Use the rate-limited request handler
-    const makeRequest = async () => {
-      console.log('Updating title to:', streamTitle);
-      
-      const response = await fetch('http://localhost:5001/api/streams/key', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({ title: streamTitle })
-      });
-      
-      if (response.status === 429) {
-        const text = await response.text();
-        console.log('Rate limit response:', text);
-        throw new Error('429: ' + (text || 'Too many requests. Please wait and try again.'));
-      }
-      
-      if (!response.ok) {
-        try {
-          const errorData = await response.json();
-          throw new Error(errorData.error || `Server error: ${response.status}`);
-        } catch (e) {
-          throw new Error(`Server error: ${response.status} ${response.statusText}`);
-        }
-      }
-      
-      const data = await response.json();
-      
-      if (!data.data?.streamKey) {
-        throw new Error('No stream key received from server');
-      }
-      
-      return data.data.streamKey;
-    };
-    
-    try {
-      const streamKey = await handleRateLimitedRequest(
-        makeRequest,
-        'Failed to update stream title'
-      );
-      
-      if (streamKey) {
-        console.log('Updated stream key:', streamKey);
-        setStreamConfig({
-          rtmpUrl: 'rtmp://localhost:1935/live',
-          streamKey: streamKey
-        });
-        
-        // Update pending stream information
-        setPendingStreamKey(streamKey);
-        setPendingStreamTitle(streamTitle);
-        
-        setRetryCount(0); // Reset retry count on success
-        setError('');
-        
-        // Add success confirmation
-        setSuccessMessage(`Stream title updated to "${streamTitle}" successfully!`);
-        setLastUpdated(new Date());
-        setCurrentTitle(streamTitle);
-        
-        // Save the title to localStorage for persistence
-        localStorage.setItem('streamTitle', streamTitle);
-      }
-    } catch (error) {
-      console.error('Error updating title:', error);
-      setError(error.message || 'Failed to update stream title');
-    } finally {
-      setIsLoading(false);
-      // Release cooldown after a short delay
-      setTimeout(() => setRequestCooldown(false), 3000);
-    }
   }, [token, streamTitle, requestCooldown]);
+
+  // Move handleTitleUpdate after the getNewStreamKey function
+  // -------------------------------------------------------------------
 
   // Add a function to clear/reset the title
   const handleResetTitle = useCallback(() => {
@@ -447,6 +374,220 @@ const LiveStreamsPage = () => {
     console.log('Joining stream:', streamId);
     navigate(`/stream/${streamId}`);
   };
+
+  // Function to refresh the active streams list
+  const refreshActiveStreams = useCallback(async () => {
+    try {
+      console.log('Refreshing active streams...');
+      const response = await fetch('http://localhost:5001/api/streams/active', {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
+      
+      if (!response.ok) {
+        console.error('Error refreshing streams:', response.status);
+        return;
+      }
+      
+      const data = await response.json();
+      console.log('Refreshed active streams data:', data);
+      
+      setStreams(data.map(stream => ({
+        id: stream.LiveStreamID,
+        title: stream.Title,
+        dj: stream.UserID,
+        listeners: stream.ListenerCount || 0,
+        startTime: stream.StartTime,
+        status: stream.Status,
+        streamKey: stream.StreamKey
+      })));
+    } catch (error) {
+      console.error('Error refreshing streams:', error);
+    }
+  }, [token]);
+  
+  // Function to get a new stream key with updated title
+  const getNewStreamKey = useCallback(async () => {
+    console.log('Getting new stream key with title:', streamTitle);
+    
+    try {
+      // Use the rate-limited request handler
+      const makeRequest = async () => {
+        const response = await fetch('http://localhost:5001/api/streams/key', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({ title: streamTitle })
+        });
+        
+        if (response.status === 429) {
+          const text = await response.text();
+          console.log('Rate limit response:', text);
+          throw new Error('429: ' + (text || 'Too many requests. Please wait and try again.'));
+        }
+        
+        if (!response.ok) {
+          try {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `Server error: ${response.status}`);
+          } catch (e) {
+            throw new Error(`Server error: ${response.status} ${response.statusText}`);
+          }
+        }
+        
+        const data = await response.json();
+        
+        if (!data.data?.streamKey) {
+          throw new Error('No stream key received from server');
+        }
+        
+        return data.data.streamKey;
+      };
+      
+      const streamKey = await handleRateLimitedRequest(
+        makeRequest,
+        'Failed to update stream title'
+      );
+      
+      if (streamKey) {
+        console.log('Updated stream key:', streamKey);
+        setStreamConfig({
+          rtmpUrl: 'rtmp://localhost:1935/live',
+          streamKey: streamKey
+        });
+        
+        // Update pending stream information
+        setPendingStreamKey(streamKey);
+        setPendingStreamTitle(streamTitle);
+        
+        setRetryCount(0); // Reset retry count on success
+        setError('');
+        
+        // Add success confirmation
+        setSuccessMessage(`Stream title updated to "${streamTitle}" successfully!`);
+        setLastUpdated(new Date());
+        setCurrentTitle(streamTitle);
+        
+        // Save the title to localStorage for persistence
+        localStorage.setItem('streamTitle', streamTitle);
+        
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Error getting new stream key:', error);
+      setError(error.message || 'Failed to update stream title');
+      return false;
+    }
+  }, [token, streamTitle, handleRateLimitedRequest]);
+
+  // Now define handleTitleUpdate since its dependencies are defined
+  const handleTitleUpdate = useCallback(async () => {
+    if (!streamTitle.trim()) {
+      setError('Please enter a valid title');
+      return;
+    }
+    
+    if (requestCooldown) {
+      setError('Please wait a moment before updating the title again');
+      return;
+    }
+    
+    setIsLoading(true);
+    setError('');
+    setSuccessMessage('');
+    
+    try {
+      // Check if user is logged in
+      if (!user || !token) {
+        throw new Error('You must be logged in to update a stream title');
+      }
+      
+      console.log('Attempting to update title for user ID:', user.id);
+      
+      // Update the title via the updateTitle endpoint directly
+      const response = await fetch(`http://localhost:5001/api/streams/updateTitle`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ 
+          userId: user.id,
+          title: streamTitle 
+        })
+      });
+      
+      if (!response.ok) {
+        // If no stream exists yet, fall back to creating a new one
+        if (response.status === 404) {
+          console.log('No active or scheduled stream found, creating a new one');
+          return await getNewStreamKey();
+        }
+        
+        const errorText = await response.text();
+        throw new Error(errorText || `Failed to update stream title: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('Stream title updated successfully:', data);
+      
+      // Update the current title state
+      setCurrentTitle(streamTitle);
+      setLastUpdated(new Date());
+      
+      // Save to localStorage for persistence
+      localStorage.setItem('streamTitle', streamTitle);
+      
+      // Show success message
+      setSuccessMessage(`Stream title updated to "${streamTitle}" successfully!`);
+      
+      // Update the streams state if this is an active stream
+      if (data.data.Status === 'active') {
+        setStreams(prevStreams => prevStreams.map(stream => 
+          stream.id === data.data.LiveStreamID 
+            ? { ...stream, title: streamTitle }
+            : stream
+        ));
+        
+        // Refresh streams data
+        refreshActiveStreams();
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error updating title:', error);
+      
+      // If we get a specific error about no stream, fall back to getting a new key
+      if (error.message && (
+          error.message.includes('No active') || 
+          error.message.includes('not found') ||
+          error.message.includes('404')
+      )) {
+        console.log('No stream error, falling back to stream key update');
+        return await getNewStreamKey();
+      }
+      
+      setError(error.message || 'Failed to update stream title');
+      return false;
+    } finally {
+      setIsLoading(false);
+      // Release cooldown after a short delay
+      setTimeout(() => setRequestCooldown(false), 3000);
+    }
+  }, [token, streamTitle, requestCooldown, user, refreshActiveStreams, getNewStreamKey]);
 
   return (
     <Container className="live-streams-page">
@@ -521,7 +662,7 @@ const LiveStreamsPage = () => {
             <Button 
               variant="success" 
               size="lg" 
-              onClick={handleGetStreamKey}
+              onClick={handleStartStream}
               disabled={isLoading || requestCooldown}
             >
               {isLoading ? 'Loading...' : (
@@ -596,7 +737,7 @@ const LiveStreamsPage = () => {
                         onClick={handleTitleUpdate}
                         disabled={!streamTitle.trim() || isLoading || requestCooldown}
                       >
-                        {isLoading ? 'Updating...' : 'Update Title'}
+                        {isLoading ? 'Updating...' : 'Set Title'}
                       </Button>
                       
                       <Button 

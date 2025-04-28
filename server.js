@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 
-const path = require('path'); // ✅ Added to resolve static file path
+const path = require('path'); // Path module for resolving static file paths
 const db = require('./src/db/config');
 
 const { createServer } = require('http');
@@ -12,7 +12,6 @@ const { Pool } = require('pg');
 const pgp = require('pg-promise')();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const path = require('path');
 const fs = require('fs');
 const winston = require('winston');
 const rateLimit = require('express-rate-limit');
@@ -109,6 +108,8 @@ app.get('/test-db', async (req, res) => {
             message: 'Database connection failed',
             error: error.message
         });
+    }
+});
 
 // Database connection with retry logic
 const createPool = async (retries = 5) => {
@@ -139,7 +140,6 @@ const createPool = async (retries = 5) => {
     if (retries === 0) {
       logger.error('Failed to connect to database after multiple retries', err);
       throw err;
-
     }
     logger.warn(`Database connection failed, retrying... (${retries} attempts left)`);
     await new Promise(resolve => setTimeout(resolve, 5000));
@@ -149,10 +149,10 @@ const createPool = async (retries = 5) => {
 
 // Initialize database connection
 let pool;
-let db;
+let dbConnection;
 let streamKeyService;
 
-// Register routes immediately (they'll use the pool once it's initialized)
+// Register routes
 app.use('/api/auth', authRoutes);
 app.use('/api/streams', (req, res, next) => {
   if (!pool || !streamKeyService) {
@@ -163,15 +163,17 @@ app.use('/api/streams', (req, res, next) => {
 app.use('/api/users', authenticateToken, userRoutes);
 app.use('/api/playlists', authenticateToken, playlistRoutes);
 app.use('/api/tracks', trackRoutes);
+app.use('/api/trending', trendingRoutes);
+app.use('/api/recommendations', recommendRoutes);
 
 // Initialize database and services
 const initializeDatabase = async () => {
   try {
     const { pool: createdPool, db: createdDb } = await createPool();
     pool = createdPool;
-    db = createdDb;
-    app.locals.db = db; // Use pg-promise for models
-    streamKeyService = new StreamKeyService(db); // Use pg-promise for streamKeyService
+    dbConnection = createdDb;
+    app.locals.db = dbConnection; // Use pg-promise for models
+    streamKeyService = new StreamKeyService(dbConnection); // Use pg-promise for streamKeyService
     logger.info('Database and services initialized successfully');
   } catch (err) {
     logger.error('Fatal: Could not initialize database and services', err);
@@ -179,7 +181,7 @@ const initializeDatabase = async () => {
   }
 };
 
-// Start server immediately
+// Start server
 httpServer.listen(PORT, () => {
   logger.info(`Server is running on port ${PORT}`);
   // Initialize database after server starts
@@ -199,14 +201,6 @@ httpServer.listen(PORT, () => {
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
-
-
-// Protected routes
-app.use('/api/users', auth, userRoutes);
-app.use('/api/playlists', auth, playlistRoutes);
-app.use('/api/tracks', trackRoutes);
-app.use('/api/trending', trendingRoutes);
-app.use('/api/recommendations', recommendRoutes);
 
 // Serve HLS media files
 const mediaPath = path.join(__dirname, 'media');
@@ -596,12 +590,6 @@ const cleanup = async () => {
     process.exit(1);
   }
 };
-
-
-// Server Setup
-app.listen(PORT, () => {
-    console.log(`Server started on port ${PORT}`);
-});
 
 process.on('SIGTERM', cleanup);
 process.on('SIGINT', cleanup); 
