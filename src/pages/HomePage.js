@@ -1,9 +1,33 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Button, Carousel, Badge } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { FaPlay, FaHeart, FaMusic, FaHeadphones, FaMicrophone, FaEllipsisH } from 'react-icons/fa';
+import Slider from 'react-slick';
+import RecommendedSection from './recommendedSection'; // ✅ Import here
+import { useAuth } from '../context/AuthContext';
 
-const HomePage = () => {
+const HomePage = ({ onTrackSelect }) => {
+  const { user } = useAuth();
+  // Trending
+  const [trending, setTrending] = useState([]);
+  const [loadingTrending, setLoadingTrending] = useState(true);
+
+  useEffect(() => {
+    const fetchTrending = async () => {
+      try {
+        const res = await fetch('http://localhost:5001/api/trending');
+        const data = await res.json();
+        setTrending(data);
+      } catch (err) {
+        console.error('Failed to fetch trending tracks:', err);
+      } finally {
+        setLoadingTrending(false);
+      }
+    };
+
+    fetchTrending();
+  }, []);
+
   // Mock data for featured content
   const featuredPlaylists = [
     { id: 1, title: 'Summer Hits 2023', creator: 'StreamDJ', image: 'https://thumbs.dreamstime.com/b/happy-new-year-happy-new-year-greeting-card-colorful-fireworks-sparkling-burning-number-beautiful-holiday-web-banner-248472064.jpg', tracks: 25 },
@@ -41,7 +65,7 @@ const HomePage = () => {
         <Carousel.Item>
           <img
             className="d-block w-100"
-            src="https://crossfadr.com/wp-content/uploads/2018/10/deephousepic.jpg" // example Unsplash direct image
+            src="https://crossfadr.com/wp-content/uploads/2018/10/deephousepic.jpg"
             alt="First slide"
             style={{ height: '400px', objectFit: 'cover', borderRadius: '10px' }}
           />
@@ -66,6 +90,66 @@ const HomePage = () => {
           </Carousel.Caption>
         </Carousel.Item>
       </Carousel>
+
+      {/* Trending Tracks Carousel */}
+      {!loadingTrending && trending.length > 0 && (
+        <section className="mb-5">
+          <h2 className="mb-4">Trending Now</h2>
+          <Slider
+            dots={false}
+            infinite={true}
+            speed={500}
+            slidesToShow={5}
+            slidesToScroll={2}
+            responsive={[
+              { breakpoint: 1024, settings: { slidesToShow: 3, slidesToScroll: 2 } },
+              { breakpoint: 768, settings: { slidesToShow: 2, slidesToScroll: 1 } },
+              { breakpoint: 480, settings: { slidesToShow: 1, slidesToScroll: 1 } },
+            ]}
+          >
+            {trending.map((track, idx) => (
+              <div key={idx} className="px-2">
+                <Card className="h-100 text-white bg-dark">
+                  <Card.Img
+                    variant="top"
+                    src={`http://localhost:5001/${track.CoverArt}`}
+                    alt={track.Title}
+                    style={{ height: '200px', objectFit: 'cover' }}
+                    onError={(e) => { e.target.onerror = null; e.target.src = '/default-cover.jpg'; }}
+                  />
+                  <Card.Body>
+                    <Card.Title style={{ fontSize: '1rem' }}>{track.Title}</Card.Title>
+                    <Card.Text className="text-white-50 small">{track.Artist}</Card.Text>
+                    <Card.Text className="text-muted small">{track.play_count} plays</Card.Text>
+                  </Card.Body>
+                </Card>
+              </div>
+            ))}
+          </Slider>
+        </section>
+      )}
+
+      <RecommendedSection
+        apiUrl={`http://localhost:5001/api/recommendations/collab/${user?.id || 1}`}
+        title="People who liked what you like also liked..."
+        onTrackSelect={onTrackSelect}
+      />
+
+      {user && (
+        <RecommendedSection
+          apiUrl={`http://localhost:5001/api/recommendations/recent-genre/${user.id}`}
+          title="Because You Listened To..."
+          onTrackSelect={onTrackSelect}
+        />
+      )}
+
+      {/* ✅ Recommended Section (from external component) */}
+      <RecommendedSection
+        title="Recommended For You"
+        apiUrl={`http://localhost:5001/api/recommendations/1`} // You can replace 1 with dynamic user ID later
+        onTrackSelect={onTrackSelect}
+      />
+
 
       {/* Featured Playlists */}
       <section className="mb-5">

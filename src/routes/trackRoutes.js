@@ -143,20 +143,21 @@ router.post('/upload', upload.fields([
   }
 
   try {
-    const filePath = audioFile.path;
-    const coverArtBuffer = fs.readFileSync(coverArtFile.path);
+    const filePath = audioFile.path.replace(/\\/g, '/');
+    const coverArtPath = coverArtFile.path.replace(/\\/g, '/'); // store path, not binary
 
-    // Step 1: Insert the track
+    // console.log('UPLOAD BODY:', req.body);
+
     const newTrack = await trackModel.create(
       parseInt(userId),
       title,
       artist,
       genre,
-      duration,
+      parseInt(duration),
       filePath,
-      coverArtBuffer
-    );
-
+      coverArtPath
+    );    
+    
     const trackId = newTrack.TrackID;
 
     // Step 2: Add primary artist to TrackArtist
@@ -193,5 +194,103 @@ router.post('/upload', upload.fields([
   }
 });
 
+// TRACK PLAY LOGGING - add this before module.exports
+// TRACK PLAY LOGGING
+router.post('/:id/play', async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const trackId = parseInt(req.params.id);
+
+    await req.app.locals.db.none(
+      `INSERT INTO "ListenerHistory" ("TrackID", "UserID", "PlayedAt") VALUES ($1, $2, NOW())`,
+      [trackId, userId || null]
+    );
+
+    res.sendStatus(204);
+  } catch (error) {
+    console.error('Error tracking play:', error);
+    res.status(500).json({ error: 'Could not log play.' });
+  }
+});
+
+// Like a track
+router.post('/:id/like', async (req, res) => {
+  const { userId } = req.body;
+  const trackId = parseInt(req.params.id);
+
+  try {
+    await req.app.locals.db.none(
+      `INSERT INTO "TrackLikes" ("UserID", "TrackID") VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+      [userId, trackId]
+    );
+    res.sendStatus(200);
+  } catch (err) {
+    console.error('Error liking track:', err);
+    res.status(500).json({ error: 'Failed to like track.' });
+  }
+});
+
+// Get total likes for a track
+router.get('/:id/likes', async (req, res) => {
+  try {
+    const result = await req.app.locals.db.one(
+      `SELECT COUNT(*) FROM "TrackLikes" WHERE "TrackID" = $1`,
+      [req.params.id]
+    );
+    res.json({ likes: parseInt(result.count) });
+  } catch (err) {
+    console.error('Error fetching likes:', err);
+    res.status(500).json({ error: 'Failed to fetch likes.' });
+  }
+});
+
+router.get('/:id/like-status', async (req, res) => {
+  const { userId } = req.query;
+  const { id: trackId } = req.params;
+
+  try {
+    const exists = await req.app.locals.db.oneOrNone(`
+      SELECT 1 FROM "TrackLikes" WHERE "UserID" = $1 AND "TrackID" = $2
+    `, [userId, trackId]);
+
+    res.json({ liked: !!exists });
+  } catch (err) {
+    console.error('Error checking like status:', err);
+    res.status(500).json({ error: 'Failed to fetch like status' });
+  }
+});
+
+router.post('/:id/like', async (req, res) => {
+  const { userId } = req.body;
+  const { id: trackId } = req.params;
+
+  try {
+    await req.app.locals.db.none(`
+      INSERT INTO "TrackLikes" ("UserID", "TrackID") VALUES ($1, $2)
+      ON CONFLICT DO NOTHING
+    `, [userId, trackId]);
+
+    res.sendStatus(200);
+  } catch (err) {
+    console.error('Error liking track:', err);
+    res.status(500).json({ error: 'Failed to like track' });
+  }
+});
+
+router.post('/:id/unlike', async (req, res) => {
+  const { userId } = req.body;
+  const { id: trackId } = req.params;
+
+  try {
+    await req.app.locals.db.none(`
+      DELETE FROM "TrackLikes" WHERE "UserID" = $1 AND "TrackID" = $2
+    `, [userId, trackId]);
+
+    res.sendStatus(200);
+  } catch (err) {
+    console.error('Error unliking track:', err);
+    res.status(500).json({ error: 'Failed to unlike track' });
+  }
+});
 
 module.exports = router;
