@@ -1,0 +1,57 @@
+.dj-container {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+    background: #1e1e1e;
+    color: white;
+  }
+  .deck {
+    margin-bottom: 30px;
+    border: 1px solid #333;
+    padding: 20px;
+    background: #2b2b2b;
+    border-radius: 10px;
+  }
+  button {
+    margin: 5px;
+    padding: 8px 12px;
+    background: #444;
+    color: white;
+    border: none;
+    border-radius: 5px;
+  }
+  button:hover {
+    background: #666;
+  }
+  .crossfader {
+    margin-top: 20px;
+  }
+  input[type="range"] {
+    width: 100%;
+  }
+  .track-select {
+    margin-bottom: 10px;
+  }
+  
+  .track-select label {
+    display: block;
+    margin-bottom: 5px;
+    color: #ccc;
+    font-weight: bold;
+  }
+  
+  .track-select select {
+    width: 100%;
+    padding: 8px;
+    background: #111;
+    color: #fff;
+    border: 1px solid #444;
+    border-radius: 5px;
+    appearance: none;
+  }
+  
+  .track-select select:focus {
+    outline: none;
+    border-color: #888;
+  }
+  
+  

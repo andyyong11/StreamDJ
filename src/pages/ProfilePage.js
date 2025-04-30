@@ -1,60 +1,61 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Container, Row, Col, Card, Button, Badge } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, Badge, Spinner } from 'react-bootstrap';
 import { FaHeart, FaMusic, FaUserFriends, FaPlay, FaEllipsisH } from 'react-icons/fa';
 
 const ProfilePage = () => {
-  // Get the profile ID from the URL
   const { id } = useParams();
+  const [user, setUser] = useState(null);
+  const [playlists, setPlaylists] = useState([]);
+  const [recentTracks, setRecentTracks] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock user data based on ID
-  const users = {
-    1: {
-      name: 'DJ Sparkle',
-      followers: '1.2M',
-      following: 345,
-      avatar: 'https://via.placeholder.com/150',
-      banner: 'https://crlsolutions.com/wp-content/uploads/2018/01/temp-banner.png',
-      bio: 'Bringing the best beats to your ears. Live DJ, music producer, and sound enthusiast.'
-    },
-    2: {
-      name: 'BeatMaster',
-      followers: '980K',
-      following: 210,
-      avatar: 'https://via.placeholder.com/150',
-      banner: 'https://crlsolutions.com/wp-content/uploads/2018/01/temp-banner.png',
-      bio: 'Hip Hop is life. Bringing the best rap beats and remixes to the stage.'
-    },
-    3: {
-      name: 'ElectroQueen',
-      followers: '1.5M',
-      following: 500,
-      avatar: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQCJkAoQFnKSizD__XWUr1_RhK86R8E7h8I0g&s',
-      banner: 'https://i.etsystatic.com/34466454/r/il/730751/4475686453/il_fullxfull.4475686453_n0ds.jpg',
-      bio: 'Electronic beats and house music to keep the party going all night.'
-    }
-  };
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      try {
+        setLoading(true);
 
-  // Get user data; if ID is not found, default to user 1
-  const user = users[id] || users[1];
+        const [userRes, playlistsRes, tracksRes] = await Promise.all([
+          fetch(`/api/users/${id}`),
+          fetch(`/api/users/${id}/playlists`),
+          fetch(`/api/users/${id}/recent-tracks`)
+        ]);
 
-  // Mock playlists
-  const playlists = [
-    { id: 1, title: 'My Favorite Mixes', tracks: 20, image: 'https://preview.redd.it/heres-some-playlist-icons-in-the-style-of-liked-songs-you-v0-cahrrr1is8ee1.png?width=473&format=png&auto=webp&s=e33bfdb466d30f69fa4209b41f90dc7e41f0e609' },
-    { id: 2, title: 'Chill Out Sessions', tracks: 15, image: 'https://lofigirl.com/wp-content/uploads/2023/02/DAY_UPDATE_ILLU.jpg' },
-    { id: 3, title: 'Top Hits', tracks: 30, image: 'https://i.scdn.co/image/ab67616d0000b273016d1a64505bc840c5e60469' },
-  ];
+        const userData = await userRes.json();
+        const playlistData = await playlistsRes.json();
+        const trackData = await tracksRes.json();
 
-  // Mock recent tracks
-  const recentTracks = [
-    { id: 1, title: 'Summer Groove', duration: '3:45', plays: 1250000 },
-    { id: 2, title: 'Midnight City', duration: '4:12', plays: 980000 },
-    { id: 3, title: 'Chill Wave', duration: '5:30', plays: 750000 },
-  ];
+        setUser(userData);
+        setPlaylists(playlistData);
+        setRecentTracks(trackData);
+      } catch (error) {
+        console.error("Failed to fetch profile data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfileData();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <Container className="text-center py-5">
+        <Spinner animation="border" role="status" />
+      </Container>
+    );
+  }
+
+  if (!user) {
+    return (
+      <Container className="text-center py-5">
+        <p>User not found.</p>
+      </Container>
+    );
+  }
 
   return (
     <Container>
-      {/* Profile Banner */}
       <Card className="mb-4">
         <Card.Img src={user.banner} alt="Profile Banner" className="rounded" />
         <Card.ImgOverlay className="d-flex flex-column justify-content-end">
@@ -89,7 +90,6 @@ const ProfilePage = () => {
         </Card.ImgOverlay>
       </Card>
 
-      {/* My Playlists */}
       <section className="mb-5">
         <h3 className="mb-4">{user.name}'s Playlists</h3>
         <Row>
@@ -110,7 +110,6 @@ const ProfilePage = () => {
         </Row>
       </section>
 
-      {/* Recently Played Tracks */}
       <section className="mb-5">
         <h3 className="mb-4">Recently Played by {user.name}</h3>
         <Card>

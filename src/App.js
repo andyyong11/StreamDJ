@@ -20,6 +20,7 @@ import LoginModal from './components/auth/LoginModal';
 import RegisterModal from './components/auth/RegisterModal';
 import UploadPage from './pages/UploadPage';
 import StreamPlayerPage from './pages/StreamPlayerPage';
+import MixerPage from './pages/MixerPage';
 
 // Components
 import PrivateRoute from './components/auth/PrivateRoute';
@@ -95,6 +96,14 @@ function App() {
             element={
               <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
                 <StreamPlayerPage />
+              </Layout>
+            }
+          />
+          <Route
+            path="/mixer"
+            element={
+              <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+                <MixerPage />
               </Layout>
             }
           />

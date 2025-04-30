@@ -70,6 +70,7 @@ const NavigationBar = ({ onTrackSelect }) => {
               <>
                 <Nav.Link as={Link} to="/library">Library</Nav.Link>
                 <Nav.Link as={Link} to="/upload"><FaUpload className="me-1" /> Upload</Nav.Link>
+                <Nav.Link as={Link} to="/mixer">Mixer</Nav.Link>
               </>
             )}
             <Nav.Link as={Link} to="/liveStreams">Live Streams</Nav.Link>
