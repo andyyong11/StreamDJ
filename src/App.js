@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 
@@ -9,6 +9,8 @@ import 'slick-carousel/slick/slick-theme.css';
 
 // Layout
 import Layout from './components/layout/Layout';
+import Navbar from './components/layout/Navbar';
+import MusicPlayer from './components/player/MusicPlayer';
 
 // Pages
 import HomePage from './pages/HomePage';
@@ -19,7 +21,13 @@ import LiveStreamsPage from './pages/LiveStreamsPage';
 import LoginModal from './components/auth/LoginModal';
 import RegisterModal from './components/auth/RegisterModal';
 import UploadPage from './pages/UploadPage';
+import UploadAlbumPage from './pages/UploadAlbumPage';
 import StreamPlayerPage from './pages/StreamPlayerPage';
+import AlbumPage from './pages/AlbumPage';
+import UserAlbumsPage from './pages/UserAlbumsPage';
+import EditAlbumPage from './pages/EditAlbumPage';
+import EditTrackPage from './pages/EditTrackPage';
+import CreatorDashboard from './pages/CreatorDashboard';
 
 // Components
 import PrivateRoute from './components/auth/PrivateRoute';
@@ -27,78 +35,350 @@ import PrivateRoute from './components/auth/PrivateRoute';
 // Context
 import { AuthProvider } from './context/AuthContext';
 
+// Create a lazily loaded component loader to improve initial load time
+const LazyRoute = ({ component: Component, ...props }) => {
+  return (
+    <React.Suspense fallback={<div className="loading-spinner">Loading...</div>}>
+      <Component {...props} />
+    </React.Suspense>
+  );
+};
+
 function App() {
   const [currentTrack, setCurrentTrack] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playlist, setPlaylist] = useState([]);
+  const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [loadErrors, setLoadErrors] = useState(null);
+
+  useEffect(() => {
+    // Load initial playlist with retry
+    const fetchInitialTracks = async (retryCount = 0) => {
+      try {
+        setLoadErrors(null);
+        
+        // Wait a short delay to prevent overwhelming the server on initial load
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Use our API service instead of native fetch
+        const response = await import('./services/api').then(module => {
+          const api = module.default;
+          return api.get('/api/tracks', { params: { limit: 10 } });
+        });
+        
+        const data = response.data;
+        if (data && data.length > 0) {
+          setPlaylist(data);
+          // Don't set currentTrack automatically - wait for user to select one
+          // setCurrentTrack(data[0]);
+        }
+        
+        setInitialLoadComplete(true);
+      } catch (error) {
+        console.error('Error fetching initial tracks:', error);
+        
+        // Handle rate limiting with exponential backoff
+        if (error.response && error.response.status === 429 && retryCount < 3) {
+          const delayMs = 2000 * (retryCount + 1); // 2s, 4s, 6s backoff
+          setLoadErrors(`Rate limited. Retrying in ${delayMs/1000} seconds...`);
+          
+          // Retry with backoff
+          setTimeout(() => {
+            fetchInitialTracks(retryCount + 1);
+          }, delayMs);
+        } else {
+          // After max retries or for other errors, silently fail
+          // The user can still browse content and play tracks manually
+          setInitialLoadComplete(true);
+          setLoadErrors(retryCount >= 3 
+            ? "Couldn't load initial tracks after multiple attempts. You can still browse and play music."
+            : null);
+        }
+      }
+    };
+
+    fetchInitialTracks();
+    
+    // Clean up function
+    return () => {
+      // Reset any circuit breakers on component unmount
+      import('./services/api').then(module => {
+        const api = module.default;
+        if (api.resetCircuitBreakers) {
+          api.resetCircuitBreakers();
+        }
+      });
+    };
+  }, []);
 
   const handleTrackSelect = (track) => {
     setCurrentTrack(track);
   };
 
+  const handleNextTrack = () => {
+    if (playlist.length === 0) return;
+    
+    const nextIndex = (currentTrackIndex + 1) % playlist.length;
+    setCurrentTrackIndex(nextIndex);
+    setCurrentTrack(playlist[nextIndex]);
+  };
+
+  const handlePreviousTrack = () => {
+    if (playlist.length === 0) return;
+    
+    const prevIndex = (currentTrackIndex - 1 + playlist.length) % playlist.length;
+    setCurrentTrackIndex(prevIndex);
+    setCurrentTrack(playlist[prevIndex]);
+  };
+
+  const playTrack = (track, tracksList = null) => {
+    if (tracksList) {
+      setPlaylist(tracksList);
+      setCurrentTrackIndex(tracksList.findIndex(t => t.TrackID === track.TrackID));
+    } else if (playlist.length > 0) {
+      // If we're playing a new track but not changing the playlist
+      setCurrentTrackIndex(playlist.findIndex(t => t.TrackID === track.TrackID));
+    }
+    
+    setCurrentTrack(track);
+    setIsPlaying(true);
+  };
+
+  // Global login/register handlers
+  const openLoginModal = () => {
+    setShowRegisterModal(false); // Close register if open
+    setShowLoginModal(true);
+  };
+
+  const openRegisterModal = () => {
+    setShowLoginModal(false); // Close login if open
+    setShowRegisterModal(true);
+  };
+
   return (
     <AuthProvider>
       <Router>
-        <Routes>
-          <Route path="/login" element={<LoginModal />} />
-          <Route path="/register" element={<RegisterModal />} />
-          <Route
-            path="/"
-            element={
-              <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
-                <HomePage />
-              </Layout>
-            }
+        <div className="content">
+          <Routes>
+            <Route path="/login" element={<Navigate to="/" replace />} />
+            <Route path="/register" element={<Navigate to="/" replace />} />
+            
+            <Route
+              path="/"
+              element={
+                <Layout 
+                  onTrackSelect={handleTrackSelect} 
+                  currentTrack={currentTrack}
+                  openLoginModal={openLoginModal}
+                  openRegisterModal={openRegisterModal}
+                >
+                  <HomePage playTrack={playTrack} />
+                  {showLoginModal && (
+                    <LoginModal show={showLoginModal} handleClose={() => setShowLoginModal(false)} />
+                  )}
+                  {showRegisterModal && (
+                    <RegisterModal show={showRegisterModal} handleClose={() => setShowRegisterModal(false)} />
+                  )}
+                </Layout>
+              }
+            />
+            <Route
+              path="/profile/:id"
+              element={
+                <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+                  <ProfilePage />
+                </Layout>
+              }
+            />
+            <Route
+              path="/discover"
+              element={
+                <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+                  <DiscoverPage />
+                </Layout>
+              }
+            />
+            <Route
+              path="/library"
+              element={
+                <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+                  <PrivateRoute>
+                    <LibraryPage onTrackSelect={handleTrackSelect} />
+                  </PrivateRoute>
+                </Layout>
+              }
+            />
+            <Route
+              path="/liveStreams"
+              element={
+                <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+                  <LiveStreamsPage />
+                </Layout>
+              }
+            />
+            <Route
+              path="/upload"
+              element={
+                <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+                  <PrivateRoute>
+                    <UploadPage />
+                  </PrivateRoute>
+                </Layout>
+              }
+            />
+            <Route
+              path="/upload-album"
+              element={
+                <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+                  <PrivateRoute>
+                    <UploadAlbumPage />
+                  </PrivateRoute>
+                </Layout>
+              }
+            />
+            <Route
+              path="/stream/:streamId"
+              element={
+                <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+                  <StreamPlayerPage />
+                </Layout>
+              }
+            />
+            {/* Album Routes */}
+            <Route
+              path="/albums"
+              element={
+                <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+                  <PrivateRoute>
+                    <UserAlbumsPage />
+                  </PrivateRoute>
+                </Layout>
+              }
+            />
+            <Route
+              path="/albums/user/:userId"
+              element={
+                <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+                  <UserAlbumsPage />
+                </Layout>
+              }
+            />
+            <Route
+              path="/albums/:albumId"
+              element={
+                <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+                  <AlbumPage playTrack={playTrack} />
+                </Layout>
+              }
+            />
+            <Route
+              path="/edit-album/:albumId"
+              element={
+                <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+                  <PrivateRoute>
+                    <EditAlbumPage />
+                  </PrivateRoute>
+                </Layout>
+              }
+            />
+            
+            {/* My Content Routes */}
+            <Route
+              path="/creator-dashboard"
+              element={
+                <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+                  <PrivateRoute>
+                    <CreatorDashboard playTrack={playTrack} />
+                  </PrivateRoute>
+                </Layout>
+              }
+            />
+            <Route
+              path="/creator-dashboard/:section"
+              element={
+                <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+                  <PrivateRoute>
+                    <CreatorDashboard playTrack={playTrack} />
+                  </PrivateRoute>
+                </Layout>
+              }
+            />
+            <Route
+              path="/my-tracks"
+              element={
+                <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+                  <PrivateRoute>
+                    <CreatorDashboard section="my-tracks" playTrack={playTrack} />
+                  </PrivateRoute>
+                </Layout>
+              }
+            />
+            <Route
+              path="/my-playlists"
+              element={
+                <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+                  <PrivateRoute>
+                    <CreatorDashboard section="my-playlists" playTrack={playTrack} />
+                  </PrivateRoute>
+                </Layout>
+              }
+            />
+            
+            {/* Liked Content Routes */}
+            <Route
+              path="/liked-tracks"
+              element={
+                <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+                  <PrivateRoute>
+                    <LibraryPage section="liked-tracks" onTrackSelect={handleTrackSelect} />
+                  </PrivateRoute>
+                </Layout>
+              }
+            />
+            <Route
+              path="/liked-albums"
+              element={
+                <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+                  <PrivateRoute>
+                    <LibraryPage section="liked-albums" onTrackSelect={handleTrackSelect} />
+                  </PrivateRoute>
+                </Layout>
+              }
+            />
+            <Route
+              path="/liked-playlists"
+              element={
+                <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+                  <PrivateRoute>
+                    <LibraryPage section="liked-playlists" onTrackSelect={handleTrackSelect} />
+                  </PrivateRoute>
+                </Layout>
+              }
+            />
+            <Route
+              path="/edit-track/:trackId"
+              element={
+                <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+                  <PrivateRoute>
+                    <EditTrackPage />
+                  </PrivateRoute>
+                </Layout>
+              }
+            />
+          </Routes>
+        </div>
+        {currentTrack && (
+          <MusicPlayer 
+            track={currentTrack} 
+            isPlaying={isPlaying}
+            setIsPlaying={setIsPlaying}
+            onNext={handleNextTrack}
+            onPrevious={handlePreviousTrack}
           />
-          <Route
-            path="/profile/:id"
-            element={
-              <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
-                <ProfilePage />
-              </Layout>
-            }
-          />
-          <Route
-            path="/discover"
-            element={
-              <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
-                <DiscoverPage />
-              </Layout>
-            }
-          />
-          <Route
-            path="/library"
-            element={
-              <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
-                <LibraryPage />
-              </Layout>
-            }
-          />
-          <Route
-            path="/liveStreams"
-            element={
-              <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
-                <LiveStreamsPage />
-              </Layout>
-            }
-          />
-          <Route
-            path="/upload"
-            element={
-              <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
-                <PrivateRoute>
-                  <UploadPage />
-                </PrivateRoute>
-              </Layout>
-            }
-          />
-          <Route
-            path="/stream/:streamId"
-            element={
-              <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
-                <StreamPlayerPage />
-              </Layout>
-            }
-          />
-        </Routes>
+        )}
       </Router>
     </AuthProvider>
   );

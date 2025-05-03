@@ -6,9 +6,8 @@ import {
   FaVolumeUp, FaHeart, FaRandom, FaRedo
 } from 'react-icons/fa';
 
-const MusicPlayer = ({ track }) => {
+const MusicPlayer = ({ track, isPlaying, setIsPlaying, onNext, onPrevious }) => {
   const { user } = useAuth(); // (Temporary) Can be removed if it's not working
-  const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [volume, setVolume] = useState(80);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -16,9 +15,46 @@ const MusicPlayer = ({ track }) => {
   const [isShuffle, setIsShuffle] = useState(false);
   const [hoverTime, setHoverTime] = useState(null);
   const [hoverPosition, setHoverPosition] = useState(0);
+  const [audioSrc, setAudioSrc] = useState('');
+  const [coverArtSrc, setCoverArtSrc] = useState('https://placehold.co/300x300');
   const audioRef = useRef(null);
 
-  const togglePlay = () => setIsPlaying(!isPlaying);
+  // Update paths when track changes
+  useEffect(() => {
+    if (!track) return;
+    
+    // Format audio source path
+    if (track.FilePath) {
+      const normalizedPath = track.FilePath.replace(/\\/g, '/').replace(/^\/+/, '');
+      // If path already starts with uploads/, don't add it again
+      const formattedAudioSrc = normalizedPath.startsWith('uploads/') 
+        ? `http://localhost:5001/${normalizedPath}`
+        : `http://localhost:5001/uploads/${normalizedPath}`;
+      setAudioSrc(formattedAudioSrc);
+    } else {
+      setAudioSrc('');
+    }
+    
+    // Format cover art path
+    if (track.CoverArt) {
+      const normalizedCoverPath = track.CoverArt.toString().replace(/\\/g, '/').replace(/^\/+/, '');
+      const formattedCoverSrc = normalizedCoverPath.startsWith('uploads/') 
+        ? `http://localhost:5001/${normalizedCoverPath}`
+        : `http://localhost:5001/uploads/${normalizedCoverPath}`;
+      setCoverArtSrc(formattedCoverSrc);
+    } else {
+      setCoverArtSrc('https://placehold.co/300x300');
+    }
+    
+    // Don't auto-play when track changes
+    // setIsPlaying(true);
+  }, [track]);
+
+  const togglePlay = () => {
+    if (setIsPlaying) {
+      setIsPlaying(!isPlaying);
+    }
+  };
   // const toggleFavorite = () => setIsFavorite(!isFavorite);
 
   // ========================= Updated ToggleFavorite Function Starts ============================================
@@ -59,9 +95,21 @@ const MusicPlayer = ({ track }) => {
     const audio = audioRef.current;
     if (audio) {
       audio.volume = volume / 100;
-      isPlaying ? audio.play().catch(err => console.error('Playback error:', err)) : audio.pause();
+      
+      if (isPlaying) {
+        console.log('Attempting to play audio:', audioSrc);
+        audio.play()
+          .then(() => console.log('Audio playback started'))
+          .catch(err => {
+            console.error('Playback error:', err);
+            console.log('Audio element:', audio);
+            console.log('Audio source:', audioSrc);
+          });
+      } else {
+        audio.pause();
+      }
     }
-  }, [isPlaying, volume]);
+  }, [isPlaying, volume, audioSrc]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -114,11 +162,6 @@ const MusicPlayer = ({ track }) => {
 
   if (!track) return null;
 
-  const audioSrc = `http://localhost:5001/${track.FilePath?.replace(/\\/g, '/')}`;
-  const coverArtSrc = track.CoverArt
-    ? `http://localhost:5001/${track.CoverArt.replace(/\\/g, '/')}`
-    : '/default-cover.jpg';
-
   return (
     <div className="fixed-bottom bg-dark text-light py-2 border-top">
       <Container fluid>
@@ -132,7 +175,7 @@ const MusicPlayer = ({ track }) => {
               style={{ width: '60px', height: '60px', objectFit: 'cover' }}
               onError={(e) => {
                 e.target.onerror = null;
-                e.target.src = '/default-cover.jpg';
+                e.target.src = 'https://placehold.co/300x300';
               }}
             />
 <div className="d-flex flex-column">
@@ -150,7 +193,13 @@ const MusicPlayer = ({ track }) => {
               <Button variant="link" className="text-light mx-2" onClick={() => setIsShuffle(!isShuffle)}>
                 <FaRandom color={isShuffle ? '#1DB954' : 'white'} />
               </Button>
-              <Button variant="link" className="text-light mx-2"><FaStepBackward /></Button>
+              <Button 
+                variant="link" 
+                className="text-light mx-2" 
+                onClick={onPrevious}
+              >
+                <FaStepBackward />
+              </Button>
               <Button
                 variant="light"
                 className="rounded-circle mx-2"
@@ -159,7 +208,13 @@ const MusicPlayer = ({ track }) => {
               >
                 {isPlaying ? <FaPause /> : <FaPlay />}
               </Button>
-              <Button variant="link" className="text-light mx-2"><FaStepForward /></Button>
+              <Button 
+                variant="link" 
+                className="text-light mx-2"
+                onClick={onNext}
+              >
+                <FaStepForward />
+              </Button>
               <Button variant="link" className="text-light mx-2" onClick={() => setIsRepeat(!isRepeat)}>
                 <FaRedo color={isRepeat ? '#1DB954' : 'white'} />
               </Button>

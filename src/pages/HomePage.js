@@ -115,7 +115,7 @@ const HomePage = ({ onTrackSelect }) => {
                     src={`http://localhost:5001/${track.CoverArt}`}
                     alt={track.Title}
                     style={{ height: '200px', objectFit: 'cover' }}
-                    onError={(e) => { e.target.onerror = null; e.target.src = '/default-cover.jpg'; }}
+                    onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/300x300'; }}
                   />
                   <Card.Body>
                     <Card.Title style={{ fontSize: '1rem' }}>{track.Title}</Card.Title>

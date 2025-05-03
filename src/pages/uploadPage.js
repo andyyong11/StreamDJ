@@ -1,6 +1,43 @@
-import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Button, Form } from 'react-bootstrap';
-import { FaUpload, FaFileAudio, FaImage } from 'react-icons/fa';
+import React, { useState } from 'react';
+import { Container, Row, Col, Card, Button, Form, Nav } from 'react-bootstrap';
+import { FaUpload, FaFileAudio, FaImage, FaCompactDisc } from 'react-icons/fa';
+import UploadAlbumForm from './UploadAlbumPage';
+import genreOptions from '../utils/genreOptions';
+
+const UploadPage = () => {
+  const [uploadType, setUploadType] = useState('track'); // 'track' or 'album'
+
+  return (
+    <Container className="my-4">
+      <Card className="mb-4">
+        <Card.Header>
+          <Nav variant="tabs" defaultActiveKey="track">
+            <Nav.Item>
+              <Nav.Link 
+                eventKey="track" 
+                onClick={() => setUploadType('track')}
+                active={uploadType === 'track'}
+              >
+                <FaFileAudio className="me-2" /> Upload Track
+              </Nav.Link>
+            </Nav.Item>
+            <Nav.Item>
+              <Nav.Link 
+                eventKey="album" 
+                onClick={() => setUploadType('album')}
+                active={uploadType === 'album'}
+              >
+                <FaCompactDisc className="me-2" /> Upload Album
+              </Nav.Link>
+            </Nav.Item>
+          </Nav>
+        </Card.Header>
+      </Card>
+
+      {uploadType === 'track' ? <UploadTrackForm /> : <UploadAlbumForm />}
+    </Container>
+  );
+};
 
 const UploadTrackForm = () => {
   const [formData, setFormData] = useState({
@@ -13,24 +50,35 @@ const UploadTrackForm = () => {
     audioFile: null,
     coverArt: null,
   });
-
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const res = await fetch('http://localhost:5001/api/users');
-        const data = await res.json();
-        // We don't need to store users anymore since we're not using them
-      } catch (error) {
-        console.error('Error fetching users:', error);
-      }
-    };
-    fetchUsers();
-  }, []);
+  const [isLoadingDuration, setIsLoadingDuration] = useState(false);
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
     if (files) {
       setFormData((prev) => ({ ...prev, [name]: files[0] }));
+      
+      // If this is an audio file, get its duration automatically
+      if (name === 'audioFile' && files[0]) {
+        setIsLoadingDuration(true);
+        const audio = new Audio();
+        const objectUrl = URL.createObjectURL(files[0]);
+        
+        audio.addEventListener('loadedmetadata', () => {
+          // Round to nearest second
+          const durationInSeconds = Math.round(audio.duration);
+          setFormData((prev) => ({ ...prev, duration: durationInSeconds.toString() }));
+          setIsLoadingDuration(false);
+          URL.revokeObjectURL(objectUrl);
+        });
+        
+        audio.addEventListener('error', () => {
+          console.error('Error loading audio file');
+          setIsLoadingDuration(false);
+          URL.revokeObjectURL(objectUrl);
+        });
+        
+        audio.src = objectUrl;
+      }
     } else {
       setFormData((prev) => ({ ...prev, [name]: value }));
     }
@@ -50,15 +98,34 @@ const UploadTrackForm = () => {
       body.append('featuredArtists[]', username)
     );
 
-    const res = await fetch('http://localhost:5001/api/tracks/upload', {
-      method: 'POST',
-      body,
-    });
+    try {
+      const res = await fetch('http://localhost:5001/api/tracks/upload', {
+        method: 'POST',
+        body,
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}` // Assuming the token is stored in localStorage
+        }
+      });
 
-    if (res.ok) {
-      alert('Track uploaded successfully!');
-    } else {
-      alert('Upload failed.');
+      if (res.ok) {
+        alert('Track uploaded successfully!');
+        // Reset form
+        setFormData({
+          userId: 1,
+          title: '',
+          genre: '',
+          duration: '',
+          artist: '',
+          featuredArtists: [],
+          audioFile: null,
+          coverArt: null,
+        });
+      } else {
+        alert('Upload failed.');
+      }
+    } catch (error) {
+      console.error('Error uploading track:', error);
+      alert('Failed to upload track. Please try again.');
     }
   };
 
@@ -110,14 +177,19 @@ const UploadTrackForm = () => {
 
           <Form.Group className="mb-3">
             <Form.Label>Genre</Form.Label>
-            <Form.Control
-              type="text"
+            <Form.Select
               name="genre"
-              placeholder="Genre"
               value={formData.genre}
               onChange={handleChange}
               required
-            />
+            >
+              <option value="">Select a genre</option>
+              {genreOptions.map(genre => (
+                <option key={genre} value={genre}>
+                  {genre}
+                </option>
+              ))}
+            </Form.Select>
           </Form.Group>
 
           <Form.Group className="mb-3">
@@ -125,11 +197,17 @@ const UploadTrackForm = () => {
             <Form.Control
               type="number"
               name="duration"
-              placeholder="e.g., 180"
+              placeholder={isLoadingDuration ? "Detecting duration..." : "e.g., 180"}
               value={formData.duration}
               onChange={handleChange}
               required
+              disabled={isLoadingDuration}
             />
+            <Form.Text className="text-muted">
+              {isLoadingDuration 
+                ? "Calculating duration from audio file..." 
+                : "Duration will be automatically detected from the audio file."}
+            </Form.Text>
           </Form.Group>
 
           <Row>
@@ -164,4 +242,4 @@ const UploadTrackForm = () => {
   );
 };
 
-export default UploadTrackForm;
+export default UploadPage;

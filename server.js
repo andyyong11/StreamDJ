@@ -14,7 +14,9 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const winston = require('winston');
-const rateLimit = require('express-rate-limit');
+
+// Import rate limiter middleware
+const { standardLimiter, authLimiter, uiLimiter } = require('./src/middleware/rateLimiter');
 
 require('dotenv').config();
 
@@ -41,7 +43,9 @@ if (process.env.NODE_ENV !== 'production') {
 const authRoutes = require('./src/routes/authRoutes');
 const userRoutes = require('./src/routes/userRoutes');
 const playlistRoutes = require('./src/routes/playlistRoutes');
+const publicPlaylistRoutes = require('./src/routes/publicPlaylistRoutes');
 const trackRoutes = require('./src/routes/trackRoutes');
+const albumRoutes = require('./src/routes/albumRoutes');
 
 const trendingRoutes = require('./src/routes/trendingRoutes');
 const recommendRoutes = require('./src/routes/recommendRoutes');
@@ -78,19 +82,32 @@ const corsOptions = {
 // Apply CORS middleware before other middleware
 app.use(cors(corsOptions));
 
-// Apply rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
-});
-app.use(limiter);
+// Apply different rate limiters based on route
+// Apply more strict limits to auth routes
+app.use('/api/auth', authLimiter);
+
+// Apply UI-friendly limits to UI-focused and public routes that are fetched on initial load
+app.use('/api/tracks', uiLimiter);
+app.use('/api/trending', uiLimiter);
+app.use('/api/recommendations', uiLimiter);
+app.use('/api/public-playlists', uiLimiter);
+
+// Apply standard limits to authenticated or less frequently accessed API routes
+app.use('/api/users', standardLimiter);
+app.use('/api/albums', standardLimiter);
+app.use('/api/playlists', standardLimiter);
+app.use('/api/streams', standardLimiter);
 
 // Middleware
 app.use(bodyParser.json());
 
+// Enable ETag caching for improved performance and reduced requests
+app.set('etag', 'strong');
 
 // Serve uploaded audio and cover images
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads/album_covers', express.static(path.join(__dirname, 'uploads/album_covers')));
+app.use('/uploads/covers', express.static(path.join(__dirname, 'uploads/covers')));
 
 // Test database connection route
 app.get('/test-db', async (req, res) => {
@@ -161,8 +178,10 @@ app.use('/api/streams', (req, res, next) => {
   streamRoutes(pool, streamKeyService)(req, res, next);
 });
 app.use('/api/users', authenticateToken, userRoutes);
+app.use('/api/public-playlists', publicPlaylistRoutes);
 app.use('/api/playlists', authenticateToken, playlistRoutes);
 app.use('/api/tracks', trackRoutes);
+app.use('/api/albums', albumRoutes);
 app.use('/api/trending', trendingRoutes);
 app.use('/api/recommendations', recommendRoutes);
 

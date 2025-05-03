@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { Modal, Form, Button, Alert, ModalHeader } from 'react-bootstrap';
 import { useAuth } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const LoginModal = ({ show, handleClose }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { loginWithRetry } = useAuth();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -15,24 +17,23 @@ const LoginModal = ({ show, handleClose }) => {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:5001/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Login failed');
-      }
-
-      await login(data.user, data.token);
+      // Use the new retry mechanism
+      await loginWithRetry(email, password);
+      
+      // Close the modal and refresh the current page
       handleClose();
+      
+      // Force refresh the current page to reload components with user data
+      window.location.reload();
     } catch (err) {
-      setError(err.message);
+      console.error('Login error:', err);
+      
+      // Show appropriate error message
+      if (err.message.includes('Network Error')) {
+        setError('Unable to connect to the server. Please check your internet connection and try again.');
+      } else {
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
     }
