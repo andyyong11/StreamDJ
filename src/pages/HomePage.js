@@ -3,7 +3,7 @@ import { Container, Row, Col, Card, Button, Carousel, Badge } from 'react-bootst
 import { Link } from 'react-router-dom';
 import { FaPlay, FaHeart, FaMusic, FaHeadphones, FaMicrophone, FaEllipsisH } from 'react-icons/fa';
 import Slider from 'react-slick';
-import RecommendedSection from './recommendedSection'; // ✅ Import here
+import RecommendedSection from '../components/sections/RecommendedSection'; // ✅ Import here
 import { useAuth } from '../context/AuthContext';
 
 const HomePage = ({ onTrackSelect }) => {

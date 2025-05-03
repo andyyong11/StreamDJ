@@ -28,9 +28,11 @@ import UserAlbumsPage from './pages/UserAlbumsPage';
 import EditAlbumPage from './pages/EditAlbumPage';
 import EditTrackPage from './pages/EditTrackPage';
 import CreatorDashboard from './pages/CreatorDashboard';
+import PlaylistPage from './pages/PlaylistPage';
 
 // Components
 import PrivateRoute from './components/auth/PrivateRoute';
+import TrendingSection from './components/sections/TrendingSection';
 
 // Context
 import { AuthProvider } from './context/AuthContext';
@@ -365,6 +367,16 @@ function App() {
                   <PrivateRoute>
                     <EditTrackPage />
                   </PrivateRoute>
+                </Layout>
+              }
+            />
+            
+            {/* Playlist Route */}
+            <Route
+              path="/playlists/:id"
+              element={
+                <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+                  <PlaylistPage />
                 </Layout>
               }
             />

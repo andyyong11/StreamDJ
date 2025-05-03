@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-// import { useAuth } from '../context/AuthContext';
 import { Container, Row, Col, Card, Button } from 'react-bootstrap';
 import { FaPlay } from 'react-icons/fa';
 
@@ -59,50 +58,4 @@ const RecommendedSection = ({ apiUrl, title = "Recommended For You", onTrackSele
   );
 };
 
-export default RecommendedSection;
-
-// import React, { useEffect, useState } from 'react';
-// import { useAuth } from '../context/AuthContext';
-// import { Container, Row, Col, Card, Button } from 'react-bootstrap';
-// import { FaPlay } from 'react-icons/fa';
-
-// const RecommendedSection = ({ onTrackSelect }) => {
-//   const { user } = useAuth();
-//   const [tracks, setTracks] = useState([]);
-
-//   useEffect(() => {
-//     const fetchRecommendations = async () => {
-//       if (!user) return;
-
-//       const res = await fetch(`http://localhost:5001/api/recommendations/${user.id}`);
-//       const data = await res.json();
-//       setTracks(data);
-//     };
-
-//     fetchRecommendations();
-//   }, [user]);
-
-//   return (
-//     <Container className="mb-5">
-//       <h2 className="mb-4">Recommended For You</h2>
-//       <Row>
-//         {tracks.map(track => (
-//           <Col md={3} key={track.TrackID} className="mb-4">
-//             <Card className="h-100 shadow-sm">
-//               <Card.Img variant="top" src={`http://localhost:5001/${track.CoverArt}`} />
-//               <Card.Body>
-//                 <Card.Title>{track.Title}</Card.Title>
-//                 <Card.Text>{track.Artist}</Card.Text>
-//                 <Button variant="success" size="sm" onClick={() => onTrackSelect(track)}>
-//                   <FaPlay className="me-1" /> Play
-//                 </Button>
-//               </Card.Body>
-//             </Card>
-//           </Col>
-//         ))}
-//       </Row>
-//     </Container>
-//   );
-// };
-
-// export default RecommendedSection;
+export default RecommendedSection; 

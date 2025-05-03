@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Slider from 'react-slick';
 
-const TrendingTracks = () => {
+const TrendingSection = () => {
   const [tracks, setTracks] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -61,4 +61,4 @@ const TrendingTracks = () => {
   );
 };
 
-export default TrendingTracks;
+export default TrendingSection; 
