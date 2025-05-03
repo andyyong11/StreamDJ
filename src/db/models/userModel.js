@@ -24,7 +24,8 @@ const userModel = {
     // Get user by ID
     async getById(id) {
         try {
-            return await db.one('SELECT * FROM "User" WHERE "UserID" = $1', [id]);
+            console.log("ID being passed to query:", id);
+            return db.oneOrNone('SELECT * FROM "User" WHERE "UserID" = $1', [id]);
         } catch (error) {
             throw new Error(`Error getting user: ${error.message}`);
         }

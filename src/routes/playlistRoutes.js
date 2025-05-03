@@ -13,13 +13,21 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Get user's playlists
-router.get('/user/:userId', async (req, res) => {
+// Get playlists by user ID
+router.get('/users/:userId/playlists', async (req, res) => {
+    const { userId } = req.params;
+
     try {
-        const playlists = await playlistModel.getByUserId(req.params.userId);
-        res.json(playlists);
+        const playlists = await playlistModel.getByUserId(userId);
+
+        if (!playlists || playlists.length === 0) {
+            return res.status(404).json({ message: 'No playlists found for this user.' });
+        }
+
+        res.status(200).json(playlists);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('Error fetching playlists:', error.message);
+        res.status(500).json({ error: 'Failed to fetch playlists.' });
     }
 });
 

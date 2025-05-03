@@ -9,17 +9,39 @@ const ProfilePage = () => {
   const [playlists, setPlaylists] = useState([]);
   const [recentTracks, setRecentTracks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const BASE_URL = 'http://localhost:5001';
 
   useEffect(() => {
     const fetchProfileData = async () => {
       try {
         setLoading(true);
+        setError(null);
+
+        const token = localStorage.getItem('token');
+        if (!token) throw new Error('No authentication token found');
 
         const [userRes, playlistsRes, tracksRes] = await Promise.all([
-          fetch(`/api/users/${id}`),
-          fetch(`/api/users/${id}/playlists`),
-          fetch(`/api/users/${id}/recent-tracks`)
+          fetch(`${BASE_URL}/api/users/${id}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          }),
+          fetch(`${BASE_URL}/api/users/${id}/playlists`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          }),
+          fetch(`${BASE_URL}/api/users/${id}/recent-tracks`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          }),
         ]);
+
+        if (!userRes.ok || !playlistsRes.ok || !tracksRes.ok) {
+          throw new Error('One or more requests failed');
+        }
 
         const userData = await userRes.json();
         const playlistData = await playlistsRes.json();
@@ -28,8 +50,9 @@ const ProfilePage = () => {
         setUser(userData);
         setPlaylists(playlistData);
         setRecentTracks(trackData);
-      } catch (error) {
-        console.error("Failed to fetch profile data:", error);
+      } catch (err) {
+        console.error('Failed to fetch profile data:', err);
+        setError('Failed to load data. Please try again later.');
       } finally {
         setLoading(false);
       }
@@ -42,6 +65,14 @@ const ProfilePage = () => {
     return (
       <Container className="text-center py-5">
         <Spinner animation="border" role="status" />
+      </Container>
+    );
+  }
+
+  if (error) {
+    return (
+      <Container className="text-center py-5">
+        <p>{error}</p>
       </Container>
     );
   }
@@ -93,55 +124,65 @@ const ProfilePage = () => {
       <section className="mb-5">
         <h3 className="mb-4">{user.name}'s Playlists</h3>
         <Row>
-          {playlists.map(playlist => (
-            <Col md={4} key={playlist.id} className="mb-4">
-              <Card className="shadow-sm">
-                <Card.Img variant="top" src={playlist.image} />
-                <Card.Body>
-                  <Card.Title>{playlist.title}</Card.Title>
-                  <Card.Text>{playlist.tracks} tracks</Card.Text>
-                  <Button variant="success" size="sm">
-                    <FaPlay className="me-1" /> Play
-                  </Button>
-                </Card.Body>
-              </Card>
+          {playlists.length ? (
+            playlists.map(playlist => (
+              <Col md={4} key={playlist.id} className="mb-4">
+                <Card className="shadow-sm">
+                  <Card.Img variant="top" src={playlist.image} />
+                  <Card.Body>
+                    <Card.Title>{playlist.title}</Card.Title>
+                    <Card.Text>{playlist.tracks} tracks</Card.Text>
+                    <Button variant="success" size="sm">
+                      <FaPlay className="me-1" /> Play
+                    </Button>
+                  </Card.Body>
+                </Card>
+              </Col>
+            ))
+          ) : (
+            <Col className="text-center">
+              <p>No playlists available.</p>
             </Col>
-          ))}
+          )}
         </Row>
       </section>
 
       <section className="mb-5">
         <h3 className="mb-4">Recently Played by {user.name}</h3>
-        <Card>
-          <Card.Body>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Title</th>
-                  <th>Duration</th>
-                  <th>Plays</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentTracks.map((track, index) => (
-                  <tr key={track.id}>
-                    <td>{index + 1}</td>
-                    <td>{track.title}</td>
-                    <td>{track.duration}</td>
-                    <td>{track.plays.toLocaleString()}</td>
-                    <td>
-                      <Button variant="link" className="p-0">
-                        <FaEllipsisH />
-                      </Button>
-                    </td>
+        {recentTracks.length ? (
+          <Card>
+            <Card.Body>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Title</th>
+                    <th>Duration</th>
+                    <th>Plays</th>
+                    <th></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card.Body>
-        </Card>
+                </thead>
+                <tbody>
+                  {recentTracks.map((track, index) => (
+                    <tr key={track.id}>
+                      <td>{index + 1}</td>
+                      <td>{track.title}</td>
+                      <td>{track.duration}</td>
+                      <td>{track.plays.toLocaleString()}</td>
+                      <td>
+                        <Button variant="link" className="p-0">
+                          <FaEllipsisH />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card.Body>
+          </Card>
+        ) : (
+          <p>No recent tracks available.</p>
+        )}
       </section>
     </Container>
   );
