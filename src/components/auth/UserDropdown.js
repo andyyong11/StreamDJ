@@ -42,9 +42,29 @@ const UserDropdown = ({ user }) => {
       <Link to={`/profile/${user.id}`} className="nav-link">
         <FaUser /> Profile
       </Link>
-      <Link to="/library" className="nav-link">
-        <FaMusic /> My Library
+      
+      <div className="nav-section-header">My Content</div>
+      <Link to="/my-tracks" className="nav-link">
+        My Tracks
       </Link>
+      <Link to="/albums" className="nav-link">
+        My Albums
+      </Link>
+      <Link to="/my-playlists" className="nav-link">
+        My Playlists
+      </Link>
+      
+      <div className="nav-section-header">Liked Content</div>
+      <Link to="/liked-tracks" className="nav-link">
+        Liked Tracks
+      </Link>
+      <Link to="/liked-albums" className="nav-link">
+        Liked Albums
+      </Link>
+      <Link to="/liked-playlists" className="nav-link">
+        Liked Playlists
+      </Link>
+      
       <Link to="/dj-console" className="nav-link">
         <FaVideo /> DJ Console
       </Link>
@@ -73,9 +93,32 @@ const UserDropdown = ({ user }) => {
         <Link to={`/profile/${user.id}`} className="dropdown-item">
           <FaUser /> Profile
         </Link>
-        <Link to="/library" className="dropdown-item">
-          <FaMusic /> My Library
+        
+        <div className="dropdown-divider"></div>
+        <h6 className="dropdown-header">My Content</h6>
+        <Link to="/my-tracks" className="dropdown-item">
+          My Tracks
         </Link>
+        <Link to="/albums" className="dropdown-item">
+          My Albums
+        </Link>
+        <Link to="/my-playlists" className="dropdown-item">
+          My Playlists
+        </Link>
+        
+        <div className="dropdown-divider"></div>
+        <h6 className="dropdown-header">Liked Content</h6>
+        <Link to="/liked-tracks" className="dropdown-item">
+          Liked Tracks
+        </Link>
+        <Link to="/liked-albums" className="dropdown-item">
+          Liked Albums
+        </Link>
+        <Link to="/liked-playlists" className="dropdown-item">
+          Liked Playlists
+        </Link>
+        
+        <div className="dropdown-divider"></div>
         <Link to="/dj-console" className="dropdown-item">
           <FaVideo /> DJ Console
         </Link>

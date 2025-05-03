@@ -3,7 +3,7 @@ import { Modal, Button, Form, Alert } from 'react-bootstrap';
 import { useAuth } from '../../context/AuthContext';
 
 const RegisterModal = ({ show, handleClose }) => {
-  const { login } = useAuth();
+  const { registerWithRetry } = useAuth();
   const [formData, setFormData] = useState({
     username: '', email: '', password: '', confirmPassword: ''
   });
@@ -79,27 +79,31 @@ const RegisterModal = ({ show, handleClose }) => {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:5001/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          username: formData.username,
-          email: formData.email,
-          password: formData.password
-        })
-      });
+      await registerWithRetry(
+        formData.username,
+        formData.email,
+        formData.password
+      );
 
-      const data = await response.json();
-      if (!response.ok) {
-        if (data.error.includes('Username')) setErrors(prev => ({ ...prev, username: [data.error] }));
-        else if (data.error.includes('Email')) setErrors(prev => ({ ...prev, email: [data.error] }));
-        throw new Error(data.error || 'Registration failed');
-      }
-
-      await login(data.user, data.token);
       handleClose();
+      
+      // Force refresh the page to update UI with the logged-in state
+      window.location.reload();
     } catch (err) {
-      setError(err.message);
+      console.error('Registration error:', err);
+      
+      // Handle specific error types
+      if (err.message.includes('Username')) {
+        setErrors(prev => ({ ...prev, username: [err.message] }));
+      } else if (err.message.includes('Email')) {
+        setErrors(prev => ({ ...prev, email: [err.message] }));
+      }
+      
+      if (err.message.includes('Network Error')) {
+        setError('Unable to connect to the server. Please check your internet connection and try again.');
+      } else {
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
     }

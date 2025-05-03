@@ -1,15 +1,20 @@
-import React from 'react';
-import { useParams } from 'react-router-dom';
-import { Container, Row, Col, Card, Button, Badge } from 'react-bootstrap';
-import { FaHeart, FaMusic, FaUserFriends, FaPlay, FaEllipsisH } from 'react-icons/fa';
+import React, { useState } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { Container, Row, Col, Card, Button, Badge, Nav, Tab } from 'react-bootstrap';
+import { FaHeart, FaMusic, FaUserFriends, FaPlay, FaEllipsisH, FaCompactDisc, FaList } from 'react-icons/fa';
+import { useAuth } from '../context/AuthContext';
 
 const ProfilePage = () => {
   // Get the profile ID from the URL
   const { id } = useParams();
+  const { user: currentUser } = useAuth();
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('overview');
 
   // Mock user data based on ID
   const users = {
     1: {
+      id: 1,
       name: 'DJ Sparkle',
       followers: '1.2M',
       following: 345,
@@ -18,6 +23,7 @@ const ProfilePage = () => {
       bio: 'Bringing the best beats to your ears. Live DJ, music producer, and sound enthusiast.'
     },
     2: {
+      id: 2,
       name: 'BeatMaster',
       followers: '980K',
       following: 210,
@@ -26,6 +32,7 @@ const ProfilePage = () => {
       bio: 'Hip Hop is life. Bringing the best rap beats and remixes to the stage.'
     },
     3: {
+      id: 3,
       name: 'ElectroQueen',
       followers: '1.5M',
       following: 500,
@@ -37,6 +44,9 @@ const ProfilePage = () => {
 
   // Get user data; if ID is not found, default to user 1
   const user = users[id] || users[1];
+  
+  // Check if this is the current user's profile
+  const isOwnProfile = currentUser && currentUser.id === parseInt(id);
 
   // Mock playlists
   const playlists = [
@@ -51,6 +61,90 @@ const ProfilePage = () => {
     { id: 2, title: 'Midnight City', duration: '4:12', plays: 980000 },
     { id: 3, title: 'Chill Wave', duration: '5:30', plays: 750000 },
   ];
+
+  const handleTabChange = (tab) => {
+    if (tab.startsWith('creator-') || tab.startsWith('library-')) {
+      if (tab === 'creator-dashboard') {
+        navigate('/creator-dashboard');
+      } else if (tab === 'creator-tracks') {
+        navigate('/creator-dashboard/my-tracks');
+      } else if (tab === 'creator-albums') {
+        navigate('/creator-dashboard/my-albums');
+      } else if (tab === 'creator-playlists') {
+        navigate('/creator-dashboard/my-playlists');
+      } else if (tab === 'library-tracks') {
+        navigate('/liked-tracks');
+      } else if (tab === 'library-albums') {
+        navigate('/liked-albums');
+      } else if (tab === 'library-playlists') {
+        navigate('/liked-playlists');
+      }
+    } else {
+      setActiveTab(tab);
+    }
+  };
+
+  const renderOverviewContent = () => {
+    return (
+      <>
+        {/* My Playlists */}
+        <section className="mb-5">
+          <h3 className="mb-4">{user.name}'s Playlists</h3>
+          <Row>
+            {playlists.map(playlist => (
+              <Col md={4} key={playlist.id} className="mb-4">
+                <Card className="shadow-sm">
+                  <Card.Img variant="top" src={playlist.image} />
+                  <Card.Body>
+                    <Card.Title>{playlist.title}</Card.Title>
+                    <Card.Text>{playlist.tracks} tracks</Card.Text>
+                    <Button variant="success" size="sm">
+                      <FaPlay className="me-1" /> Play
+                    </Button>
+                  </Card.Body>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        </section>
+
+        {/* Recently Played Tracks */}
+        <section className="mb-5">
+          <h3 className="mb-4">Recently Played by {user.name}</h3>
+          <Card>
+            <Card.Body>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Title</th>
+                    <th>Duration</th>
+                    <th>Plays</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentTracks.map((track, index) => (
+                    <tr key={track.id}>
+                      <td>{index + 1}</td>
+                      <td>{track.title}</td>
+                      <td>{track.duration}</td>
+                      <td>{track.plays.toLocaleString()}</td>
+                      <td>
+                        <Button variant="link" className="p-0">
+                          <FaEllipsisH />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card.Body>
+          </Card>
+        </section>
+      </>
+    );
+  };
 
   return (
     <Container>
@@ -78,9 +172,11 @@ const ProfilePage = () => {
               </Badge>
             </Col>
             <Col md={3} className="text-end">
-              <Button variant="danger" className="me-2">
-                <FaHeart /> Follow
-              </Button>
+              {!isOwnProfile && (
+                <Button variant="danger" className="me-2">
+                  <FaHeart /> Follow
+                </Button>
+              )}
               <Button variant="light">
                 <FaEllipsisH />
               </Button>
@@ -89,61 +185,61 @@ const ProfilePage = () => {
         </Card.ImgOverlay>
       </Card>
 
-      {/* My Playlists */}
-      <section className="mb-5">
-        <h3 className="mb-4">{user.name}'s Playlists</h3>
-        <Row>
-          {playlists.map(playlist => (
-            <Col md={4} key={playlist.id} className="mb-4">
-              <Card className="shadow-sm">
-                <Card.Img variant="top" src={playlist.image} />
-                <Card.Body>
-                  <Card.Title>{playlist.title}</Card.Title>
-                  <Card.Text>{playlist.tracks} tracks</Card.Text>
-                  <Button variant="success" size="sm">
-                    <FaPlay className="me-1" /> Play
-                  </Button>
-                </Card.Body>
-              </Card>
-            </Col>
-          ))}
-        </Row>
-      </section>
-
-      {/* Recently Played Tracks */}
-      <section className="mb-5">
-        <h3 className="mb-4">Recently Played by {user.name}</h3>
-        <Card>
-          <Card.Body>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Title</th>
-                  <th>Duration</th>
-                  <th>Plays</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentTracks.map((track, index) => (
-                  <tr key={track.id}>
-                    <td>{index + 1}</td>
-                    <td>{track.title}</td>
-                    <td>{track.duration}</td>
-                    <td>{track.plays.toLocaleString()}</td>
-                    <td>
-                      <Button variant="link" className="p-0">
-                        <FaEllipsisH />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card.Body>
-        </Card>
-      </section>
+      {/* Navigation Tabs */}
+      <Tab.Container id="profile-tabs" activeKey={activeTab} onSelect={handleTabChange}>
+        <Nav variant="tabs" className="mb-4">
+          <Nav.Item>
+            <Nav.Link eventKey="overview">Overview</Nav.Link>
+          </Nav.Item>
+          
+          {isOwnProfile && (
+            <>
+              {/* Creator Dashboard */}
+              <Nav.Item>
+                <Nav.Link eventKey="creator-dashboard">Creator Dashboard</Nav.Link>
+              </Nav.Item>
+              <Nav.Item>
+                <Nav.Link eventKey="creator-tracks">
+                  <FaMusic className="me-1" /> My Tracks
+                </Nav.Link>
+              </Nav.Item>
+              <Nav.Item>
+                <Nav.Link eventKey="creator-albums">
+                  <FaCompactDisc className="me-1" /> My Albums
+                </Nav.Link>
+              </Nav.Item>
+              <Nav.Item>
+                <Nav.Link eventKey="creator-playlists">
+                  <FaList className="me-1" /> My Playlists
+                </Nav.Link>
+              </Nav.Item>
+              
+              {/* Library */}
+              <Nav.Item>
+                <Nav.Link eventKey="library-tracks">
+                  <FaMusic className="me-1" /> Liked Tracks
+                </Nav.Link>
+              </Nav.Item>
+              <Nav.Item>
+                <Nav.Link eventKey="library-albums">
+                  <FaCompactDisc className="me-1" /> Liked Albums
+                </Nav.Link>
+              </Nav.Item>
+              <Nav.Item>
+                <Nav.Link eventKey="library-playlists">
+                  <FaList className="me-1" /> Liked Playlists
+                </Nav.Link>
+              </Nav.Item>
+            </>
+          )}
+        </Nav>
+        
+        <Tab.Content>
+          <Tab.Pane eventKey="overview">
+            {renderOverviewContent()}
+          </Tab.Pane>
+        </Tab.Content>
+      </Tab.Container>
     </Container>
   );
 };
