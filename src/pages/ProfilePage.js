@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Row, Col, Card, Button, Badge, Nav, Tab } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, Badge, Nav, Tab, Dropdown, DropdownButton, Modal, Form } from 'react-bootstrap';
 import { FaHeart, FaMusic, FaUserFriends, FaEllipsisH, FaCompactDisc, FaList, FaLink } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 
@@ -10,6 +10,9 @@ const ProfilePage = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
   const [profileData, setProfileData] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [fileType, setFileType] = useState('');
+  const [file, setFile] = useState(null);
 
   useEffect(() => {
     const fetchProfileData = async () => {
@@ -94,11 +97,47 @@ const ProfilePage = () => {
     );
   };
 
+  const handleFileUpload = async () => {
+    if (file && fileType) {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const response = await fetch(`http://localhost:5001/api/users/${id}/upload-${fileType}`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          setProfileData((prevData) => ({
+            ...prevData,
+            [fileType === 'avatar' ? 'ProfilePicture' : 'Banner']: data[fileType === 'avatar' ? 'ProfilePicture' : 'Banner'],
+          }));
+          setShowModal(false);
+        } else {
+          console.error('Failed to upload file:', data.message || data.error);
+        }
+      } catch (error) {
+        console.error('Error uploading file:', error);
+      }
+    }
+  };
+
+  const handleDropdownClick = (type) => {
+    setFileType(type);
+    setShowModal(true);
+  };
+
   if (!profileData) return <p>Loading...</p>;
 
   // Default placeholder values for avatar and banner
-  const defaultAvatar = 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
-  const defaultBanner = 'https://crlsolutions.com/wp-content/uploads/2018/01/temp-banner.png';
+  const defaultAvatar = 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y'; // Gravatar placeholder
+  const defaultBanner = 'https://crlsolutions.com/wp-content/uploads/2018/01/temp-banner.png'; // Placeholder banner image
 
   return (
     <Container>
@@ -131,12 +170,29 @@ const ProfilePage = () => {
               </Badge>
             </Col>
             <Col md={3} className="text-end">
-              <Button variant="danger" className="me-2">
-                <FaHeart /> Follow
-              </Button>
-              <Button variant="light">
-                <FaEllipsisH />
-              </Button>
+              <div className="d-flex justify-content-end align-items-center gap-2">
+                <Button variant="danger">
+                  <FaHeart /> Follow
+                </Button>
+                <Dropdown align="end">
+                  <Dropdown.Toggle
+                    variant="light"
+                    className="no-caret"
+                    id="dropdown-custom-toggle"
+                  >
+                    <FaEllipsisH />
+                  </Dropdown.Toggle>
+
+                  <Dropdown.Menu>
+                    <Dropdown.Item onClick={() => handleDropdownClick('avatar')}>
+                      Edit Avatar
+                    </Dropdown.Item>
+                    <Dropdown.Item onClick={() => handleDropdownClick('banner')}>
+                      Edit Banner
+                    </Dropdown.Item>
+                  </Dropdown.Menu>
+                </Dropdown>
+              </div>
             </Col>
           </Row>
         </Card.ImgOverlay>
@@ -216,6 +272,30 @@ const ProfilePage = () => {
           </Tab.Pane>
         </Tab.Content>
       </Tab.Container>
+
+      {/* Modal for File Upload */}
+      <Modal show={showModal} onHide={() => setShowModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Upload {fileType === 'avatar' ? 'Avatar' : 'Banner'}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form.Group controlId="fileUpload">
+            <Form.Label>Select {fileType === 'avatar' ? 'Avatar' : 'Banner'}</Form.Label>
+            <Form.Control
+              type="file"
+              onChange={(e) => setFile(e.target.files[0])}
+            />
+          </Form.Group>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowModal(false)}>
+            Close
+          </Button>
+          <Button variant="primary" onClick={handleFileUpload}>
+            Upload
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </Container>
   );
 };

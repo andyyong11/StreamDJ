@@ -46,6 +46,7 @@ const playlistRoutes = require('./src/routes/playlistRoutes');
 const publicPlaylistRoutes = require('./src/routes/publicPlaylistRoutes');
 const trackRoutes = require('./src/routes/trackRoutes');
 const albumRoutes = require('./src/routes/albumRoutes');
+const uploadRoutes = require('./src/routes/uploadRoutes'); 
 
 const trendingRoutes = require('./src/routes/trendingRoutes');
 const recommendRoutes = require('./src/routes/recommendRoutes');
@@ -97,6 +98,9 @@ app.use('/api/users', standardLimiter);
 app.use('/api/albums', standardLimiter);
 app.use('/api/playlists', standardLimiter);
 app.use('/api/streams', standardLimiter);
+
+app.use('/api', uploadRoutes);
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Middleware
 app.use(bodyParser.json());

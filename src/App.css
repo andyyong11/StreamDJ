@@ -154,3 +154,8 @@
 .chat-messages::-webkit-scrollbar-thumb:hover {
   background: var(--accent-color);
 }
+
+.no-caret::after {
+  display: none !important;
+}
+

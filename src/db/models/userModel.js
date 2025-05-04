@@ -65,6 +65,30 @@ const userModel = {
         }
     },
 
+    // Update user avatar
+    async updateAvatar(id, avatarUrl) {
+        try {
+          return await db.one(
+            'UPDATE "User" SET "ProfilePicture" = $1 WHERE "UserID" = $2 RETURNING *',
+            [avatarUrl, id]  // Save the URL, not the binary data
+          );
+        } catch (error) {
+          throw new Error(`Error updating avatar: ${error.message}`);
+        }
+    },
+
+    // Update user banner
+    async updateBanner(id, bannerUrl) {
+        try {
+        return await db.one(
+            'UPDATE "User" SET "Banner" = $1 WHERE "UserID" = $2 RETURNING *',
+            [bannerUrl, id]  // Save the URL, not the binary data
+        );
+        } catch (error) {
+        throw new Error(`Error updating banner: ${error.message}`);
+        }
+    },  
+
     // Delete user
     async delete(id) {
         try {
