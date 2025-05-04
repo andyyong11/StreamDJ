@@ -3,7 +3,7 @@ import { Container, Row, Col, Card, Button, Carousel, Badge } from 'react-bootst
 import { Link } from 'react-router-dom';
 import { FaPlay, FaHeart, FaMusic, FaHeadphones, FaMicrophone, FaEllipsisH } from 'react-icons/fa';
 import Slider from 'react-slick';
-import RecommendedSection from './RecommendedSection'; // ✅ Import here
+import RecommendedSection from '../components/sections/RecommendedSection'; // ✅ Import here
 import { useAuth } from '../context/AuthContext';
 
 const HomePage = ({ onTrackSelect }) => {
@@ -115,7 +115,7 @@ const HomePage = ({ onTrackSelect }) => {
                     src={`http://localhost:5001/${track.CoverArt}`}
                     alt={track.Title}
                     style={{ height: '200px', objectFit: 'cover' }}
-                    onError={(e) => { e.target.onerror = null; e.target.src = '/default-cover.jpg'; }}
+                    onError={(e) => { e.target.onerror = null; e.target.src = 'https://placehold.co/300x300'; }}
                   />
                   <Card.Body>
                     <Card.Title style={{ fontSize: '1rem' }}>{track.Title}</Card.Title>

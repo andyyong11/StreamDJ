@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { playlistModel } = require('../db/models');
+const authenticateToken = require('../middleware/authenticateToken');
 
 // Get all playlists
 router.get('/', async (req, res) => {
@@ -31,7 +32,47 @@ router.get('/users/:userId/playlists', async (req, res) => {
     }
 });
 
-// Get playlist by ID
+// Debug route to find playlist-related tables
+router.get('/debug/find-playlist-likes', async (req, res) => {
+    try {
+        const tables = await req.app.locals.db.any(`
+            SELECT table_name 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public' AND table_name LIKE '%playlist%'
+            ORDER BY table_name;
+        `);
+        
+        res.json(tables);
+    } catch (error) {
+        console.error('Error finding playlist tables:', error);
+        res.status(500).json({ error: 'Failed to find playlist tables' });
+    }
+});
+
+// Get liked playlists for a user - MUST come before /:id route
+router.get('/liked/:userId', async (req, res) => {
+    try {
+        const userId = req.params.userId;
+        
+        // Try a simpler approach to get playlists by this user
+        const query = `
+            SELECT p.*, u."Username" AS CreatorName
+            FROM "Playlist" p
+            JOIN "User" u ON p."UserID" = u."UserID"
+            WHERE p."UserID" = $1
+        `;
+        
+        const userPlaylists = await req.app.locals.db.any(query, [userId]);
+        
+        // For now, return the user's own playlists since we don't have actual likes
+        res.json(userPlaylists);
+    } catch (error) {
+        console.error('Error fetching liked playlists:', error);
+        res.status(500).json({ error: 'Failed to fetch liked playlists' });
+    }
+});
+
+// Get playlist by ID - Must come AFTER specific routes like /liked/:userId
 router.get('/:id', async (req, res) => {
     try {
         const playlist = await playlistModel.getById(req.params.id);

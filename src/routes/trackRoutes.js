@@ -4,6 +4,19 @@ const multer = require('multer');
 const express = require('express');
 const router = express.Router();
 const { trackModel } = require('../db/models');
+const authenticateToken = require('../middleware/authenticateToken');
+
+// Simple test endpoint
+router.get('/test', (req, res) => {
+  console.log("Test endpoint hit!");
+  res.json({ message: "Track routes test endpoint working!" });
+});
+
+// Test endpoint for user tracks specifically
+router.get('/by-user-test/:id', (req, res) => {
+  console.log("User tracks test endpoint hit for user:", req.params.id);
+  res.json({ message: "User tracks test endpoint working!", userId: req.params.id });
+});
 
 // Multer setup for audio and cover uploads
 const storage = multer.diskStorage({
@@ -20,6 +33,8 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+// IMPORTANT: Order routes from most specific to least specific
+// Static-path endpoints first
 
 // 🔍 Unified real-time search (must be above /:id!)
 router.get('/search-all', async (req, res) => {
@@ -86,8 +101,67 @@ router.get('/artist/:artist', async (req, res) => {
   }
 });
 
+// Get tracks by a specific user ID with a unique path
+router.get('/by-user/:id', async (req, res) => {
+  console.log("by-user/:id route hit with ID:", req.params.id);
+  try {
+    const userId = req.params.id;
+    const { limit = 50, offset = 0 } = req.query;
+    
+    // Query tracks by the specified user ID
+    const result = await req.app.locals.db.any(
+      `SELECT t.* 
+       FROM "Track" t
+       WHERE t."UserID" = $1
+       ORDER BY t."CreatedAt" DESC
+       LIMIT $2 OFFSET $3`,
+      [userId, limit, offset]
+    );
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Error fetching user tracks:', error);
+    res.status(500).json({ error: 'Failed to fetch user tracks' });
+  }
+});
+
+// Get tracks belonging to the authenticated user
+router.get('/user', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { limit = 50, offset = 0 } = req.query;
+    
+    // Query tracks by the authenticated user
+    const result = await req.app.locals.db.any(
+      `SELECT t.* 
+       FROM "Track" t
+       WHERE t."UserID" = $1
+       ORDER BY t."CreatedAt" DESC
+       LIMIT $2 OFFSET $3`,
+      [userId, limit, offset]
+    );
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Error fetching user tracks:', error);
+    res.status(500).json({ error: 'Failed to fetch user tracks' });
+  }
+});
+
+// IMPORTANT: Generic parameter routes last
 // Get track by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req, res, next) => {
+  // Make sure ID doesn't match any of our specific endpoints before treating as a track ID
+  if (req.params.id === 'search' || 
+      req.params.id === 'search-all' || 
+      req.params.id === 'test' || 
+      req.params.id === 'by-user' || 
+      req.params.id === 'by-user-test' || 
+      req.params.id === 'artist' || 
+      req.params.id === 'user') {
+    return next();
+  }
+  
   try {
     const track = await trackModel.getById(req.params.id);
     res.json(track);
@@ -108,10 +182,27 @@ router.post('/', async (req, res) => {
 });
 
 // Update track
-router.put('/:id', async (req, res) => {
+router.put('/:id', upload.fields([
+  { name: 'coverArt', maxCount: 1 }
+]), async (req, res) => {
   try {
-    const updates = req.body;
-    const updatedTrack = await trackModel.update(req.params.id, updates);
+    const trackId = req.params.id;
+    const updates = { ...req.body };
+    
+    // Handle file uploads
+    const coverArtFile = req.files?.coverArt?.[0];
+    if (coverArtFile) {
+      // Normalize path with forward slashes
+      const coverFilePath = coverArtFile.path.replace(/\\/g, '/').replace(/^\/+/, '');
+      
+      // Ensure path starts with uploads/ prefix
+      const coverPath = coverFilePath.startsWith('uploads/') ? coverFilePath : `uploads/${coverFilePath}`;
+      
+      // Add to updates
+      updates.CoverArt = coverPath;
+    }
+    
+    const updatedTrack = await trackModel.update(trackId, updates);
     res.json(updatedTrack);
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -143,19 +234,25 @@ router.post('/upload', upload.fields([
   }
 
   try {
-    const filePath = audioFile.path.replace(/\\/g, '/');
-    const coverArtPath = coverArtFile.path.replace(/\\/g, '/'); // store path, not binary
+    // Normalize paths with forward slashes
+    const audioFilePath = audioFile.path.replace(/\\/g, '/').replace(/^\/+/, '');
+    const coverFilePath = coverArtFile.path.replace(/\\/g, '/').replace(/^\/+/, '');
+    
+    // Ensure paths start with uploads/ prefix
+    const audioPath = audioFilePath.startsWith('uploads/') ? audioFilePath : `uploads/${audioFilePath}`;
+    const coverPath = coverFilePath.startsWith('uploads/') ? coverFilePath : `uploads/${coverFilePath}`;
 
-    // console.log('UPLOAD BODY:', req.body);
+    // Use provided duration or default to 0
+    const trackDuration = duration ? parseInt(duration) : 0;
 
     const newTrack = await trackModel.create(
       parseInt(userId),
       title,
       artist,
       genre,
-      parseInt(duration),
-      filePath,
-      coverArtPath
+      trackDuration,
+      audioPath,
+      coverPath
     );    
     
     const trackId = newTrack.TrackID;
@@ -260,23 +357,6 @@ router.get('/:id/like-status', async (req, res) => {
   }
 });
 
-router.post('/:id/like', async (req, res) => {
-  const { userId } = req.body;
-  const { id: trackId } = req.params;
-
-  try {
-    await req.app.locals.db.none(`
-      INSERT INTO "TrackLikes" ("UserID", "TrackID") VALUES ($1, $2)
-      ON CONFLICT DO NOTHING
-    `, [userId, trackId]);
-
-    res.sendStatus(200);
-  } catch (err) {
-    console.error('Error liking track:', err);
-    res.status(500).json({ error: 'Failed to like track' });
-  }
-});
-
 router.post('/:id/unlike', async (req, res) => {
   const { userId } = req.body;
   const { id: trackId } = req.params;
@@ -290,6 +370,61 @@ router.post('/:id/unlike', async (req, res) => {
   } catch (err) {
     console.error('Error unliking track:', err);
     res.status(500).json({ error: 'Failed to unlike track' });
+  }
+});
+
+// Get all liked tracks for a user
+router.get('/liked/:userId', async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    
+    const likedTracks = await req.app.locals.db.any(`
+      SELECT t.*, u."Username" AS Artist 
+      FROM "Track" t
+      JOIN "TrackLikes" tl ON t."TrackID" = tl."TrackID"
+      JOIN "User" u ON t."UserID" = u."UserID"
+      WHERE tl."UserID" = $1
+    `, [userId]);
+    
+    res.json(likedTracks);
+  } catch (error) {
+    console.error('Error fetching liked tracks:', error);
+    res.status(500).json({ error: 'Failed to fetch liked tracks' });
+  }
+});
+
+// Test route to list all tables in the database
+router.get('/debug/tables', async (req, res) => {
+  try {
+    const tables = await req.app.locals.db.any(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public'
+      ORDER BY table_name;
+    `);
+    
+    res.json(tables);
+  } catch (error) {
+    console.error('Error listing tables:', error);
+    res.status(500).json({ error: 'Failed to list tables' });
+  }
+});
+
+// Test route to check columns in specific tables
+router.get('/debug/columns/:table', async (req, res) => {
+  try {
+    const tableName = req.params.table;
+    const columns = await req.app.locals.db.any(`
+      SELECT column_name, data_type, is_nullable
+      FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = $1
+      ORDER BY ordinal_position;
+    `, [tableName]);
+    
+    res.json(columns);
+  } catch (error) {
+    console.error('Error listing columns:', error);
+    res.status(500).json({ error: 'Failed to list columns' });
   }
 });
 

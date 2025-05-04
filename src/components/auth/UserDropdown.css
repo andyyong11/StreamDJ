@@ -1,0 +1,10 @@
+/* Add styling for section headers in mobile menu */
+.nav-section-header {
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: #6c757d;
+  padding: 0.5rem 1rem;
+  margin-top: 0.5rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  text-transform: uppercase;
+} 

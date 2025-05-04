@@ -1,18 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Navbar, Nav, Container, Form, Button, InputGroup, Dropdown } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaSearch, FaBell, FaUser, FaUpload, FaSignOutAlt } from 'react-icons/fa';
+import { FaSearch, FaBell, FaUser, FaUpload, FaSignOutAlt, FaMusic, FaCompactDisc, FaList, FaHeadphones, FaPlusCircle } from 'react-icons/fa';
 import logo from '../../logo.svg';
 import { useAuth } from '../../context/AuthContext';
-import LoginModal from '../auth/LoginModal';
-import RegisterModal from '../auth/RegisterModal';
 
-const NavigationBar = ({ onTrackSelect }) => {
+const NavigationBar = ({ onTrackSelect, openLoginModal, openRegisterModal }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [showLogin, setShowLogin] = useState(false);
-  const [showRegister, setShowRegister] = useState(false);
-
   const [query, setQuery] = useState('');
   const [results, setResults] = useState({
     tracks: [],
@@ -54,7 +49,6 @@ const NavigationBar = ({ onTrackSelect }) => {
   };
 
   return (
-    <>
     <Navbar bg="dark" variant="dark" expand="lg" className="mb-4 position-relative">
       <Container>
         <Navbar.Brand as={Link} to="/">
@@ -68,7 +62,7 @@ const NavigationBar = ({ onTrackSelect }) => {
             <Nav.Link as={Link} to="/discover">Discover</Nav.Link>
             {user && (
               <>
-                <Nav.Link as={Link} to="/library">Library</Nav.Link>
+                <Nav.Link as={Link} to="/library"><FaHeadphones className="me-1" /> Library</Nav.Link>
                 <Nav.Link as={Link} to="/upload"><FaUpload className="me-1" /> Upload</Nav.Link>
                 <Nav.Link as={Link} to="/mixer">Mixer</Nav.Link>
               </>
@@ -152,10 +146,36 @@ const NavigationBar = ({ onTrackSelect }) => {
                     <FaUser size={20} className="me-2" />
                     {user.username}
                   </Dropdown.Toggle>
-                  <Dropdown.Menu>
+                  <Dropdown.Menu style={{ width: '220px' }}>
                     <Dropdown.Item as={Link} to={`/profile/${user.id}`}>
                       <FaUser className="me-2" /> Profile
                     </Dropdown.Item>
+                    
+                    <Dropdown.Divider />
+                    
+                    {/* Creator Dashboard Section */}
+                    <Dropdown.Item as={Link} to="/creator-dashboard" className="fw-bold text-primary">
+                      <FaPlusCircle className="me-2" /> Creator Dashboard
+                    </Dropdown.Item>
+                    
+                    <Dropdown.Divider />
+                    
+                    {/* Library Section */}
+                    <Dropdown.Item as={Link} to="/library" className="fw-bold text-primary">
+                      <FaHeadphones className="me-2" /> My Library
+                    </Dropdown.Item>
+                    <div className="ps-4 pe-2">
+                      <Dropdown.Item as={Link} to="/liked-tracks" className="mb-1 py-1">
+                        <FaMusic className="me-2" /> Liked Tracks
+                      </Dropdown.Item>
+                      <Dropdown.Item as={Link} to="/liked-albums" className="mb-1 py-1">
+                        <FaCompactDisc className="me-2" /> Liked Albums
+                      </Dropdown.Item>
+                      <Dropdown.Item as={Link} to="/liked-playlists" className="mb-1 py-1">
+                        <FaList className="me-2" /> Liked Playlists
+                      </Dropdown.Item>
+                    </div>
+                    
                     <Dropdown.Divider />
                     <Dropdown.Item onClick={handleLogout}>
                       <FaSignOutAlt className="me-2" /> Logout
@@ -165,10 +185,10 @@ const NavigationBar = ({ onTrackSelect }) => {
                 </>
             ) : (
               <div className="d-flex gap-2">
-                <Button variant="outline-light" size="sm" onClick={() => setShowLogin(true)}>
+                <Button variant="outline-light" size="sm" onClick={openLoginModal}>
                   Sign In
                 </Button>
-                <Button variant="outline-light" size="sm" onClick={() => setShowRegister(true)}>
+                <Button variant="outline-light" size="sm" onClick={openRegisterModal}>
                   Sign Up
                 </Button>
               </div>
@@ -177,11 +197,6 @@ const NavigationBar = ({ onTrackSelect }) => {
         </Navbar.Collapse>
       </Container>
     </Navbar>
-
-    {/* Auth Models */}
-    <LoginModal show={showLogin} handleClose={() => setShowLogin(false)} />
-    <RegisterModal show={showRegister} handleClose={() => setShowRegister(false)} />
-    </>
   );
 };
 
