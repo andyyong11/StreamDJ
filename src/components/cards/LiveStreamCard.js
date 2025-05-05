@@ -1,6 +1,8 @@
 import React from 'react';
 import { Card, Button, Badge } from 'react-bootstrap';
 import { FaHeadphones, FaPlay } from 'react-icons/fa';
+import { Link } from 'react-router-dom';
+import '../../styles/PlayButton.css';
 
 const LiveStreamCard = ({ stream, onJoinClick }) => {
   const handleCardClick = () => {
@@ -43,10 +45,8 @@ const LiveStreamCard = ({ stream, onJoinClick }) => {
           <FaHeadphones className="me-1" /> {stream.ListenerCount}
         </Badge>
         <Button 
-          variant="primary" 
-          size="sm" 
-          className="position-absolute bottom-0 end-0 m-2 rounded-circle"
-          style={{ width: '35px', height: '35px', padding: '6px 0' }}
+          variant="success"
+          className="play-button"
           onClick={handleJoinClick}
         >
           <FaPlay />

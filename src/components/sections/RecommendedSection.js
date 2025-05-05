@@ -4,6 +4,7 @@ import TrackCard from '../cards/TrackCard';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import Slider from 'react-slick';
 import api from '../../services/api';
+import '../../styles/PlayButton.css';
 
 // Custom arrows for the slider
 const SlickArrowLeft = ({ currentSlide, slideCount, ...props }) => (

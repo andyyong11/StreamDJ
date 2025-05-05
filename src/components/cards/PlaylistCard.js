@@ -1,19 +1,29 @@
 import React from 'react';
 import { Card, Button } from 'react-bootstrap';
-import { FaPlay, FaMusic } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
+import { FaPlay, FaList } from 'react-icons/fa';
+import '../../styles/PlayButton.css';
 
 const PlaylistCard = ({ playlist, onPlayClick }) => {
+  const navigate = useNavigate();
+
   const handleCardClick = () => {
-    if (onPlayClick) {
-      onPlayClick(playlist);
-    }
+    navigate(`/playlists/${playlist.PlaylistID || playlist.id}`);
   };
 
   const handlePlayClick = (e) => {
     e.stopPropagation(); // Prevent card click event
     if (onPlayClick) {
       onPlayClick(playlist);
+    } else {
+      navigate(`/playlists/${playlist.PlaylistID || playlist.id}`);
     }
+  };
+
+  // Format track count
+  const formatTrackCount = (count) => {
+    if (!count && count !== 0) return '0';
+    return count.toString();
   };
 
   return (
@@ -25,13 +35,8 @@ const PlaylistCard = ({ playlist, onPlayClick }) => {
       <div className="position-relative">
         <Card.Img 
           variant="top" 
-          src={playlist.image || playlist.CoverURL ? 
-            playlist.CoverURL && !playlist.CoverURL.startsWith('http') ? 
-              `http://localhost:5001/${playlist.CoverURL.replace(/^\/+/, '')}` : 
-              playlist.image || playlist.CoverURL
-            : 'https://placehold.co/300x300?text=Playlist'
-          } 
-          alt={playlist.title || playlist.Title}
+          src={playlist.CoverURL || 'https://placehold.co/300x300?text=Playlist'} 
+          alt={playlist.Title}
           style={{ height: '180px', objectFit: 'cover' }}
           onError={(e) => {
             e.target.onerror = null;
@@ -39,25 +44,21 @@ const PlaylistCard = ({ playlist, onPlayClick }) => {
           }}
         />
         <Button 
-          variant="success" 
-          size="sm" 
-          className="position-absolute bottom-0 end-0 m-2 rounded-circle"
-          style={{ width: '35px', height: '35px', padding: '6px 0' }}
+          variant="success"
+          className="play-button"
           onClick={handlePlayClick}
         >
           <FaPlay />
         </Button>
-        {(playlist.tracks || playlist.TrackCount) > 0 && (
-          <span className="position-absolute bottom-0 start-0 m-2 badge bg-dark text-white">
-            <FaMusic className="me-1" />
-            {playlist.tracks || playlist.TrackCount}
-          </span>
-        )}
+        <span className="position-absolute bottom-0 start-0 m-2 badge bg-dark text-white d-flex align-items-center">
+          <FaList className="me-1" />
+          {formatTrackCount(playlist.TrackCount)} tracks
+        </span>
       </div>
       <Card.Body>
-        <Card.Title className="text-truncate">{playlist.title || playlist.Title}</Card.Title>
+        <Card.Title className="text-truncate">{playlist.Title}</Card.Title>
         <Card.Text className="text-muted small">
-          By {playlist.creator || playlist.Username}
+          By {playlist.CreatedBy || 'Unknown Creator'}
         </Card.Text>
       </Card.Body>
     </Card>

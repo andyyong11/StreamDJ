@@ -11,6 +11,7 @@ import LiveStreamCard from '../components/cards/LiveStreamCard';
 import TrackCard from '../components/cards/TrackCard';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+import '../styles/PlayButton.css';
 
 const HomePage = ({ playTrack }) => {
   const { user } = useAuth();
@@ -375,9 +376,8 @@ const HomePage = ({ playTrack }) => {
                         <td>{new Intl.NumberFormat('en-US').format(track.PlayCount)}</td>
                         <td>
                           <Button 
-                            variant="link" 
-                            size="sm" 
-                            className="text-success"
+                            variant="success" 
+                            className="play-button-inline"
                             onClick={() => handlePlayTrack(track)}
                           >
                             <FaPlay />

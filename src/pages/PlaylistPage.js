@@ -3,6 +3,10 @@ import { Container, Row, Col, Card, Button, Table, Spinner } from 'react-bootstr
 import { useParams, Link } from 'react-router-dom';
 import { FaPlay, FaHeart, FaEllipsisH } from 'react-icons/fa';
 import api from '../services/api';
+import TrackActionMenu from '../components/modals/TrackActionMenu';
+import AddToPlaylistModal from '../components/modals/AddToPlaylistModal';
+import DeleteTrackModal from '../components/modals/DeleteTrackModal';
+import '../styles/PlayButton.css';
 
 const PlaylistPage = ({ playTrack }) => {
   const { id } = useParams();
@@ -10,6 +14,9 @@ const PlaylistPage = ({ playTrack }) => {
   const [tracks, setTracks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedTrack, setSelectedTrack] = useState(null);
+  const [showAddToPlaylistModal, setShowAddToPlaylistModal] = useState(false);
+  const [showDeleteTrackModal, setShowDeleteTrackModal] = useState(false);
 
   useEffect(() => {
     const fetchPlaylistData = async () => {
@@ -79,6 +86,23 @@ const PlaylistPage = ({ playTrack }) => {
     if (tracks.length > 0 && playTrack) {
       playTrack(tracks[0], tracks);
     }
+  };
+
+  // Add handlers for track actions
+  const handleAddToPlaylist = (track) => {
+    setSelectedTrack(track);
+    setShowAddToPlaylistModal(true);
+  };
+
+  const handleDeleteTrack = (track) => {
+    setSelectedTrack(track);
+    setShowDeleteTrackModal(true);
+  };
+
+  const handleTrackDeleted = (trackId) => {
+    // Filter out the deleted track from the tracks list
+    setTracks(prev => prev.filter(track => track.TrackID !== trackId));
+    setShowDeleteTrackModal(false);
   };
 
   if (loading) {
@@ -178,15 +202,19 @@ const PlaylistPage = ({ playTrack }) => {
                   <td>{track.PlayCount?.toLocaleString() || '0'}</td>
                   <td className="text-end">
                     <Button 
-                      variant="link" 
-                      className="text-success p-0 me-2"
+                      variant="success" 
+                      className="play-button-table me-2"
                       onClick={() => handlePlayTrack(track)}
                     >
                       <FaPlay />
                     </Button>
-                    <Button variant="link" className="text-secondary p-0">
+                    <TrackActionMenu 
+                      track={track}
+                      onAddToPlaylist={handleAddToPlaylist}
+                      onDeleteTrack={handleDeleteTrack}
+                    >
                       <FaEllipsisH />
-                    </Button>
+                    </TrackActionMenu>
                   </td>
                 </tr>
               ))}
@@ -194,6 +222,20 @@ const PlaylistPage = ({ playTrack }) => {
           </Table>
         </Col>
       </Row>
+      
+      {/* Add modals */}
+      <AddToPlaylistModal
+        show={showAddToPlaylistModal}
+        handleClose={() => setShowAddToPlaylistModal(false)}
+        track={selectedTrack}
+      />
+      
+      <DeleteTrackModal
+        show={showDeleteTrackModal}
+        handleClose={() => setShowDeleteTrackModal(false)}
+        track={selectedTrack}
+        onDelete={handleTrackDeleted}
+      />
     </Container>
   );
 };

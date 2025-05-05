@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Container, Spinner } from 'react-bootstrap';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
-import AlbumCard from '../cards/AlbumCard';
+import { useNavigate } from 'react-router-dom';
 import Slider from 'react-slick';
+import AlbumCard from '../cards/AlbumCard';
 import api from '../../services/api';
+import '../../styles/PlayButton.css';
 
 // Custom arrows for the slider
 const SlickArrowLeft = ({ currentSlide, slideCount, ...props }) => (

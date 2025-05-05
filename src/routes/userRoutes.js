@@ -11,9 +11,9 @@ const storage = multer.diskStorage({
     destination: (req, file, cb) => {
         let uploadPath = '';
         if (file.fieldname === 'profileImage') {
-            uploadPath = 'uploads/profiles';
+            uploadPath = path.join(__dirname, '../../uploads/profiles');
         } else if (file.fieldname === 'bannerImage') {
-            uploadPath = 'uploads/banners';
+            uploadPath = path.join(__dirname, '../../uploads/banners');
         }
         
         // Create directory if it doesn't exist
@@ -24,9 +24,10 @@ const storage = multer.diskStorage({
         cb(null, uploadPath);
     },
     filename: (req, file, cb) => {
-        // Generate unique filename with timestamp
+        // Generate unique filename with timestamp and sanitize original name
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + path.extname(file.originalname));
+        const sanitizedExt = path.extname(file.originalname).toLowerCase().replace(/[^a-z0-9.]/g, '');
+        cb(null, uniqueSuffix + sanitizedExt);
     }
 });
 
@@ -93,12 +94,16 @@ router.put('/:id', auth, upload.fields([
         // Handle profile image upload
         if (req.files && req.files.profileImage) {
             const profileImage = req.files.profileImage[0];
-            updateData.ProfileImage = profileImage.path;
+            // Store only the relative path from the uploads directory, ensure consistent format
+            const relativePath = `/uploads/profiles/${encodeURIComponent(path.basename(profileImage.path))}`;
+            updateData.ProfileImage = relativePath;
             
             // Delete old image if it exists and is not a URL
-            if (existingUser.ProfileImage && !existingUser.ProfileImage.startsWith('http')) {
+            if (existingUser.ProfileImage && 
+                !existingUser.ProfileImage.startsWith('http') && 
+                fs.existsSync(path.join(__dirname, '../../', existingUser.ProfileImage.replace(/^\//, '')))) {
                 try {
-                    fs.unlinkSync(existingUser.ProfileImage);
+                    fs.unlinkSync(path.join(__dirname, '../../', existingUser.ProfileImage.replace(/^\//, '')));
                 } catch (err) {
                     console.error('Error deleting old profile image:', err);
                 }
@@ -108,12 +113,16 @@ router.put('/:id', auth, upload.fields([
         // Handle banner image upload
         if (req.files && req.files.bannerImage) {
             const bannerImage = req.files.bannerImage[0];
-            updateData.BannerImage = bannerImage.path;
+            // Store only the relative path from the uploads directory, ensure consistent format
+            const relativePath = `/uploads/banners/${encodeURIComponent(path.basename(bannerImage.path))}`;
+            updateData.BannerImage = relativePath;
             
             // Delete old image if it exists and is not a URL
-            if (existingUser.BannerImage && !existingUser.BannerImage.startsWith('http')) {
+            if (existingUser.BannerImage && 
+                !existingUser.BannerImage.startsWith('http') && 
+                fs.existsSync(path.join(__dirname, '../../', existingUser.BannerImage.replace(/^\//, '')))) {
                 try {
-                    fs.unlinkSync(existingUser.BannerImage);
+                    fs.unlinkSync(path.join(__dirname, '../../', existingUser.BannerImage.replace(/^\//, '')));
                 } catch (err) {
                     console.error('Error deleting old banner image:', err);
                 }

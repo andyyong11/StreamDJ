@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, Button } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { FaPlay, FaMusic } from 'react-icons/fa';
+import '../../styles/PlayButton.css';
 
 const AlbumCard = ({ album, onPlayClick }) => {
   const navigate = useNavigate();
@@ -25,6 +26,12 @@ const AlbumCard = ({ album, onPlayClick }) => {
     e.target.src = 'https://placehold.co/300x300?text=Album';
   };
 
+  // Format track count
+  const formatTrackCount = (count) => {
+    if (!count && count !== 0) return '0';
+    return count.toString();
+  };
+
   return (
     <Card 
       className="h-100 shadow-sm"
@@ -44,17 +51,15 @@ const AlbumCard = ({ album, onPlayClick }) => {
         />
         <Button 
           variant="success" 
-          size="sm" 
-          className="position-absolute bottom-0 end-0 m-2 rounded-circle"
-          style={{ width: '35px', height: '35px', padding: '6px 0' }}
+          className="play-button"
           onClick={handlePlayClick}
         >
           <FaPlay />
         </Button>
         {album.TrackCount > 0 && (
-          <span className="position-absolute bottom-0 start-0 m-2 badge bg-dark text-white">
+          <span className="position-absolute bottom-0 start-0 m-2 badge bg-dark text-white d-flex align-items-center">
             <FaMusic className="me-1" />
-            {album.TrackCount} tracks
+            {formatTrackCount(album.TrackCount)} tracks
           </span>
         )}
       </div>

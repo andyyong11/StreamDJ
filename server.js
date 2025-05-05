@@ -2,10 +2,7 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-
 const path = require('path'); // Path module for resolving static file paths
-const db = require('./src/db/config');
-
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 const { Pool } = require('pg');
@@ -14,11 +11,48 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const winston = require('winston');
+const db = require('./src/db/config');
 
-// Import rate limiter middleware
+// Import middleware
 const { standardLimiter, authLimiter, uiLimiter } = require('./src/middleware/rateLimiter');
+const authenticateToken = require('./src/middleware/authenticateToken');
+
+// Import services
+const StreamKeyService = require('./src/services/streamKeyService');
+const nms = require('./src/services/streamServer');
 
 require('dotenv').config();
+
+// Import routes
+const authRoutes = require('./src/routes/authRoutes');
+const userRoutes = require('./src/routes/userRoutes');
+const playlistRoutes = require('./src/routes/playlistRoutes');
+const publicPlaylistRoutes = require('./src/routes/publicPlaylistRoutes');
+const trackRoutes = require('./src/routes/trackRoutes');
+const albumRoutes = require('./src/routes/albumRoutes');
+const trendingRoutes = require('./src/routes/trendingRoutes');
+const recommendRoutes = require('./src/routes/recommendRoutes');
+const streamRoutes = require('./src/routes/streamRoutes');
+
+// Define port
+const PORT = process.env.PORT || 5001;
+
+// Constants for file paths
+const MEDIA_PATH = path.join(__dirname, 'media');
+const NORMALIZED_MEDIA_PATH = MEDIA_PATH.replace(/\\/g, '/');
+const UPLOADS_PATH = path.join(__dirname, 'uploads');
+const ALBUM_COVERS_PATH = path.join(__dirname, 'uploads/album_covers');
+const COVERS_PATH = path.join(__dirname, 'uploads/covers');
+const PROFILES_PATH = path.join(__dirname, 'uploads/profiles');
+const BANNERS_PATH = path.join(__dirname, 'uploads/banners');
+
+// Create upload directories if they don't exist
+[UPLOADS_PATH, ALBUM_COVERS_PATH, COVERS_PATH, PROFILES_PATH, BANNERS_PATH].forEach(dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+    console.log(`Created directory: ${dir}`);
+  }
+});
 
 // Configure logger
 const logger = winston.createLogger({
@@ -39,33 +73,9 @@ if (process.env.NODE_ENV !== 'production') {
   }));
 }
 
-// Import routes
-const authRoutes = require('./src/routes/authRoutes');
-const userRoutes = require('./src/routes/userRoutes');
-const playlistRoutes = require('./src/routes/playlistRoutes');
-const publicPlaylistRoutes = require('./src/routes/publicPlaylistRoutes');
-const trackRoutes = require('./src/routes/trackRoutes');
-const albumRoutes = require('./src/routes/albumRoutes');
-
-const trendingRoutes = require('./src/routes/trendingRoutes');
-const recommendRoutes = require('./src/routes/recommendRoutes');
-
-const streamRoutes = require('./src/routes/streamRoutes');
-
-
-// Import middleware
-const authenticateToken = require('./src/middleware/authenticateToken');
-
-// Import services
-const StreamKeyService = require('./src/services/streamKeyService');
-const nms = require('./src/services/streamServer');
-
 // Creating express object
 const app = express();
 const httpServer = createServer(app);
-
-// Define port
-const PORT = process.env.PORT || 5001;
 
 // CORS configuration
 const corsOptions = {
@@ -81,6 +91,12 @@ const corsOptions = {
 
 // Apply CORS middleware before other middleware
 app.use(cors(corsOptions));
+
+// Middleware
+app.use(bodyParser.json());
+
+// Enable ETag caching for improved performance and reduced requests
+app.set('etag', 'strong');
 
 // Apply different rate limiters based on route
 // Apply more strict limits to auth routes
@@ -98,34 +114,62 @@ app.use('/api/albums', standardLimiter);
 app.use('/api/playlists', standardLimiter);
 app.use('/api/streams', standardLimiter);
 
-// Middleware
-app.use(bodyParser.json());
+// Static file serving - updated for better path handling
+app.use('/uploads', (req, res, next) => {
+  // Decode URL components to fix encoding issues
+  req.url = decodeURIComponent(req.url);
+  next();
+}, express.static(UPLOADS_PATH));
 
-// Enable ETag caching for improved performance and reduced requests
-app.set('etag', 'strong');
+app.use('/uploads/album_covers', (req, res, next) => {
+  req.url = decodeURIComponent(req.url);
+  next();
+}, express.static(ALBUM_COVERS_PATH));
 
-// Serve uploaded audio and cover images
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use('/uploads/album_covers', express.static(path.join(__dirname, 'uploads/album_covers')));
-app.use('/uploads/covers', express.static(path.join(__dirname, 'uploads/covers')));
+app.use('/uploads/covers', (req, res, next) => {
+  req.url = decodeURIComponent(req.url);
+  next();
+}, express.static(COVERS_PATH));
+
+app.use('/uploads/profiles', (req, res, next) => {
+  req.url = decodeURIComponent(req.url);
+  next();
+}, express.static(PROFILES_PATH));
+
+app.use('/uploads/banners', (req, res, next) => {
+  req.url = decodeURIComponent(req.url);
+  next();
+}, express.static(BANNERS_PATH));
+
+// Add 404 handler for image files to debug missing files
+app.use('/uploads', (req, res, next) => {
+  const extension = path.extname(req.url).toLowerCase();
+  const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'];
+  
+  if (imageExtensions.includes(extension)) {
+    logger.info(`Image not found: ${req.method} ${req.originalUrl} -> ${req.url}`);
+    return res.status(404).send('Image not found');
+  }
+  next();
+});
 
 // Test database connection route
 app.get('/test-db', async (req, res) => {
-    try {
-        const result = await db.query('SELECT NOW()');
-        res.json({
-            success: true,
-            message: 'Database connection successful',
-            timestamp: result[0].now
-        });
-    } catch (error) {
-        console.error('Database connection error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Database connection failed',
-            error: error.message
-        });
-    }
+  try {
+    const result = await db.query('SELECT NOW()');
+    res.json({
+      success: true,
+      message: 'Database connection successful',
+      timestamp: result[0].now
+    });
+  } catch (error) {
+    console.error('Database connection error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Database connection failed',
+      error: error.message
+    });
+  }
 });
 
 // Database connection with retry logic
@@ -200,32 +244,13 @@ const initializeDatabase = async () => {
   }
 };
 
-// Start server
-httpServer.listen(PORT, () => {
-  logger.info(`Server is running on port ${PORT}`);
-  // Initialize database after server starts
-  initializeDatabase();
-  // Start media server
-  try {
-    if (!nms.nmsCore) {
-      nms.run();
-      logger.info('Media Server started successfully');
-    }
-  } catch (err) {
-    logger.error('Failed to start Media Server:', err);
-  }
-});
-
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
 // Serve HLS media files
-const mediaPath = path.join(__dirname, 'media');
-const normalizedMediaPath = mediaPath.replace(/\\/g, '/');
-
-app.use('/live', express.static(path.join(normalizedMediaPath, 'live'), {
+app.use('/live', express.static(path.join(NORMALIZED_MEDIA_PATH, 'live'), {
   setHeaders: (res, filepath) => {
     res.set('Access-Control-Allow-Origin', '*');
     if (filepath.endsWith('.m3u8')) {
@@ -613,3 +638,18 @@ const cleanup = async () => {
 process.on('SIGTERM', cleanup);
 process.on('SIGINT', cleanup); 
 
+// Start server
+httpServer.listen(PORT, () => {
+  logger.info(`Server is running on port ${PORT}`);
+  // Initialize database after server starts
+  initializeDatabase();
+  // Start media server
+  try {
+    if (!nms.nmsCore) {
+      nms.run();
+      logger.info('Media Server started successfully');
+    }
+  } catch (err) {
+    logger.error('Failed to start Media Server:', err);
+  }
+});

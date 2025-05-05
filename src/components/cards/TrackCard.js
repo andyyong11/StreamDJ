@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, Button } from 'react-bootstrap';
 import { FaPlay, FaHeadphones, FaUser } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
+import '../../styles/PlayButton.css';
 
 const TrackCard = ({ track, onTrackSelect }) => {
   const handleCardClick = () => {
@@ -19,11 +20,18 @@ const TrackCard = ({ track, onTrackSelect }) => {
 
   // Format play count
   const formatPlayCount = (count) => {
-    if (!count) return '';
-    if (count > 1000) {
-      return `${Math.floor(count/1000)}K`;
+    if (!count && count !== 0) return '0';
+    
+    const numCount = typeof count === 'string' ? parseInt(count, 10) : count;
+    
+    if (isNaN(numCount)) return '0';
+    
+    if (numCount >= 1000000) {
+      return `${(numCount / 1000000).toFixed(1)}M`;
+    } else if (numCount >= 1000) {
+      return `${(numCount / 1000).toFixed(1)}K`;
     }
-    return count;
+    return numCount.toLocaleString();
   };
 
   // Handle username click to prevent card click
@@ -55,16 +63,14 @@ const TrackCard = ({ track, onTrackSelect }) => {
           onError={handleImageError}
         />
         <Button 
-          variant="success" 
-          size="sm" 
-          className="position-absolute bottom-0 end-0 m-2 rounded-circle"
-          style={{ width: '35px', height: '35px', padding: '6px 0' }}
+          variant="success"
+          className="play-button"
           onClick={handlePlayClick}
         >
           <FaPlay />
         </Button>
         {track.PlayCount > 0 && (
-          <span className="position-absolute bottom-0 start-0 m-2 badge bg-dark text-white">
+          <span className="position-absolute bottom-0 start-0 m-2 badge bg-dark text-white d-flex align-items-center">
             <FaHeadphones className="me-1" />
             {formatPlayCount(track.PlayCount)}
           </span>

@@ -3,8 +3,30 @@ import { Container, Card, Form, Button, Alert, Spinner, Row, Col } from 'react-b
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+import ImageCropper from '../components/ImageCropper';
 
-const ProfileSettingsPage = () => {
+// Helper function to get safe image URL
+const getSafeImageUrl = (imagePath) => {
+  if (!imagePath) return null;
+  
+  // If it's already a full URL, return it as is
+  if (imagePath.startsWith('http')) return imagePath;
+  
+  // For local paths, ensure they start with a slash
+  // Don't re-encode already encoded URLs
+  if (imagePath.includes('%')) {
+    // Already encoded, just ensure the path starts with /
+    return imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+  }
+  
+  // For non-encoded paths, ensure they start with a slash and are properly encoded
+  const cleanPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+  
+  // Return the path without double-encoding
+  return cleanPath;
+};
+
+const ProfileSettingsPage = ({ openLoginModal }) => {
   const { user, updateUser } = useAuth();
   const navigate = useNavigate();
   
@@ -22,6 +44,14 @@ const ProfileSettingsPage = () => {
     bannerImage: null
   });
   
+  // Cropper state
+  const [cropperState, setCropperState] = useState({
+    show: false,
+    image: null,
+    fieldName: null,
+    aspect: 1
+  });
+  
   // Loading and error states
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -31,7 +61,11 @@ const ProfileSettingsPage = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       if (!user || !user.id) {
-        navigate('/login');
+        if (openLoginModal) {
+          openLoginModal();
+        } else {
+          navigate('/');
+        }
         return;
       }
       
@@ -49,18 +83,14 @@ const ProfileSettingsPage = () => {
           if (response.data.ProfileImage) {
             setPreviews(prev => ({
               ...prev,
-              profileImage: response.data.ProfileImage.startsWith('http')
-                ? response.data.ProfileImage
-                : `http://localhost:5001/${response.data.ProfileImage.replace(/^\/+/, '')}`
+              profileImage: getSafeImageUrl(response.data.ProfileImage)
             }));
           }
           
           if (response.data.BannerImage) {
             setPreviews(prev => ({
               ...prev,
-              bannerImage: response.data.BannerImage.startsWith('http')
-                ? response.data.BannerImage
-                : `http://localhost:5001/${response.data.BannerImage.replace(/^\/+/, '')}`
+              bannerImage: getSafeImageUrl(response.data.BannerImage)
             }));
           }
         }
@@ -71,7 +101,7 @@ const ProfileSettingsPage = () => {
     };
     
     fetchUserData();
-  }, [user, navigate]);
+  }, [user, navigate, openLoginModal]);
   
   // Handle input changes
   const handleInputChange = (e) => {
@@ -82,22 +112,48 @@ const ProfileSettingsPage = () => {
     }));
   };
   
-  // Handle file input changes
-  const handleFileChange = (e) => {
+  // Handle file selection to open cropper
+  const handleFileSelect = (e) => {
     const { name, files } = e.target;
     if (files && files[0]) {
-      setFormData(prev => ({
-        ...prev,
-        [name]: files[0]
-      }));
-      
       // Create preview URL
-      const previewUrl = URL.createObjectURL(files[0]);
-      setPreviews(prev => ({
-        ...prev,
-        [name]: previewUrl
-      }));
+      const imageUrl = URL.createObjectURL(files[0]);
+      
+      // Set cropper state
+      setCropperState({
+        show: true,
+        image: imageUrl,
+        fieldName: name,
+        aspect: name === 'profileImage' ? 1 : 16/9 // 1:1 for profile, 16:9 for banner
+      });
     }
+  };
+  
+  // Handle crop complete
+  const handleCropComplete = (file, preview) => {
+    const { fieldName } = cropperState;
+    
+    // Update form data with cropped file
+    setFormData(prev => ({
+      ...prev,
+      [fieldName]: file
+    }));
+    
+    // Update preview
+    setPreviews(prev => ({
+      ...prev,
+      [fieldName]: preview
+    }));
+  };
+  
+  // Close cropper
+  const handleCloseCropper = () => {
+    setCropperState({
+      show: false,
+      image: null,
+      fieldName: null,
+      aspect: 1
+    });
   };
   
   // Handle form submission
@@ -114,6 +170,7 @@ const ProfileSettingsPage = () => {
     }
     
     try {
+      // Create FormData object
       const formDataToSend = new FormData();
       formDataToSend.append('username', formData.username);
       formDataToSend.append('bio', formData.bio);
@@ -138,13 +195,16 @@ const ProfileSettingsPage = () => {
         if (updateUser) {
           updateUser({
             ...user,
-            username: formData.username
+            username: formData.username,
+            bio: formData.bio
           });
         }
         
         // Navigate back to profile after short delay
         setTimeout(() => {
-          navigate(`/profile/${user.id}`);
+          navigate(`/profile/${user.id}`, { 
+            state: { fromProfileEdit: true } 
+          });
         }, 1500);
       }
     } catch (err) {
@@ -163,7 +223,7 @@ const ProfileSettingsPage = () => {
         </Alert>
         <Button 
           variant="primary" 
-          onClick={() => navigate('/login')}
+          onClick={openLoginModal || (() => navigate('/'))}
         >
           Log In
         </Button>
@@ -221,8 +281,11 @@ const ProfileSettingsPage = () => {
                     type="file"
                     name="profileImage"
                     accept="image/*"
-                    onChange={handleFileChange}
+                    onChange={handleFileSelect}
                   />
+                  <div className="form-text">
+                    Best results with a square image. You'll be able to crop after selecting.
+                  </div>
                   {previews.profileImage && (
                     <div className="mt-3">
                       <p>Preview:</p>
@@ -244,8 +307,11 @@ const ProfileSettingsPage = () => {
                     type="file"
                     name="bannerImage"
                     accept="image/*"
-                    onChange={handleFileChange}
+                    onChange={handleFileSelect}
                   />
+                  <div className="form-text">
+                    Recommended aspect ratio 16:9 (like 1920x1080). You'll be able to crop after selecting.
+                  </div>
                   {previews.bannerImage && (
                     <div className="mt-3">
                       <p>Preview:</p>
@@ -290,6 +356,17 @@ const ProfileSettingsPage = () => {
               </Button>
             </div>
           </Form>
+          
+          {/* Image Cropper */}
+          <ImageCropper
+            show={cropperState.show}
+            onHide={handleCloseCropper}
+            image={cropperState.image}
+            aspect={cropperState.aspect}
+            circularCrop={cropperState.fieldName === 'profileImage'}
+            title={cropperState.fieldName === 'profileImage' ? 'Crop Profile Image' : 'Crop Banner Image'}
+            onCropComplete={handleCropComplete}
+          />
         </Card.Body>
       </Card>
     </Container>

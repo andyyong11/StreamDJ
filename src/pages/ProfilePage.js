@@ -1,17 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Container, Row, Col, Card, Button, Badge, Nav, Tab, Spinner, Alert } from 'react-bootstrap';
-import { FaHeart, FaMusic, FaUserFriends, FaPlay, FaEllipsisH, FaCompactDisc, FaList, FaClock, FaUser } from 'react-icons/fa';
+import { FaHeart, FaMusic, FaUserFriends, FaPlay, FaEllipsisH, FaCompactDisc, FaList, FaClock, FaUser, FaEdit, FaHeadphones } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import UserListModal from '../components/modals/UserListModal';
 import AlbumCard from '../components/cards/AlbumCard';
+import TrackActionMenu from '../components/modals/TrackActionMenu';
+import AddToPlaylistModal from '../components/modals/AddToPlaylistModal';
+import DeleteTrackModal from '../components/modals/DeleteTrackModal';
+import '../styles/PlayButton.css';
 
-const ProfilePage = ({ playTrack }) => {
+const ProfilePage = ({ playTrack, openLoginModal }) => {
   // Get the profile ID from the URL
   const { id } = useParams();
   const { user: currentUser } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   
   // State management
   const [activeTab, setActiveTab] = useState('overview');
@@ -24,6 +29,9 @@ const ProfilePage = ({ playTrack }) => {
   // Modal states
   const [showFollowersModal, setShowFollowersModal] = useState(false);
   const [showFollowingModal, setShowFollowingModal] = useState(false);
+  const [selectedTrack, setSelectedTrack] = useState(null);
+  const [showAddToPlaylistModal, setShowAddToPlaylistModal] = useState(false);
+  const [showDeleteTrackModal, setShowDeleteTrackModal] = useState(false);
   
   // Loading and error states
   const [loading, setLoading] = useState({
@@ -44,50 +52,61 @@ const ProfilePage = ({ playTrack }) => {
   // Check if this is the current user's profile
   const isOwnProfile = currentUser && currentUser.id === parseInt(id);
 
-  // Fetch profile data
-  useEffect(() => {
-    const fetchProfileData = async () => {
-      try {
-        setLoading(prev => ({ ...prev, profile: true }));
-        setError(prev => ({ ...prev, profile: null }));
+  // Define fetchProfileData outside of useEffect
+  const fetchProfileData = async () => {
+    try {
+      setLoading(prev => ({ ...prev, profile: true }));
+      setError(prev => ({ ...prev, profile: null }));
+      
+      // Add a timestamp to prevent caching
+      const response = await api.get(`/api/users/${id}?t=${Date.now()}`);
+      if (response?.data) {
+        setProfileData(response.data);
         
-        const response = await api.get(`/api/users/${id}`);
-        if (response?.data) {
-          setProfileData(response.data);
-          
-          // Check if we're following this user
-          if (currentUser && currentUser.id) {
-            try {
-              const followResponse = await api.get(`/api/users/${currentUser.id}/following/${id}`);
-              setIsFollowing(followResponse?.data?.following || false);
-            } catch (followErr) {
-              console.error('Error checking follow status:', followErr);
-              setIsFollowing(false);
-            }
+        // Check if we're following this user
+        if (currentUser && currentUser.id) {
+          try {
+            const followResponse = await api.get(`/api/users/${currentUser.id}/following/${id}`);
+            setIsFollowing(followResponse?.data?.following || false);
+          } catch (followErr) {
+            console.error('Error checking follow status:', followErr);
+            setIsFollowing(false);
           }
         }
-      } catch (err) {
-        console.error('Error fetching profile data:', err);
-        setError(prev => ({ 
-          ...prev, 
-          profile: 'Could not load profile information. Please try again later.' 
-        }));
-        
-        // Fallback data
-        setProfileData({
-          UserID: parseInt(id),
-          Username: `User${id}`,
-          FollowersCount: 0,
-          FollowingCount: 0,
-          ProfileImage: 'https://via.placeholder.com/150?text=User',
-          BannerImage: 'https://via.placeholder.com/1200x300?text=Profile+Banner',
-          Bio: 'This user has not added a bio yet.'
-        });
-      } finally {
-        setLoading(prev => ({ ...prev, profile: false }));
       }
-    };
+    } catch (err) {
+      console.error('Error fetching profile data:', err);
+      setError(prev => ({ 
+        ...prev, 
+        profile: 'Could not load profile information. Please try again later.' 
+      }));
+      
+      // Fallback data
+      setProfileData({
+        UserID: parseInt(id),
+        Username: `User${id}`,
+        FollowersCount: 0,
+        FollowingCount: 0,
+        ProfileImage: 'https://via.placeholder.com/150?text=User',
+        BannerImage: 'https://via.placeholder.com/1200x300?text=Profile+Banner',
+        Bio: 'This user has not added a bio yet.'
+      });
+    } finally {
+      setLoading(prev => ({ ...prev, profile: false }));
+    }
+  };
 
+  // Force refresh when coming from profile settings page
+  useEffect(() => {
+    // Check if we're coming from the profile settings page
+    if (location.state?.fromProfileEdit) {
+      // Force a data refresh
+      fetchProfileData();
+    }
+  }, [location]);
+
+  // Fetch profile data
+  useEffect(() => {
     if (id) {
       fetchProfileData();
     }
@@ -196,8 +215,10 @@ const ProfilePage = ({ playTrack }) => {
   // Toggle follow status
   const handleToggleFollow = async () => {
     if (!currentUser || !currentUser.id) {
-      // Prompt user to log in if not already
-      navigate('/login');
+      // Open login modal instead of navigation
+      if (openLoginModal) {
+        openLoginModal();
+      }
       return;
     }
     
@@ -241,15 +262,21 @@ const ProfilePage = ({ playTrack }) => {
     }
   };
 
-  // Format numbers for display (e.g., 1.2M, 980K)
+  // Update the formatNumber function to better format play counts
   const formatNumber = (num) => {
-    if (!num && num !== 0) return '0';
-    if (num >= 1000000) {
-      return `${(num / 1000000).toFixed(1)}M`;
-    } else if (num >= 1000) {
-      return `${(num / 1000).toFixed(1)}K`;
+    if (num === undefined || num === null) return '0';
+    
+    // Convert to number if it's a string
+    const count = typeof num === 'string' ? parseInt(num, 10) : num;
+    
+    if (isNaN(count)) return '0';
+    
+    if (count >= 1000000) {
+      return `${(count / 1000000).toFixed(1)}M`;
+    } else if (count >= 1000) {
+      return `${(count / 1000).toFixed(1)}K`;
     }
-    return num.toString();
+    return count.toLocaleString();
   };
 
   // Format track duration
@@ -284,6 +311,23 @@ const ProfilePage = ({ playTrack }) => {
     setShowFollowingModal(true);
   };
 
+  // Add handlers for track actions
+  const handleAddToPlaylist = (track) => {
+    setSelectedTrack(track);
+    setShowAddToPlaylistModal(true);
+  };
+
+  const handleDeleteTrack = (track) => {
+    setSelectedTrack(track);
+    setShowDeleteTrackModal(true);
+  };
+
+  const handleTrackDeleted = (trackId) => {
+    // Filter out the deleted track from the tracks list
+    setTracks(prev => prev.filter(track => track.TrackID !== trackId));
+    setShowDeleteTrackModal(false);
+  };
+
   // Render playlists section
   const renderPlaylists = () => {
     if (loading.playlists) {
@@ -312,7 +356,13 @@ const ProfilePage = ({ playTrack }) => {
               <div className="position-relative">
                 <Card.Img 
                   variant="top" 
-                  src={playlist.CoverURL ? `http://localhost:5001/${playlist.CoverURL.replace(/^\/+/, '')}` : 'https://placehold.co/300x300?text=Playlist'} 
+                  src={
+                    playlist.CoverURL 
+                      ? (playlist.CoverURL.startsWith('http') 
+                        ? playlist.CoverURL 
+                        : `http://localhost:5001/${playlist.CoverURL.replace(/^\/+/, '')}`)
+                      : 'https://placehold.co/300x300?text=Playlist'
+                  } 
                   alt={playlist.Title}
                   style={{ height: '180px', objectFit: 'cover' }}
                   onError={(e) => {
@@ -322,9 +372,7 @@ const ProfilePage = ({ playTrack }) => {
                 />
                 <Button 
                   variant="success" 
-                  size="sm" 
-                  className="position-absolute bottom-0 end-0 m-2 rounded-circle"
-                  style={{ width: '35px', height: '35px', padding: '6px 0' }}
+                  className="play-button"
                   onClick={() => handlePlayPlaylist(playlist.PlaylistID)}
                 >
                   <FaPlay />
@@ -345,7 +393,7 @@ const ProfilePage = ({ playTrack }) => {
     );
   };
 
-  // Render tracks section
+  // Update the track list display in renderTracks
   const renderTracks = () => {
     if (loading.tracks) {
       return (
@@ -368,34 +416,62 @@ const ProfilePage = ({ playTrack }) => {
     return (
       <Card>
         <Card.Body className="p-0">
-          <table className="table table-hover mb-0">
+          <table className="table table-hover align-middle mb-0">
             <thead>
               <tr>
-                <th>#</th>
+                <th style={{ width: '40px' }}>#</th>
+                <th style={{ width: '60px' }}>Cover</th>
                 <th>Title</th>
-                <th>Duration</th>
-                <th>Plays</th>
-                <th></th>
+                <th style={{ width: '80px' }}>Duration</th>
+                <th style={{ width: '80px' }}>Plays</th>
+                <th style={{ width: '100px' }}></th>
               </tr>
             </thead>
             <tbody>
               {tracks.slice(0, 5).map((track, index) => (
                 <tr key={track.TrackID}>
-                  <td>{index + 1}</td>
+                  <td className="text-center">{index + 1}</td>
+                  <td>
+                    <img 
+                      src={track.CoverArt ? 
+                        `http://localhost:5001/${track.CoverArt.replace(/^\/+/, '')}` : 
+                        'https://placehold.co/50x50?text=Track'
+                      } 
+                      alt={track.Title}
+                      style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }}
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = 'https://placehold.co/50x50?text=Track';
+                      }}
+                    />
+                  </td>
                   <td>{track.Title}</td>
-                  <td>{formatDuration(track.Duration)}</td>
-                  <td>{formatNumber(track.PlayCount)}</td>
-                  <td className="text-end">
-                    <Button 
-                      variant="link" 
-                      className="text-success p-0 me-2"
-                      onClick={() => handlePlayTrack(track)}
-                    >
-                      <FaPlay />
-                    </Button>
-                    <Button variant="link" className="text-secondary p-0">
-                      <FaEllipsisH />
-                    </Button>
+                  <td className="text-center">{formatDuration(track.Duration)}</td>
+                  <td className="text-center">
+                    <span className="d-flex align-items-center justify-content-center">
+                      <FaHeadphones className="me-1 text-muted" size={14} />
+                      {formatNumber(track.PlayCount)}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="d-flex justify-content-end align-items-center">
+                      <Button 
+                        variant="success"
+                        className="play-button-table me-2"
+                        onClick={() => handlePlayTrack(track)}
+                      >
+                        <FaPlay />
+                      </Button>
+                      <div className="d-inline-block">
+                        <TrackActionMenu 
+                          track={track}
+                          onAddToPlaylist={handleAddToPlaylist}
+                          onDeleteTrack={handleDeleteTrack}
+                        >
+                          <FaEllipsisH />
+                        </TrackActionMenu>
+                      </div>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -433,13 +509,25 @@ const ProfilePage = ({ playTrack }) => {
       return <p className="text-muted">No albums found.</p>;
     }
 
+    const handlePlayAlbum = (album) => {
+      // Navigate to album page which will handle playing the album
+      navigate(`/albums/${album.AlbumID}`);
+    };
+
     return (
       <Row>
-        {albums.slice(0, 3).map(album => (
-          <Col md={4} key={album.AlbumID} className="mb-4">
-            <AlbumCard album={album} />
+        {(activeTab === 'overview' ? albums.slice(0, 3) : albums).map(album => (
+          <Col md={activeTab === 'overview' ? 4 : 3} key={album.AlbumID} className="mb-4">
+            <AlbumCard album={album} onPlayClick={handlePlayAlbum} />
           </Col>
         ))}
+        {activeTab === 'overview' && albums.length > 3 && (
+          <div className="text-center w-100 mt-2">
+            <Button variant="outline-primary" onClick={() => setActiveTab('albums')}>
+              View All Albums
+            </Button>
+          </div>
+        )}
       </Row>
     );
   };
@@ -479,7 +567,7 @@ const ProfilePage = ({ playTrack }) => {
     );
   };
 
-  // Render full tracks list
+  // Similarly update the renderTracksContent function for the full tracks view
   const renderTracksContent = () => {
     if (loading.tracks) {
       return (
@@ -502,36 +590,64 @@ const ProfilePage = ({ playTrack }) => {
     return (
       <Card>
         <Card.Body className="p-0">
-          <table className="table table-hover mb-0">
+          <table className="table table-hover align-middle mb-0">
             <thead>
               <tr>
-                <th>#</th>
+                <th style={{ width: '40px' }}>#</th>
+                <th style={{ width: '60px' }}>Cover</th>
                 <th>Title</th>
-                <th>Duration</th>
-                <th>Plays</th>
-                <th>Added</th>
-                <th></th>
+                <th style={{ width: '80px' }}>Duration</th>
+                <th style={{ width: '80px' }}>Plays</th>
+                <th style={{ width: '100px' }}>Added</th>
+                <th style={{ width: '100px' }}></th>
               </tr>
             </thead>
             <tbody>
               {tracks.map((track, index) => (
                 <tr key={track.TrackID}>
-                  <td>{index + 1}</td>
+                  <td className="text-center">{index + 1}</td>
+                  <td>
+                    <img 
+                      src={track.CoverArt ? 
+                        `http://localhost:5001/${track.CoverArt.replace(/^\/+/, '')}` : 
+                        'https://placehold.co/50x50?text=Track'
+                      } 
+                      alt={track.Title}
+                      style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }}
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = 'https://placehold.co/50x50?text=Track';
+                      }}
+                    />
+                  </td>
                   <td>{track.Title}</td>
-                  <td>{formatDuration(track.Duration)}</td>
-                  <td>{formatNumber(track.PlayCount)}</td>
-                  <td>{new Date(track.CreatedAt).toLocaleDateString()}</td>
-                  <td className="text-end">
-                    <Button 
-                      variant="link" 
-                      className="text-success p-0 me-2"
-                      onClick={() => handlePlayTrack(track)}
-                    >
-                      <FaPlay />
-                    </Button>
-                    <Button variant="link" className="text-secondary p-0">
-                      <FaEllipsisH />
-                    </Button>
+                  <td className="text-center">{formatDuration(track.Duration)}</td>
+                  <td className="text-center">
+                    <span className="d-flex align-items-center justify-content-center">
+                      <FaHeadphones className="me-1 text-muted" size={14} />
+                      {formatNumber(track.PlayCount)}
+                    </span>
+                  </td>
+                  <td className="text-center">{new Date(track.CreatedAt).toLocaleDateString()}</td>
+                  <td>
+                    <div className="d-flex justify-content-end align-items-center">
+                      <Button 
+                        variant="success"
+                        className="play-button-table me-2"
+                        onClick={() => handlePlayTrack(track)}
+                      >
+                        <FaPlay />
+                      </Button>
+                      <div className="d-inline-block">
+                        <TrackActionMenu 
+                          track={track}
+                          onAddToPlaylist={handleAddToPlaylist}
+                          onDeleteTrack={handleDeleteTrack}
+                        >
+                          <FaEllipsisH />
+                        </TrackActionMenu>
+                      </div>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -540,6 +656,21 @@ const ProfilePage = ({ playTrack }) => {
         </Card.Body>
       </Card>
     );
+  };
+
+  // Update the getSafeImageUrl function to properly handle internal vs external URLs
+  const getSafeImageUrl = (imagePath) => {
+    if (!imagePath) return 'https://placehold.co/300x300?text=Image';
+    
+    // If it's already a full URL, return it as is
+    if (imagePath.startsWith('http')) return imagePath;
+    
+    // For local paths from the server, ensure they have the proper base URL
+    // Clean up any redundant slashes
+    const cleanPath = imagePath.replace(/^\/+/, '');
+    
+    // Return a properly formed URL to the server
+    return `http://localhost:5001/${cleanPath}`;
   };
 
   // Show loading state
@@ -586,9 +717,7 @@ const ProfilePage = ({ playTrack }) => {
           style={{
             height: '280px',
             background: profileData.BannerImage 
-              ? `url(${profileData.BannerImage.startsWith('http') 
-                  ? profileData.BannerImage 
-                  : `http://localhost:5001/${profileData.BannerImage.replace(/^\/+/, '')}`})`
+              ? `url(${getSafeImageUrl(profileData.BannerImage)})`
               : 'linear-gradient(45deg, #3a1c71, #d76d77, #ffaf7b)',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
@@ -606,22 +735,37 @@ const ProfilePage = ({ playTrack }) => {
           
           <div className="position-absolute bottom-0 start-0 w-100 p-4">
             <div className="d-flex flex-column flex-md-row align-items-center align-items-md-end">
-              <div className="me-md-4 mb-3 mb-md-0">
+              <div className="me-md-4 mb-3 mb-md-0 position-relative">
                 <img
-                  src={profileData.ProfileImage || 'https://via.placeholder.com/150?text=User'}
+                  src={profileData.ProfileImage 
+                    ? getSafeImageUrl(profileData.ProfileImage) 
+                    : 'https://placehold.co/150x150?text=User'}
                   alt={profileData.Username}
                   className="rounded-circle border border-3 border-white"
                   style={{ 
-                    width: '100px', 
-                    height: '100px', 
+                    width: '120px', 
+                    height: '120px', 
                     objectFit: 'cover',
                     boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
                   }}
                   onError={(e) => {
                     e.target.onerror = null;
-                    e.target.src = 'https://via.placeholder.com/150?text=User';
+                    e.target.src = 'https://placehold.co/150x150?text=User';
                   }}
                 />
+                {isOwnProfile && (
+                  <div className="position-absolute bottom-0 end-0">
+                    <Button 
+                      variant="light" 
+                      size="sm" 
+                      className="rounded-circle"
+                      style={{ width: '32px', height: '32px', padding: '0' }}
+                      onClick={() => navigate('/settings/profile')}
+                    >
+                      <FaEdit />
+                    </Button>
+                  </div>
+                )}
               </div>
               
               <div className="flex-grow-1 text-center text-md-start mb-3 mb-md-0">
@@ -701,19 +845,22 @@ const ProfilePage = ({ playTrack }) => {
           
           <Nav.Item>
             <Nav.Link eventKey="tracks">
-              <FaMusic className="me-1" /> Tracks
+              <FaMusic className="me-1" /> Tracks 
+              <Badge bg="secondary" className="ms-2">{tracks.length}</Badge>
             </Nav.Link>
           </Nav.Item>
           
           <Nav.Item>
             <Nav.Link eventKey="albums">
               <FaCompactDisc className="me-1" /> Albums
+              <Badge bg="secondary" className="ms-2">{albums.length}</Badge>
             </Nav.Link>
           </Nav.Item>
           
           <Nav.Item>
             <Nav.Link eventKey="playlists">
               <FaList className="me-1" /> Playlists
+              <Badge bg="secondary" className="ms-2">{playlists.length}</Badge>
             </Nav.Link>
           </Nav.Item>
           
@@ -770,6 +917,21 @@ const ProfilePage = ({ playTrack }) => {
         userId={id}
         type="following"
         title={`Users followed by ${profileData?.Username || 'User'}`}
+      />
+      
+      {/* AddToPlaylist Modal */}
+      <AddToPlaylistModal
+        show={showAddToPlaylistModal}
+        handleClose={() => setShowAddToPlaylistModal(false)}
+        track={selectedTrack}
+      />
+      
+      {/* DeleteTrack Modal */}
+      <DeleteTrackModal
+        show={showDeleteTrackModal}
+        handleClose={() => setShowDeleteTrackModal(false)}
+        track={selectedTrack}
+        onDelete={handleTrackDeleted}
       />
     </Container>
   );

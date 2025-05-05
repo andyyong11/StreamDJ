@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Form, Button } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import io from 'socket.io-client';
 
-const ChatBox = ({ streamId }) => {
+const ChatBox = ({ streamId, openLoginModal }) => {
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState('');
   const { user } = useAuth();
-  const navigate = useNavigate();
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
@@ -50,7 +48,9 @@ const ChatBox = ({ streamId }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!user) {
-      navigate('/login');
+      if (openLoginModal) {
+        openLoginModal();
+      }
       return;
     }
     if (message.trim() && socket) {

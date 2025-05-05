@@ -5,6 +5,7 @@ import { FaPlay, FaEdit, FaTrash, FaMusic, FaCompactDisc, FaList, FaPlus, FaSync
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import AlbumCard from '../components/cards/AlbumCard';
+import '../styles/PlayButton.css';
 
 // Default placeholder image - using a reliable source
 const DEFAULT_PLACEHOLDER = 'https://placehold.co/300x300';
@@ -531,30 +532,30 @@ const CreatorDashboard = ({ section, playTrack }) => {
                           <td>{track.PlayCount || 0}</td>
                           <td>{formatDate(track.CreatedAt || track.uploadDate)}</td>
                           <td>
-                        <Button 
-                          variant="success" 
-                          size="sm" 
-                          className="me-2"
-                          onClick={() => playTrack && playTrack(track, myTracks)}
-                        >
-                              <FaPlay />
-                            </Button>
-                            <Button 
-                              variant="primary" 
-                              size="sm" 
-                              className="me-2"
-                              as={Link}
-                              to={`/edit-track/${track.TrackID || track.id}`}
-                            >
-                              <FaEdit />
-                            </Button>
-                            <Button 
-                              variant="danger" 
-                              size="sm"
-                              onClick={() => confirmDelete(track, 'track')}
-                            >
-                              <FaTrash />
-                            </Button>
+                        <div className="action-buttons-container">
+                          <Button 
+                            variant="success" 
+                            className="creator-action-btn me-2"
+                            onClick={() => playTrack && playTrack(track, myTracks)}
+                          >
+                                <FaPlay />
+                              </Button>
+                              <Button 
+                                variant="primary" 
+                                className="creator-action-btn me-2"
+                                as={Link}
+                                to={`/edit-track/${track.TrackID || track.id}`}
+                              >
+                                <FaEdit />
+                              </Button>
+                              <Button 
+                                variant="danger" 
+                                className="creator-action-btn"
+                                onClick={() => confirmDelete(track, 'track')}
+                              >
+                                <FaTrash />
+                              </Button>
+                        </div>
                           </td>
                         </tr>
                       ))}
