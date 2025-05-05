@@ -1,16 +1,51 @@
 import React, { useEffect, useState } from 'react';
+import { Container, Spinner } from 'react-bootstrap';
+import { FaPlay, FaUser, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { useNavigate, Link } from 'react-router-dom';
 import Slider from 'react-slick';
+import TrackCard from '../cards/TrackCard';
+import api from '../../services/api';
 
-const TrendingSection = () => {
+// Custom arrows for the slider
+const SlickArrowLeft = ({ currentSlide, slideCount, ...props }) => (
+  <button
+    {...props}
+    className="slick-prev"
+    aria-hidden="true"
+    aria-disabled={currentSlide === 0}
+    type="button"
+  >
+    <FaChevronLeft />
+  </button>
+);
+
+const SlickArrowRight = ({ currentSlide, slideCount, ...props }) => (
+  <button
+    {...props}
+    className="slick-next"
+    aria-hidden="true"
+    aria-disabled={currentSlide === slideCount - 1}
+    type="button"
+  >
+    <FaChevronRight />
+  </button>
+);
+
+const TrendingSection = ({ onTrackSelect }) => {
   const [tracks, setTracks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchTrending = async () => {
       try {
-        const res = await fetch('http://localhost:5001/api/trending');
-        const data = await res.json();
-        setTracks(data);
+        setLoading(true);
+        // Use the API service for consistency
+        const response = await api.get('/api/trending');
+        if (response?.data) {
+          console.log('Trending tracks data:', response.data); // Debug log
+          setTracks(response.data);
+        }
       } catch (err) {
         console.error('Failed to fetch trending tracks:', err);
       } finally {
@@ -21,43 +56,77 @@ const TrendingSection = () => {
   }, []);
 
   const settings = {
-    dots: false,
-    infinite: true,
-    speed: 600,
-    slidesToShow: 6,
-    slidesToScroll: 2,
+    dots: true,
+    infinite: tracks.length > 5,
+    speed: 500,
+    slidesToShow: 5,
+    slidesToScroll: 1,
     swipeToSlide: true,
+    prevArrow: <SlickArrowLeft />,
+    nextArrow: <SlickArrowRight />,
     responsive: [
-      { breakpoint: 1024, settings: { slidesToShow: 4 } },
+      { breakpoint: 1200, settings: { slidesToShow: 4 } },
+      { breakpoint: 992, settings: { slidesToShow: 3 } },
       { breakpoint: 768, settings: { slidesToShow: 2 } },
       { breakpoint: 480, settings: { slidesToShow: 1 } }
     ]
   };
 
-  if (loading) return <p className="text-white">Loading...</p>;
+  const handlePlay = (e, track) => {
+    e.stopPropagation();
+    console.log('Play button clicked, track data:', track); // Debug log
+    if (onTrackSelect) {
+      onTrackSelect(track);
+    }
+  };
+
+  const handleCardClick = (track) => {
+    // Only navigate to albums, play tracks
+    if (track.AlbumID) {
+      navigate(`/albums/${track.AlbumID}`);
+    } else if (onTrackSelect) {
+      onTrackSelect(track);
+    }
+  };
+
+  // Handle username click to prevent card click
+  const handleUsernameClick = (e) => {
+    e.stopPropagation();
+  };
+
+  // Handle image error by providing a fallback image
+  const handleImageError = (e) => {
+    e.target.onerror = null;
+    e.target.src = 'https://placehold.co/300x300?text=Track';
+  };
+
+  if (loading) {
+    return (
+      <Container className="text-center py-4">
+        <Spinner animation="border" role="status">
+          <span className="visually-hidden">Loading trending tracks...</span>
+        </Spinner>
+      </Container>
+    );
+  }
+
+  if (tracks.length === 0) {
+    return null;
+  }
 
   return (
-    <div className="trending-section p-4 bg-dark text-white">
-      <h2 className="mb-4">🔥 Trending Now</h2>
-      <Slider {...settings}>
-        {tracks.map((track) => (
-          <div key={track.TrackID} className="px-2">
-            <div className="bg-secondary rounded shadow-sm">
-              <img
-                src={`http://localhost:5001/${track.CoverArt}`}
-                alt={track.Title}
-                className="w-100 rounded-top"
-                style={{ height: '180px', objectFit: 'cover' }}
-              />
-              <div className="p-2">
-                <h6 className="mb-1 text-white text-truncate">{track.Title}</h6>
-                <small className="text-light">{track.Artist}</small>
-              </div>
+    <Container className="trending-section py-4">
+      <h2 className="mb-4">Trending Now</h2>
+      <div className="position-relative">
+        <Slider {...settings}>
+          {tracks.map((track) => (
+            <div key={track.TrackID || track.id} className="px-2">
+              <TrackCard track={track} onTrackSelect={onTrackSelect} />
             </div>
-          </div>
-        ))}
-      </Slider>
-    </div>
+          ))}
+        </Slider>
+      </div>
+    </Container>
   );
 };
 

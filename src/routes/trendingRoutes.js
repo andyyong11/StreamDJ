@@ -11,6 +11,10 @@ router.get('/', async (req, res) => {
         t."Artist",
         t."Genre",
         t."CoverArt",
+        t."FilePath",
+        t."Duration", 
+        t."UserID",
+        u."Username",
         COUNT(DISTINCT lh."PlayedAt") AS play_count,
         COUNT(DISTINCT tl."UserID") AS like_count,
         COALESCE(SUM(
@@ -25,7 +29,9 @@ router.get('/', async (req, res) => {
         AND lh."PlayedAt" >= NOW() - INTERVAL '7 days'
       LEFT JOIN "TrackLikes" tl 
         ON t."TrackID" = tl."TrackID"
-      GROUP BY t."TrackID", t."Title", t."Artist", t."Genre", t."CoverArt"
+      LEFT JOIN "User" u
+        ON t."UserID" = u."UserID"
+      GROUP BY t."TrackID", t."Title", t."Artist", t."Genre", t."CoverArt", t."FilePath", t."Duration", t."UserID", u."Username"
       ORDER BY score DESC
       LIMIT 20;
     `);      

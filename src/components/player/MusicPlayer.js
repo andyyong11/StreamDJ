@@ -23,6 +23,8 @@ const MusicPlayer = ({ track, isPlaying, setIsPlaying, onNext, onPrevious }) => 
   useEffect(() => {
     if (!track) return;
     
+    console.log("Track received in MusicPlayer:", track);
+    
     // Format audio source path
     if (track.FilePath) {
       const normalizedPath = track.FilePath.replace(/\\/g, '/').replace(/^\/+/, '');
@@ -31,7 +33,16 @@ const MusicPlayer = ({ track, isPlaying, setIsPlaying, onNext, onPrevious }) => 
         ? `http://localhost:5001/${normalizedPath}`
         : `http://localhost:5001/uploads/${normalizedPath}`;
       setAudioSrc(formattedAudioSrc);
+    } else if (track.FileURL) {
+      // Handle FileURL if that's what's available instead
+      const normalizedPath = track.FileURL.replace(/\\/g, '/').replace(/^\/+/, '');
+      setAudioSrc(`http://localhost:5001/${normalizedPath}`);
+    } else if (track.file_url) {
+      // Some API endpoints might return lowercase field names
+      const normalizedPath = track.file_url.replace(/\\/g, '/').replace(/^\/+/, '');
+      setAudioSrc(`http://localhost:5001/${normalizedPath}`);
     } else {
+      console.error("No audio file path found in track:", track);
       setAudioSrc('');
     }
     
@@ -42,6 +53,9 @@ const MusicPlayer = ({ track, isPlaying, setIsPlaying, onNext, onPrevious }) => 
         ? `http://localhost:5001/${normalizedCoverPath}`
         : `http://localhost:5001/uploads/${normalizedCoverPath}`;
       setCoverArtSrc(formattedCoverSrc);
+    } else if (track.cover_url) {
+      const normalizedCoverPath = track.cover_url.toString().replace(/\\/g, '/').replace(/^\/+/, '');
+      setCoverArtSrc(`http://localhost:5001/${normalizedCoverPath}`);
     } else {
       setCoverArtSrc('https://placehold.co/300x300');
     }

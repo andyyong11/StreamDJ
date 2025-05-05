@@ -8,7 +8,8 @@ router.get('/:userId', async (req, res) => {
 
   try {
     const recommendations = await db.any(`
-      SELECT * FROM (
+      SELECT combined.*, u."Username" 
+      FROM (
         -- Top liked tracks by user
         SELECT t.*
         FROM "Track" t
@@ -49,7 +50,7 @@ router.get('/:userId', async (req, res) => {
           LIMIT 2
         )
       ) AS combined
-
+      LEFT JOIN "User" u ON combined."UserID" = u."UserID"
       ORDER BY RANDOM()
       LIMIT 20;
     `, [userId]);
@@ -66,9 +67,10 @@ router.get('/collab/:userId', async (req, res) => {
   
     try {
       const recommendations = await db.any(`
-        SELECT t.*
+        SELECT t.*, u."Username"
         FROM "Track" t
         JOIN "TrackLikes" tl ON tl."TrackID" = t."TrackID"
+        LEFT JOIN "User" u ON t."UserID" = u."UserID"
         WHERE tl."UserID" IN (
           SELECT DISTINCT other."UserID"
           FROM "TrackLikes" other
@@ -83,7 +85,7 @@ router.get('/collab/:userId', async (req, res) => {
           FROM "TrackLikes"
           WHERE "UserID" = $1
         )
-        GROUP BY t."TrackID"
+        GROUP BY t."TrackID", u."Username"
         ORDER BY COUNT(*) DESC
         LIMIT 20;
       `, [userId]);
@@ -95,15 +97,16 @@ router.get('/collab/:userId', async (req, res) => {
     }
   });
   
-// 📌 Because You Listened To: Recommend by most recent genre // I can still comment this out
+// 📌 Because You Listened To: Recommend by most recent genre
 router.get('/recent-genre/:userId', async (req, res) => {
     const { userId } = req.params;
   
     try {
       const recommendations = await db.any(`
-        SELECT *
-        FROM "Track"
-        WHERE "Genre" = (
+        SELECT t.*, u."Username"
+        FROM "Track" t
+        LEFT JOIN "User" u ON t."UserID" = u."UserID"
+        WHERE t."Genre" = (
           SELECT t."Genre"
           FROM "ListenerHistory" lh
           JOIN "Track" t ON lh."TrackID" = t."TrackID"
@@ -122,6 +125,4 @@ router.get('/recent-genre/:userId', async (req, res) => {
     }
   });
   
-
-
 module.exports = router;

@@ -15,6 +15,7 @@ import MusicPlayer from './components/player/MusicPlayer';
 // Pages
 import HomePage from './pages/HomePage';
 import ProfilePage from './pages/ProfilePage';
+import ProfileSettingsPage from './pages/ProfileSettingsPage';
 import DiscoverPage from './pages/DiscoverPage';
 import LibraryPage from './pages/LibraryPage';
 import LiveStreamsPage from './pages/LiveStreamsPage';
@@ -191,7 +192,17 @@ function App() {
               path="/profile/:id"
               element={
                 <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
-                  <ProfilePage />
+                  <ProfilePage playTrack={playTrack} />
+                </Layout>
+              }
+            />
+            <Route
+              path="/settings/profile"
+              element={
+                <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+                  <PrivateRoute>
+                    <ProfileSettingsPage />
+                  </PrivateRoute>
                 </Layout>
               }
             />
@@ -376,7 +387,7 @@ function App() {
               path="/playlists/:id"
               element={
                 <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
-                  <PlaylistPage />
+                  <PlaylistPage playTrack={playTrack} />
                 </Layout>
               }
             />

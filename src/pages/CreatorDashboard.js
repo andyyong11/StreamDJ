@@ -4,6 +4,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { FaPlay, FaEdit, FaTrash, FaMusic, FaCompactDisc, FaList, FaPlus, FaSync } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+import AlbumCard from '../components/cards/AlbumCard';
 
 // Default placeholder image - using a reliable source
 const DEFAULT_PLACEHOLDER = 'https://placehold.co/300x300';
@@ -282,8 +283,8 @@ const CreatorDashboard = ({ section, playTrack }) => {
                 setTimeout(async () => {
                   if (mounted) await fetchAlbums(true);
                 }, 1000);
-              }
-              
+        }
+        
               if (needPlaylists) {
                 setTimeout(async () => {
                   if (mounted) await fetchPlaylists(true);
@@ -486,84 +487,84 @@ const CreatorDashboard = ({ section, playTrack }) => {
       );
     }
     
-    return (
-      <section>
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <h2>My Tracks</h2>
+        return (
+          <section>
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h2>My Tracks</h2>
           <div>
             <Button variant="outline-secondary" className="me-2" onClick={() => fetchTracks(true)}>
               <FaSync className="me-1" /> Refresh
             </Button>
-            <Button variant="success" as={Link} to="/upload">
-              <FaPlus className="me-2" /> Upload New Track
-            </Button>
+              <Button variant="success" as={Link} to="/upload">
+                <FaPlus className="me-2" /> Upload New Track
+              </Button>
           </div>
-        </div>
-        
-        {myTracks.length === 0 ? (
-          <div className="text-center py-5">
-            <p>You haven't uploaded any tracks yet.</p>
-            <Button variant="primary" as={Link} to="/upload">
-              Upload Your First Track
-            </Button>
-          </div>
-        ) : (
-          <Card className="shadow-sm">
-            <Card.Body>
-              <table className="table table-hover">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Title</th>
-                    <th>Duration</th>
-                    <th>Plays</th>
-                    <th>Upload Date</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {myTracks.map((track, index) => (
-                    <tr key={track.TrackID || track.id}>
-                      <td>{index + 1}</td>
-                      <td>{track.Title || track.title}</td>
-                      <td>{formatDuration(track.Duration || track.duration)}</td>
-                      <td>{track.PlayCount || 0}</td>
-                      <td>{formatDate(track.CreatedAt || track.uploadDate)}</td>
-                      <td>
+            </div>
+            
+            {myTracks.length === 0 ? (
+              <div className="text-center py-5">
+                <p>You haven't uploaded any tracks yet.</p>
+                <Button variant="primary" as={Link} to="/upload">
+                  Upload Your First Track
+                </Button>
+              </div>
+            ) : (
+              <Card className="shadow-sm">
+                <Card.Body>
+                  <table className="table table-hover">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Title</th>
+                        <th>Duration</th>
+                        <th>Plays</th>
+                        <th>Upload Date</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {myTracks.map((track, index) => (
+                        <tr key={track.TrackID || track.id}>
+                          <td>{index + 1}</td>
+                          <td>{track.Title || track.title}</td>
+                          <td>{formatDuration(track.Duration || track.duration)}</td>
+                          <td>{track.PlayCount || 0}</td>
+                          <td>{formatDate(track.CreatedAt || track.uploadDate)}</td>
+                          <td>
                         <Button 
                           variant="success" 
                           size="sm" 
                           className="me-2"
                           onClick={() => playTrack && playTrack(track, myTracks)}
                         >
-                          <FaPlay />
-                        </Button>
-                        <Button 
-                          variant="primary" 
-                          size="sm" 
-                          className="me-2"
-                          as={Link}
-                          to={`/edit-track/${track.TrackID || track.id}`}
-                        >
-                          <FaEdit />
-                        </Button>
-                        <Button 
-                          variant="danger" 
-                          size="sm"
-                          onClick={() => confirmDelete(track, 'track')}
-                        >
-                          <FaTrash />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Card.Body>
-          </Card>
-        )}
-      </section>
-    );
+                              <FaPlay />
+                            </Button>
+                            <Button 
+                              variant="primary" 
+                              size="sm" 
+                              className="me-2"
+                              as={Link}
+                              to={`/edit-track/${track.TrackID || track.id}`}
+                            >
+                              <FaEdit />
+                            </Button>
+                            <Button 
+                              variant="danger" 
+                              size="sm"
+                              onClick={() => confirmDelete(track, 'track')}
+                            >
+                              <FaTrash />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </Card.Body>
+              </Card>
+            )}
+          </section>
+        );
   };
 
   // Render albums section
@@ -596,76 +597,38 @@ const CreatorDashboard = ({ section, playTrack }) => {
       );
     }
     
-    return (
-      <section>
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <h2>My Albums</h2>
+        return (
+          <section>
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h2>My Albums</h2>
           <div>
             <Button variant="outline-secondary" className="me-2" onClick={() => fetchAlbums(true)}>
               <FaSync className="me-1" /> Refresh
             </Button>
-            <Button variant="success" as={Link} to="/upload-album">
-              <FaPlus className="me-2" /> Create New Album
-            </Button>
+              <Button variant="success" as={Link} to="/upload-album">
+                <FaPlus className="me-2" /> Create New Album
+              </Button>
           </div>
-        </div>
-        
-        {myAlbums.length === 0 ? (
-          <div className="text-center py-5">
-            <p>You haven't created any albums yet.</p>
-            <Button variant="primary" as={Link} to="/upload-album">
-              Create Your First Album
-            </Button>
-          </div>
-        ) : (
-          <Row>
-            {myAlbums.map(album => (
-              <Col md={3} key={album.AlbumID || album.id} className="mb-4">
-                <Card className="h-100 shadow-sm">
-                  <Card.Img 
-                    variant="top" 
-                    src={getCoverImage(album.CoverArtUrl || album.CoverArtURL || album.image)} 
-                    alt={album.Title || album.title}
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = DEFAULT_PLACEHOLDER;
-                    }}
-                  />
-                  <Card.Body>
-                    <Card.Title>{album.Title || album.title}</Card.Title>
-                    <Card.Text>
-                      {album.TrackCount || album.tracks || 0} tracks<br/>
-                      <small className="text-muted">Released: {formatDate(album.ReleaseDate || album.releaseDate)}</small>
-                    </Card.Text>
-                    <div className="d-flex flex-column gap-2">
-                      <Button variant="primary" as={Link} to={`/albums/${album.AlbumID || album.id}`}>
-                        View Album
-                      </Button>
-                      <div className="d-flex gap-2">
-                        <Button 
-                          variant="outline-primary" 
-                          as={Link} 
-                          to={`/edit-album/${album.AlbumID || album.id}`}
-                          className="flex-grow-1"
-                        >
-                          <FaEdit /> Edit
-                        </Button>
-                        <Button 
-                          variant="outline-danger"
-                          onClick={() => confirmDelete(album, 'album')}
-                        >
-                          <FaTrash />
-                        </Button>
-                      </div>
-                    </div>
-                  </Card.Body>
-                </Card>
-              </Col>
-            ))}
-          </Row>
-        )}
-      </section>
-    );
+            </div>
+            
+            {myAlbums.length === 0 ? (
+              <div className="text-center py-5">
+                <p>You haven't created any albums yet.</p>
+                <Button variant="primary" as={Link} to="/upload-album">
+                  Create Your First Album
+                </Button>
+              </div>
+            ) : (
+              <Row>
+                {myAlbums.map(album => (
+                  <Col md={3} key={album.AlbumID || album.id} className="mb-4">
+                    <AlbumCard album={album} />
+                  </Col>
+                ))}
+              </Row>
+            )}
+          </section>
+        );
   };
 
   // Render playlists section
@@ -698,76 +661,76 @@ const CreatorDashboard = ({ section, playTrack }) => {
       );
     }
     
-    return (
-      <section>
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <h2>My Playlists</h2>
+        return (
+          <section>
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <h2>My Playlists</h2>
           <div>
             <Button variant="outline-secondary" className="me-2" onClick={() => fetchPlaylists(true)}>
               <FaSync className="me-1" /> Refresh
             </Button>
-            <Button variant="success" as={Link} to="/create-playlist">
-              <FaPlus className="me-2" /> Create New Playlist
-            </Button>
+              <Button variant="success" as={Link} to="/create-playlist">
+                <FaPlus className="me-2" /> Create New Playlist
+              </Button>
           </div>
-        </div>
-        
-        {myPlaylists.length === 0 ? (
-          <div className="text-center py-5">
-            <p>You haven't created any playlists yet.</p>
-            <Button variant="primary" as={Link} to="/create-playlist">
-              Create Your First Playlist
-            </Button>
-          </div>
-        ) : (
-          <Row>
-            {myPlaylists.map(playlist => (
-              <Col md={3} key={playlist.PlaylistID || playlist.id} className="mb-4">
-                <Card className="h-100 shadow-sm">
-                  <Card.Img 
-                    variant="top" 
+            </div>
+            
+            {myPlaylists.length === 0 ? (
+              <div className="text-center py-5">
+                <p>You haven't created any playlists yet.</p>
+                <Button variant="primary" as={Link} to="/create-playlist">
+                  Create Your First Playlist
+                </Button>
+              </div>
+            ) : (
+              <Row>
+                {myPlaylists.map(playlist => (
+                  <Col md={3} key={playlist.PlaylistID || playlist.id} className="mb-4">
+                    <Card className="h-100 shadow-sm">
+                      <Card.Img 
+                        variant="top" 
                     src={getCoverImage(playlist.CoverUrl || playlist.image)} 
-                    alt={playlist.Title || playlist.title}
+                        alt={playlist.Title || playlist.title}
                     onError={(e) => {
                       e.target.onerror = null;
                       e.target.src = DEFAULT_PLACEHOLDER;
                     }}
-                  />
-                  <Card.Body>
-                    <Card.Title>{playlist.Title || playlist.title}</Card.Title>
-                    <Card.Text>
-                      {playlist.TrackCount || playlist.tracks || 0} tracks<br/>
-                      <small className="text-muted">Created: {formatDate(playlist.CreatedAt || playlist.createdDate)}</small>
-                    </Card.Text>
-                    <div className="d-flex flex-column gap-2">
-                      <Button variant="primary" as={Link} to={`/playlist/${playlist.PlaylistID || playlist.id}`}>
-                        View Playlist
-                      </Button>
-                      <div className="d-flex gap-2">
-                        <Button 
-                          variant="outline-primary" 
-                          as={Link} 
-                          to={`/edit-playlist/${playlist.PlaylistID || playlist.id}`}
-                          className="flex-grow-1"
-                        >
-                          <FaEdit /> Edit
-                        </Button>
-                        <Button 
-                          variant="outline-danger"
-                          onClick={() => confirmDelete(playlist, 'playlist')}
-                        >
-                          <FaTrash />
-                        </Button>
-                      </div>
-                    </div>
-                  </Card.Body>
-                </Card>
-              </Col>
-            ))}
-          </Row>
-        )}
-      </section>
-    );
+                      />
+                      <Card.Body>
+                        <Card.Title>{playlist.Title || playlist.title}</Card.Title>
+                        <Card.Text>
+                          {playlist.TrackCount || playlist.tracks || 0} tracks<br/>
+                          <small className="text-muted">Created: {formatDate(playlist.CreatedAt || playlist.createdDate)}</small>
+                        </Card.Text>
+                        <div className="d-flex flex-column gap-2">
+                          <Button variant="primary" as={Link} to={`/playlist/${playlist.PlaylistID || playlist.id}`}>
+                            View Playlist
+                          </Button>
+                          <div className="d-flex gap-2">
+                            <Button 
+                              variant="outline-primary" 
+                              as={Link} 
+                              to={`/edit-playlist/${playlist.PlaylistID || playlist.id}`}
+                              className="flex-grow-1"
+                            >
+                              <FaEdit /> Edit
+                            </Button>
+                            <Button 
+                              variant="outline-danger"
+                              onClick={() => confirmDelete(playlist, 'playlist')}
+                            >
+                              <FaTrash />
+                            </Button>
+                          </div>
+                        </div>
+                      </Card.Body>
+                    </Card>
+                  </Col>
+                ))}
+              </Row>
+            )}
+          </section>
+        );
   };
 
   if (!user) {

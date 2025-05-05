@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Card, Button, Alert, Spinner } from 'react-bootstrap';
 import { FaPlus, FaCompactDisc } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
+import AlbumCard from '../components/cards/AlbumCard';
 
 const UserAlbumsPage = () => {
   const { userId } = useParams(); // If viewing another user's albums
@@ -109,46 +110,7 @@ const UserAlbumsPage = () => {
         <Row>
           {albums.map(album => (
             <Col key={album.AlbumID} sm={6} md={4} lg={3} className="mb-4">
-              <Card className="h-100 album-card shadow-sm">
-                {album.CoverArtURL ? (
-                  <Card.Img 
-                    variant="top" 
-                    src={album.CoverArtURL.startsWith('http') 
-                      ? album.CoverArtURL 
-                      : `http://localhost:5001/${album.CoverArtURL.replace(/^\/+/, '')}`}
-                    alt={album.Title}
-                    style={{ height: '180px', objectFit: 'cover' }}
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = 'https://placehold.co/300x300';
-                    }}
-                  />
-                ) : (
-                  <div className="text-center py-5 bg-light">
-                    <FaCompactDisc size={64} className="text-muted" />
-                  </div>
-                )}
-                
-                <Card.Body>
-                  <Card.Title>{album.Title}</Card.Title>
-                  <Card.Text className="text-muted">
-                    {album.ReleaseDate && (
-                      <small>Released: {new Date(album.ReleaseDate).toLocaleDateString()}</small>
-                    )}
-                  </Card.Text>
-                </Card.Body>
-                
-                <Card.Footer className="bg-white border-top-0">
-                  <Button 
-                    variant="primary" 
-                    block 
-                    onClick={() => navigate(`/albums/${album.AlbumID}`)}
-                    className="w-100"
-                  >
-                    View Album
-                  </Button>
-                </Card.Footer>
-              </Card>
+              <AlbumCard album={album} />
             </Col>
           ))}
         </Row>

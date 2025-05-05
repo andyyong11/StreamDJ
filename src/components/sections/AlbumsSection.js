@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Container, Spinner } from 'react-bootstrap';
-import TrackCard from '../cards/TrackCard';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import AlbumCard from '../cards/AlbumCard';
 import Slider from 'react-slick';
 import api from '../../services/api';
 
@@ -30,13 +30,13 @@ const SlickArrowRight = ({ currentSlide, slideCount, ...props }) => (
   </button>
 );
 
-const RecommendedSection = ({ apiUrl, title = "Recommended For You", onTrackSelect }) => {
-  const [tracks, setTracks] = useState([]);
+const AlbumsSection = ({ title = "Popular Albums", apiUrl, limit = 4, onAlbumPlay }) => {
+  const [albums, setAlbums] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchRecommendations = async () => {
+    const fetchAlbums = async () => {
       try {
         setLoading(true);
         setError(null);
@@ -46,27 +46,27 @@ const RecommendedSection = ({ apiUrl, title = "Recommended For You", onTrackSele
         
         // Ensure it's an array before setting state
         if (Array.isArray(response?.data)) {
-          setTracks(response.data);
+          setAlbums(response.data.slice(0, limit));
         } else {
           console.warn("Expected array but got:", response?.data);
-          setTracks([]); // fallback to empty to prevent map error
+          setAlbums([]); // fallback to empty to prevent map error
         }
       } catch (err) {
-        console.error('Failed to fetch recommendations:', err);
-        setError("Couldn't load recommendations");
+        console.error('Failed to fetch albums:', err);
+        setError("Couldn't load albums");
       } finally {
         setLoading(false);
       }
     };
   
     if (apiUrl) {
-      fetchRecommendations();
+      fetchAlbums();
     }
-  }, [apiUrl]);
+  }, [apiUrl, limit]);
 
   const settings = {
     dots: true,
-    infinite: tracks.length > 5,
+    infinite: albums.length > 5,
     speed: 500,
     slidesToShow: 5,
     slidesToScroll: 1,
@@ -85,7 +85,7 @@ const RecommendedSection = ({ apiUrl, title = "Recommended For You", onTrackSele
     return (
       <Container className="text-center py-4">
         <Spinner animation="border" role="status">
-          <span className="visually-hidden">Loading recommendations...</span>
+          <span className="visually-hidden">Loading albums...</span>
         </Spinner>
       </Container>
     );
@@ -95,18 +95,18 @@ const RecommendedSection = ({ apiUrl, title = "Recommended For You", onTrackSele
     return null; // Hide section if there's an error
   }
 
-  if (tracks.length === 0) {
-    return null; // Don't show empty recommendations
+  if (albums.length === 0) {
+    return null; // Don't show empty albums
   }
 
   return (
-    <Container className="recommended-section mb-5">
+    <Container className="albums-section mb-5">
       <h2 className="mb-4">{title}</h2>
       <div className="position-relative">
         <Slider {...settings}>
-          {tracks.map(track => (
-            <div key={track.TrackID || track.id} className="px-2">
-              <TrackCard track={track} onTrackSelect={onTrackSelect} />
+          {albums.map(album => (
+            <div key={album.AlbumID} className="px-2">
+              <AlbumCard album={album} onPlayClick={onAlbumPlay} />
             </div>
           ))}
         </Slider>
@@ -115,4 +115,4 @@ const RecommendedSection = ({ apiUrl, title = "Recommended For You", onTrackSele
   );
 };
 
-export default RecommendedSection; 
+export default AlbumsSection; 
