@@ -14,12 +14,12 @@ import Layout from './components/layout/Layout';
 import LikedSongsPage from './pages/LikedSongsPage';
 import HomePage from './pages/HomePage';
 import ProfilePage from './pages/ProfilePage';
-import DiscoverPage from './pages/DiscoverPage';
-import LibraryPage from './pages/LibraryPage';
-import LiveStreamsPage from './pages/LiveStreamsPage';
+import DiscoverPage from './pages/discoverPage';
+import LibraryPage from './pages/libraryPage';
+import LiveStreamsPage from './pages/liveStreamsPage';
 import LoginModal from './components/auth/LoginModal';
 import RegisterModal from './components/auth/RegisterModal';
-import UploadPage from './pages/UploadPage';
+import UploadPage from './pages/uploadPage';
 import StreamPlayerPage from './pages/StreamPlayerPage';
 
 // Components
