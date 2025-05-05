@@ -66,6 +66,12 @@ export const AuthProvider = ({ children }) => {
         localStorage.removeItem('token');
     };
     
+    // Update user info in context and localStorage
+    const updateUser = (userData) => {
+        setUser(userData);
+        localStorage.setItem('user', JSON.stringify(userData));
+    };
+    
     // Add login with retry
     const loginWithRetry = async (email, password) => {
         const response = await fetchWithRetry(
@@ -112,6 +118,7 @@ export const AuthProvider = ({ children }) => {
             token, 
             login, 
             logout,
+            updateUser,
             loginWithRetry,
             registerWithRetry
         }}>

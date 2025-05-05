@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, Future } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './App.css';
 
@@ -15,6 +15,7 @@ import MusicPlayer from './components/player/MusicPlayer';
 // Pages
 import HomePage from './pages/HomePage';
 import ProfilePage from './pages/ProfilePage';
+import ProfileSettingsPage from './pages/ProfileSettingsPage';
 import DiscoverPage from './pages/DiscoverPage';
 import LibraryPage from './pages/LibraryPage';
 import LiveStreamsPage from './pages/LiveStreamsPage';
@@ -162,7 +163,7 @@ function App() {
 
   return (
     <AuthProvider>
-      <Router>
+      <Router future={{ v7_relativeSplatPath: true }}>
         <div className="content">
           <Routes>
             <Route path="/login" element={<Navigate to="/" replace />} />
@@ -190,8 +191,31 @@ function App() {
             <Route
               path="/profile/:id"
               element={
-                <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
-                  <ProfilePage />
+                <Layout 
+                  onTrackSelect={handleTrackSelect} 
+                  currentTrack={currentTrack}
+                  openLoginModal={openLoginModal}
+                  openRegisterModal={openRegisterModal}
+                >
+                  <ProfilePage 
+                    playTrack={playTrack} 
+                    openLoginModal={openLoginModal}
+                  />
+                </Layout>
+              }
+            />
+            <Route
+              path="/settings/profile"
+              element={
+                <Layout 
+                  onTrackSelect={handleTrackSelect} 
+                  currentTrack={currentTrack}
+                  openLoginModal={openLoginModal}
+                  openRegisterModal={openRegisterModal}
+                >
+                  <PrivateRoute>
+                    <ProfileSettingsPage openLoginModal={openLoginModal} />
+                  </PrivateRoute>
                 </Layout>
               }
             />
@@ -242,10 +266,15 @@ function App() {
               }
             />
             <Route
-              path="/stream/:streamId"
+              path="/streams/:streamId"
               element={
-                <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
-                  <StreamPlayerPage />
+                <Layout 
+                  onTrackSelect={handleTrackSelect} 
+                  currentTrack={currentTrack}
+                  openLoginModal={openLoginModal}
+                  openRegisterModal={openRegisterModal}
+                >
+                  <StreamPlayerPage openLoginModal={openLoginModal} />
                 </Layout>
               }
             />
@@ -376,7 +405,7 @@ function App() {
               path="/playlists/:id"
               element={
                 <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
-                  <PlaylistPage />
+                  <PlaylistPage playTrack={playTrack} />
                 </Layout>
               }
             />

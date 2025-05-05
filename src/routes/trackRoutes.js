@@ -226,6 +226,13 @@ router.post('/upload', upload.fields([
 ]), async (req, res) => {
   const db = req.app.locals.db;
   const { title, artist, genre, duration, userId, featuredArtists } = req.body;
+  
+  console.log('Received upload request with data:', {
+    title, artist, genre, duration, userId,
+    featuredArtistsType: typeof featuredArtists,
+    featuredArtistsValue: featuredArtists
+  });
+  
   const audioFile = req.files.audioFile?.[0];
   const coverArtFile = req.files.coverArt?.[0];
 
@@ -244,6 +251,7 @@ router.post('/upload', upload.fields([
 
     // Use provided duration or default to 0
     const trackDuration = duration ? parseInt(duration) : 0;
+    console.log('Using track duration:', trackDuration);
 
     const newTrack = await trackModel.create(
       parseInt(userId),
@@ -264,10 +272,12 @@ router.post('/upload', upload.fields([
     );
 
     // Step 3: Add featured artists (from comma-separated usernames)
-    if (featuredArtists && featuredArtists.trim().length > 0) {
+    if (featuredArtists && featuredArtists.trim && featuredArtists.trim().length > 0) {
       const usernames = featuredArtists.split(',').map(u => u.trim());
       
       for (const username of usernames) {
+        if (!username) continue;
+        
         const user = await db.oneOrNone(
           `SELECT "UserID" FROM "User" WHERE "Username" = $1`,
           [username]
@@ -287,7 +297,7 @@ router.post('/upload', upload.fields([
     res.status(201).json({ message: 'Track uploaded successfully!', track: newTrack });
   } catch (error) {
     console.error('Upload error:', error.message);
-    res.status(500).json({ error: 'Upload failed.' });
+    res.status(500).json({ error: 'Upload failed: ' + error.message });
   }
 });
 

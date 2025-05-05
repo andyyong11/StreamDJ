@@ -1,0 +1,193 @@
+/* Play Button Styles */
+.play-button {
+  width: 35px !important;
+  height: 35px !important;
+  border-radius: 50% !important;
+  padding: 6px 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background-color: #198754 !important; /* Bootstrap success color */
+  border-color: #198754 !important;
+  color: white !important;
+  position: absolute !important;
+  bottom: 0 !important;
+  right: 0 !important;
+  margin: 8px !important;
+  transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+.play-button:hover {
+  transform: scale(1.1) !important;
+  background-color: #157347 !important; /* Darker green on hover */
+  border-color: #157347 !important;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15) !important;
+}
+
+.play-button svg {
+  margin-left: 2px; /* Slight adjustment for the play icon */
+}
+
+.play-button-sm {
+  width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+.play-button-sm:hover {
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Play button in tables (like creator dashboard) */
+.play-button-table {
+  width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background-color: #198754 !important; /* Bootstrap success color */
+  border-color: #198754 !important;
+  color: white !important;
+  transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+.play-button-table:hover {
+  transform: scale(1.1) !important;
+  background-color: #157347 !important;
+  border-color: #157347 !important;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15) !important;
+}
+
+.play-button-table svg {
+  margin-left: 2px; /* Slight adjustment for the play icon */
+}
+
+/* Inline play button for popular tracks table */
+.play-button-inline {
+  width: 28px !important;
+  height: 28px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background-color: #198754 !important; /* Bootstrap success color */
+  border-color: #198754 !important;
+  color: white !important;
+  font-size: 0.8rem !important;
+  transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+.play-button-inline:hover {
+  transform: scale(1.1) !important;
+  background-color: #157347 !important;
+  border-color: #157347 !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15) !important;
+}
+
+.play-button-inline svg {
+  margin-left: 2px; /* Slight adjustment for the play icon */
+}
+
+/* Action buttons container - ensures buttons are in a row */
+.action-buttons-container {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+}
+
+/* Creator Dashboard action buttons */
+.creator-action-btn {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 50% !important; /* Changed from 4px to 50% for circular buttons */
+  padding: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+.creator-action-btn:hover {
+  transform: scale(1.1) !important;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15) !important;
+}
+
+.creator-action-btn.btn-success {
+  background-color: #198754 !important;
+  border-color: #198754 !important;
+}
+
+.creator-action-btn.btn-success:hover {
+  background-color: #157347 !important;
+  border-color: #157347 !important;
+}
+
+.creator-action-btn.btn-primary {
+  background-color: #0d6efd !important;
+  border-color: #0d6efd !important;
+}
+
+.creator-action-btn.btn-primary:hover {
+  background-color: #0b5ed7 !important;
+  border-color: #0b5ed7 !important;
+}
+
+.creator-action-btn.btn-danger {
+  background-color: #dc3545 !important;
+  border-color: #dc3545 !important;
+}
+
+.creator-action-btn.btn-danger:hover {
+  background-color: #bb2d3b !important;
+  border-color: #bb2d3b !important;
+}
+
+/* For outline variants of action buttons */
+.creator-action-btn.btn-outline-danger {
+  color: #dc3545 !important;
+  border-color: #dc3545 !important;
+  background-color: transparent !important;
+}
+
+.creator-action-btn.btn-outline-danger:hover {
+  color: white !important;
+  background-color: #dc3545 !important;
+}
+
+.creator-action-btn.btn-outline-primary {
+  color: #0d6efd !important;
+  border-color: #0d6efd !important;
+  background-color: transparent !important;
+}
+
+.creator-action-btn.btn-outline-primary:hover {
+  color: white !important;
+  background-color: #0d6efd !important;
+}
+
+/* Three dots menu button */
+.menu-button {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 50% !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+.menu-button:hover {
+  transform: scale(1.1) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15) !important;
+} 

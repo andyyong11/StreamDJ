@@ -3,6 +3,7 @@ import { Container, Row, Col, Card, Button, Nav, Spinner } from 'react-bootstrap
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { FaPlay, FaHeart, FaMusic, FaCompactDisc, FaList } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
+import AlbumCard from '../components/cards/AlbumCard';
 import axios from 'axios';
 
 const LibraryPage = ({ section, onTrackSelect }) => {
@@ -199,36 +200,7 @@ const LibraryPage = ({ section, onTrackSelect }) => {
               <Row>
                 {likedAlbums.map(album => (
                   <Col md={3} key={album.AlbumID || album.id} className="mb-4">
-                    <Card className="h-100 shadow-sm">
-                      <Card.Img 
-                        variant="top" 
-                        src={album.CoverArtUrl || album.image || 'https://via.placeholder.com/300'} 
-                        alt={album.Title || album.title}
-                      />
-                      <Card.Body>
-                        <Card.Title>{album.Title || album.title}</Card.Title>
-                        <Card.Text>
-                          By {album.Artist || album.artist} • {album.TrackCount || album.tracks || 0} tracks
-                        </Card.Text>
-                        <div className="d-flex justify-content-between">
-                          <Button 
-                            variant="success" 
-                            size="sm"
-                            as={Link}
-                            to={`/albums/${album.AlbumID || album.id}`}
-                          >
-                            <FaPlay className="me-1" /> Play
-                          </Button>
-                          <Button 
-                            variant="outline-danger" 
-                            size="sm"
-                            onClick={() => handleUnlike(album.AlbumID || album.id, 'album')}
-                          >
-                            <FaHeart />
-                          </Button>
-                        </div>
-                      </Card.Body>
-                    </Card>
+                    <AlbumCard album={album} />
                   </Col>
                 ))}
               </Row>

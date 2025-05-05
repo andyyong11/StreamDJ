@@ -4,7 +4,7 @@ import { FaUser, FaMusic, FaVideo, FaSignOutAlt, FaCaretDown } from 'react-icons
 import { useAuth } from '../../context/AuthContext';
 import './UserDropdown.css';
 
-const UserDropdown = ({ user }) => {
+const UserDropdown = ({ user, openLoginModal }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
@@ -26,7 +26,9 @@ const UserDropdown = ({ user }) => {
   const handleLogout = async () => {
     try {
       await logout();
-      navigate('/login');
+      if (openLoginModal) {
+        openLoginModal();
+      }
     } catch (error) {
       console.error('Logout failed:', error);
     }

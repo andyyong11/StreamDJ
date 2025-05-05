@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FaSearch, FaBell, FaUser, FaUpload, FaSignOutAlt, FaMusic, FaCompactDisc, FaList, FaHeadphones, FaPlusCircle } from 'react-icons/fa';
 import logo from '../../logo.svg';
 import { useAuth } from '../../context/AuthContext';
+import api from '../../services/api';
 
 const NavigationBar = ({ onTrackSelect, openLoginModal, openRegisterModal }) => {
   const { user, logout } = useAuth();
@@ -14,21 +15,30 @@ const NavigationBar = ({ onTrackSelect, openLoginModal, openRegisterModal }) => 
     artists: [],
     playlists: []
   });
+  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
     const fetchResults = async () => {
       if (query.length > 1) {
+        setIsSearching(true);
         try {
-          const res = await fetch(`http://localhost:5001/api/tracks/search-all?query=${encodeURIComponent(query)}`);
-          const data = await res.json();
+          // Force fresh search results by adding a cache control parameter
+          const timestamp = Date.now();
+          // Always fetch fresh results by using the API service with cache bypass
+          api.clearCacheFor('/api/tracks/search-all');
+          
+          const response = await api.get(`/api/tracks/search-all?query=${encodeURIComponent(query)}&_t=${timestamp}`);
+          
           setResults({
-            tracks: data.tracks || [],
-            artists: data.artists || [],
-            playlists: data.playlists || []
+            tracks: response?.data?.tracks || [],
+            artists: response?.data?.artists || [],
+            playlists: response?.data?.playlists || []
           });
         } catch (err) {
           console.error('Search error:', err);
           setResults({ tracks: [], artists: [], playlists: [] });
+        } finally {
+          setIsSearching(false);
         }
       } else {
         setResults({ tracks: [], artists: [], playlists: [] });
@@ -79,7 +89,11 @@ const NavigationBar = ({ onTrackSelect, openLoginModal, openRegisterModal }) => 
                 onChange={(e) => setQuery(e.target.value)}
               />
               <Button variant="outline-light">
-                <FaSearch />
+                {isSearching ? (
+                  <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                ) : (
+                  <FaSearch />
+                )}
               </Button>
             </InputGroup>
 

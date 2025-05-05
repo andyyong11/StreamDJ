@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Card, Button, ListGroup, Modal, Form, Badge, Alert } from 'react-bootstrap';
 import { FaPlus, FaMusic, FaTrash, FaPen, FaArrowLeft, FaPlay } from 'react-icons/fa';
+import '../styles/PlayButton.css';
 
 const AlbumPage = ({ playTrack }) => {
   const { albumId } = useParams();
@@ -256,13 +257,13 @@ const AlbumPage = ({ playTrack }) => {
                 <Card.Text>{album.Description}</Card.Text>
               )}
               
-              <div className="mt-3">
+              <div className="mt-3 action-buttons-container">
                 <Button 
                   variant="outline-primary" 
-                  className="me-2"
+                  className="creator-action-btn me-2"
                   onClick={() => navigate(`/edit-album/${albumId}`)}
                 >
-                  <FaPen className="me-2" /> Edit Album
+                  <FaPen />
                 </Button>
               </div>
             </Card.Body>
@@ -276,6 +277,7 @@ const AlbumPage = ({ playTrack }) => {
           <Button 
             variant="success" 
             size="sm"
+            className="d-flex align-items-center"
             onClick={() => {
               fetchUserTracks();
               setShowAddTrackModal(true);
@@ -310,18 +312,17 @@ const AlbumPage = ({ playTrack }) => {
                     </div>
                   </div>
                   
-                  <div>
+                  <div className="action-buttons-container">
                     <Button 
                       variant="success"
-                      size="sm"
-                      className="me-2"
+                      className="creator-action-btn me-2"
                       onClick={() => playTrack && playTrack(track, tracks)}
                     >
                       <FaPlay />
                     </Button>
                     <Button 
                       variant="outline-danger" 
-                      size="sm"
+                      className="creator-action-btn"
                       onClick={() => confirmRemoveTrack(track.TrackID)}
                     >
                       <FaTrash />
@@ -404,7 +405,10 @@ const AlbumPage = ({ playTrack }) => {
           <Button variant="secondary" onClick={() => setShowRemoveConfirmation(false)}>
             Cancel
           </Button>
-          <Button variant="danger" onClick={handleRemoveTrack}>
+          <Button 
+            variant="danger" 
+            onClick={handleRemoveTrack}
+          >
             Remove
           </Button>
         </Modal.Footer>

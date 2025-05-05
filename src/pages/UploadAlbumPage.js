@@ -1,9 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Button, Form, ListGroup, Badge } from 'react-bootstrap';
 import { FaUpload, FaFileAudio, FaImage, FaPlus, FaTrash } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 import genreOptions from '../utils/genreOptions';
+import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
 
 const UploadAlbumForm = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  
   const [albumData, setAlbumData] = useState({
     title: '',
     releaseDate: '',
@@ -20,6 +26,7 @@ const UploadAlbumForm = () => {
     duration: 0,
   });
   const [isLoadingDuration, setIsLoadingDuration] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleAlbumChange = (e) => {
     const { name, value, files } = e.target;
@@ -103,14 +110,24 @@ const UploadAlbumForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsUploading(true);
+    
+    // Check if user is logged in
+    if (!user || !user.id) {
+      alert('You must be logged in to upload an album');
+      setIsUploading(false);
+      return;
+    }
     
     if (tracks.length === 0) {
       alert('Please add at least one track to the album');
+      setIsUploading(false);
       return;
     }
 
     if (!albumData.coverArt) {
       alert('Album cover art is required');
+      setIsUploading(false);
       return;
     }
 
@@ -122,6 +139,9 @@ const UploadAlbumForm = () => {
     formData.append('description', albumData.description);
     formData.append('coverArt', albumData.coverArt);
     formData.append('genre', albumData.genre);
+    formData.append('userId', user.id); // Add user ID from context
+    
+    console.log('Submitting album with user ID:', user.id);
     
     // Track data
     tracks.forEach((track, index) => {
@@ -147,14 +167,22 @@ const UploadAlbumForm = () => {
         
         alert('Album created successfully!');
         
+        // Clear all related caches to ensure fresh data
+        api.clearCacheFor('/api/albums');
+        api.clearCacheFor('/api/albums/user');
+        api.clearCacheFor('/api/tracks');
+        api.clearCache();
+        
         // Navigate to the album page
-        window.location.href = `/albums/${albumId}`;
+        navigate(`/albums/${albumId}`);
       } else {
         alert(`Upload failed: ${result.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error uploading album:', error);
       alert('Failed to upload album. Please try again.');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -349,18 +377,23 @@ const UploadAlbumForm = () => {
           </Card>
           
           {/* Submit Button */}
-          <div className="text-center">
+          <div className="text-end mt-4">
             <Button 
-              type="submit" 
               variant="primary" 
-              size="lg"
-              disabled={tracks.length === 0 || !albumData.title || !albumData.coverArt}
+              type="submit"
+              disabled={isUploading || tracks.length === 0 || !albumData.title || !albumData.coverArt}
             >
-              <FaUpload className="me-2" /> Upload Album
+              {isUploading ? (
+                <>
+                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <FaUpload className="me-2" /> Upload Album
+                </>
+              )}
             </Button>
-            <p className="text-muted mt-3">
-              After creating your album, you'll be able to add existing tracks from your library.
-            </p>
           </div>
         </Form>
       </Card>
