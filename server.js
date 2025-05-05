@@ -4,7 +4,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 
 const path = require('path'); // ✅ Added to resolve static file path
-const db = require('./src/db/config');
+const dbConfig = require('./src/db/config');
 
 const { createServer } = require('http');
 const { Server } = require('socket.io');
@@ -12,7 +12,6 @@ const { Pool } = require('pg');
 const pgp = require('pg-promise')();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const path = require('path');
 const fs = require('fs');
 const winston = require('winston');
 const rateLimit = require('express-rate-limit');
@@ -97,7 +96,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Test database connection route
 app.get('/test-db', async (req, res) => {
     try {
-        const result = await db.query('SELECT NOW()');
+        const result = await dbConfig.query('SELECT NOW()');
         res.json({
             success: true,
             message: 'Database connection successful',
@@ -110,6 +109,8 @@ app.get('/test-db', async (req, res) => {
             message: 'Database connection failed',
             error: error.message
         });
+    }
+});
 
 // Database connection with retry logic
 const createPool = async (retries = 5) => {
@@ -127,7 +128,7 @@ const createPool = async (retries = 5) => {
     logger.info('Database connection established');
     
     // Create a pg-promise wrapper for models that need it
-    const db = pgp({
+    const dbConnection = pgp({
       host: process.env.DB_HOST,
       port: process.env.DB_PORT,
       database: process.env.DB_NAME,
@@ -135,12 +136,11 @@ const createPool = async (retries = 5) => {
       password: process.env.DB_PASSWORD
     });
     
-    return { pool, db };
+    return { pool, db: dbConnection };
   } catch (err) {
     if (retries === 0) {
       logger.error('Failed to connect to database after multiple retries', err);
       throw err;
-
     }
     logger.warn(`Database connection failed, retrying... (${retries} attempts left)`);
     await new Promise(resolve => setTimeout(resolve, 5000));
@@ -150,7 +150,7 @@ const createPool = async (retries = 5) => {
 
 // Initialize database connection
 let pool;
-let db;
+let dbConnection;
 let streamKeyService;
 
 // Register routes immediately (they'll use the pool once it's initialized)
@@ -164,52 +164,24 @@ app.use('/api/streams', (req, res, next) => {
 app.use('/api/users', authenticateToken, userRoutes);
 app.use('/api/playlists', authenticateToken, playlistRoutes);
 app.use('/api/tracks', trackRoutes);
+app.use('/api/trending', trendingRoutes);
+app.use('/api/recommendations', recommendRoutes);
+app.use('/api/library', libraryRoutes);
 
 // Initialize database and services
 const initializeDatabase = async () => {
   try {
     const { pool: createdPool, db: createdDb } = await createPool();
     pool = createdPool;
-    db = createdDb;
-    app.locals.db = db; // Use pg-promise for models
-    streamKeyService = new StreamKeyService(db); // Use pg-promise for streamKeyService
+    dbConnection = createdDb; // This will be the pg-promise connection
+    app.locals.db = dbConnection; // Use pg-promise for models
+    streamKeyService = new StreamKeyService(dbConnection); // Use pg-promise for streamKeyService
     logger.info('Database and services initialized successfully');
   } catch (err) {
     logger.error('Fatal: Could not initialize database and services', err);
     process.exit(1);
   }
 };
-
-// Start server immediately
-httpServer.listen(PORT, () => {
-  logger.info(`Server is running on port ${PORT}`);
-  // Initialize database after server starts
-  initializeDatabase();
-  // Start media server
-  try {
-    if (!nms.nmsCore) {
-      nms.run();
-      logger.info('Media Server started successfully');
-    }
-  } catch (err) {
-    logger.error('Failed to start Media Server:', err);
-  }
-});
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
-});
-
-
-// Protected routes
-app.use('/api/users', auth, userRoutes);
-// app.use('/api/playlists', auth, playlistRoutes);
-app.use('/api/playlists', playlistRoutes);
-app.use('/api/tracks', trackRoutes);
-app.use('/api/trending', trendingRoutes);
-app.use('/api/recommendations', recommendRoutes);
-app.use('/api/library', libraryRoutes);
 
 // Serve HLS media files
 const mediaPath = path.join(__dirname, 'media');
@@ -600,12 +572,22 @@ const cleanup = async () => {
   }
 };
 
-
-// Server Setup
-app.listen(PORT, () => {
-    console.log(`Server started on port ${PORT}`);
+// Start server
+httpServer.listen(PORT, () => {
+  logger.info(`Server is running on port ${PORT}`);
+  // Initialize database after server starts
+  initializeDatabase();
+  // Start media server
+  try {
+    if (!nms.nmsCore) {
+      nms.run();
+      logger.info('Media Server started successfully');
+    }
+  } catch (err) {
+    logger.error('Failed to start Media Server:', err);
+  }
 });
 
 process.on('SIGTERM', cleanup);
-process.on('SIGINT', cleanup); 
+process.on('SIGINT', cleanup);
 
