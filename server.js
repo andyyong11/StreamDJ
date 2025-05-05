@@ -124,6 +124,14 @@ const createPool = async (retries = 5) => {
   });
 
   try {
+    console.log('Attempting to connect to database with:', {
+      host: process.env.DB_HOST, 
+      port: process.env.DB_PORT,
+      database: process.env.DB_NAME,
+      user: process.env.DB_USER,
+      // Password hidden for security
+    });
+    
     await pool.query('SELECT NOW()');
     logger.info('Database connection established');
     
@@ -138,6 +146,12 @@ const createPool = async (retries = 5) => {
     
     return { pool, db: dbConnection };
   } catch (err) {
+    logger.error('Database connection error details:', {
+      message: err.message,
+      code: err.code,
+      stack: err.stack
+    });
+    
     if (retries === 0) {
       logger.error('Failed to connect to database after multiple retries', err);
       throw err;
@@ -162,7 +176,8 @@ app.use('/api/streams', (req, res, next) => {
   streamRoutes(pool, streamKeyService)(req, res, next);
 });
 app.use('/api/users', authenticateToken, userRoutes);
-app.use('/api/playlists', authenticateToken, playlistRoutes);
+// Allow public access to playlists routes without authentication
+app.use('/api/playlists', playlistRoutes);
 app.use('/api/tracks', trackRoutes);
 app.use('/api/trending', trendingRoutes);
 app.use('/api/recommendations', recommendRoutes);
