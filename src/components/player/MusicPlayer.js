@@ -3,11 +3,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Container, Row, Col, ProgressBar, Button } from 'react-bootstrap';
 import {
   FaPlay, FaPause, FaStepForward, FaStepBackward,
-  FaVolumeUp, FaHeart, FaRandom, FaRedo
+  FaVolumeUp, FaHeart, FaRandom, FaRedo,
+  FaShareAlt, FaListUl, FaPlus
 } from 'react-icons/fa';
 
 const MusicPlayer = ({ track }) => {
-  const { user } = useAuth(); // (Temporary) Can be removed if it's not working
+  const { user } = useAuth();
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [volume, setVolume] = useState(80);
@@ -19,31 +20,22 @@ const MusicPlayer = ({ track }) => {
   const audioRef = useRef(null);
 
   const togglePlay = () => setIsPlaying(!isPlaying);
-  // const toggleFavorite = () => setIsFavorite(!isFavorite);
 
-  // ========================= Updated ToggleFavorite Function Starts ============================================
   const toggleFavorite = async () => {
     if (!track || !user) return;
-  
     const endpoint = isFavorite ? 'unlike' : 'like';
-  
     try {
       const res = await fetch(`http://localhost:5001/api/tracks/${track.TrackID}/${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id })
       });
-  
-      if (res.ok) {
-        setIsFavorite(!isFavorite);
-      } else {
-        console.error('Failed to toggle like');
-      }
+      if (res.ok) setIsFavorite(!isFavorite);
+      else console.error('Failed to toggle like');
     } catch (err) {
       console.error('Error toggling like:', err);
     }
-  };  
-// ==================================== ENDS HERE  ================================
+  };
 
   const formatTime = (seconds) => {
     if (isNaN(seconds)) return '0:00';
@@ -91,9 +83,8 @@ const MusicPlayer = ({ track }) => {
         console.error('Failed to fetch like status:', err);
       }
     };
-  
     fetchLikeStatus();
-  }, [track, user]);  
+  }, [track, user]);
 
   useEffect(() => {
     const logPlay = async () => {
@@ -135,10 +126,10 @@ const MusicPlayer = ({ track }) => {
                 e.target.src = '/default-cover.jpg';
               }}
             />
-<div className="d-flex flex-column">
-  <h6 className="mb-1">{track.Title}</h6>
-  <small style={{ color: 'white' }}>{track.Artist}</small>
-</div>
+            <div className="d-flex flex-column">
+              <h6 className="mb-1">{track.Title}</h6>
+              <small style={{ color: 'white' }}>{track.Artist}</small>
+            </div>
             <Button variant="link" className="text-light ms-3" onClick={toggleFavorite}>
               <FaHeart color={isFavorite ? 'red' : 'white'} />
             </Button>
@@ -211,12 +202,12 @@ const MusicPlayer = ({ track }) => {
             </div>
           </Col>
 
-          {/* Volume Control */}
-          <Col md={3} className="d-flex align-items-center justify-content-end">
-            <FaVolumeUp className="me-2" />
+          {/* Volume + New Buttons */}
+          <Col md={3} className="d-flex align-items-center justify-content-end gap-3">
+            <FaVolumeUp />
             <ProgressBar
               now={volume}
-              style={{ width: '100px', height: '5px', cursor: 'pointer' }}
+              style={{ width: '80px', height: '5px', cursor: 'pointer' }}
               onClick={(e) => {
                 const clickX = e.nativeEvent.offsetX;
                 const width = e.currentTarget.clientWidth;
@@ -224,9 +215,12 @@ const MusicPlayer = ({ track }) => {
                 setVolume(newVolume);
               }}
             />
+            {/* 👇 New Buttons Here */}
+            <Button variant="link" className="text-white p-0"><FaShareAlt /></Button>
+            <Button variant="link" className="text-white p-0"><FaListUl /></Button>
+            <Button variant="link" className="text-white p-0"><FaPlus /></Button>
           </Col>
         </Row>
-
         <audio ref={audioRef} src={audioSrc} />
       </Container>
     </div>

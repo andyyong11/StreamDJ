@@ -46,6 +46,7 @@ const trackRoutes = require('./src/routes/trackRoutes');
 
 const trendingRoutes = require('./src/routes/trendingRoutes');
 const recommendRoutes = require('./src/routes/recommendRoutes');
+const libraryRoutes = require('./src/routes/libraryRoutes');
 
 const streamRoutes = require('./src/routes/streamRoutes');
 
@@ -203,10 +204,12 @@ app.get('/health', (req, res) => {
 
 // Protected routes
 app.use('/api/users', auth, userRoutes);
-app.use('/api/playlists', auth, playlistRoutes);
+// app.use('/api/playlists', auth, playlistRoutes);
+app.use('/api/playlists', playlistRoutes);
 app.use('/api/tracks', trackRoutes);
 app.use('/api/trending', trendingRoutes);
 app.use('/api/recommendations', recommendRoutes);
+app.use('/api/library', libraryRoutes);
 
 // Serve HLS media files
 const mediaPath = path.join(__dirname, 'media');

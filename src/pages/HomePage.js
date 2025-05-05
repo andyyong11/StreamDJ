@@ -29,12 +29,52 @@ const HomePage = ({ onTrackSelect }) => {
   }, []);
 
   // Mock data for featured content
-  const featuredPlaylists = [
-    { id: 1, title: 'Summer Hits 2023', creator: 'StreamDJ', image: 'https://thumbs.dreamstime.com/b/happy-new-year-happy-new-year-greeting-card-colorful-fireworks-sparkling-burning-number-beautiful-holiday-web-banner-248472064.jpg', tracks: 25 },
-    { id: 2, title: 'Chill Vibes', creator: 'DJ Relaxx', image: 'https://lofigirl.com/wp-content/uploads/2023/02/DAY_UPDATE_ILLU.jpg', tracks: 18 },
-    { id: 3, title: 'Workout Mix', creator: 'FitBeats', image: 'https://thumbs.dreamstime.com/b/weightlifter-clapping-hands-preparing-workout-gym-focus-dust-112033565.jpg', tracks: 32 },
-    { id: 4, title: 'EDM Anthems', creator: 'ElectroMaster', image: 'https://www.ikmultimedia.com/products/stedm/main-banner/mobile.jpg', tracks: 40 }
-  ];
+  const [featuredPlaylists, setFeaturedPlaylists] = useState([]);
+  const [loadingFeatured, setLoadingFeatured] = useState(true);
+  
+  // mock data for personalized playlists
+  const [personalizedPlaylists, setPersonalizedPlaylists] = useState([]);
+  console.log('Personalized Playlists:', personalizedPlaylists);
+  const [loadingPersonalized, setLoadingPersonalized] = useState(true);
+
+  useEffect(() => {
+    const fetchFeaturedPlaylists = async () => {
+      try {
+        const res = await fetch('http://localhost:5001/api/playlists/featured');
+        const data = await res.json();
+        // ✅ Ensure it's an array before setting it
+        setFeaturedPlaylists(Array.isArray(data) ? data : []);
+        console.log('Look at me');
+        console.log(data);
+      } catch (err) {
+        console.error('Failed to fetch featured playlists:', err);
+        setFeaturedPlaylists([]); // fallback to empty
+      } finally {
+        setLoadingFeatured(false);
+      }
+    };
+  
+    fetchFeaturedPlaylists();
+  }, []);
+
+// Personalized featured playlists (based on user behavior)
+useEffect(() => {
+  const fetchPersonalized = async () => {
+    if (!user) return;
+    try {
+      const res = await fetch(`http://localhost:5001/api/playlists/featured/personalized/${user.id}`);
+      const data = await res.json();
+      setPersonalizedPlaylists(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to fetch personalized playlists:', err);
+    } finally {
+      setLoadingPersonalized(false);
+    }
+  };
+
+  fetchPersonalized();
+}, [user]);
+
 
   const liveStreams = [
     { id: 1, title: 'Friday Night Party', dj: 'DJ Sparkle', listeners: 1243, image: 'https://via.placeholder.com/300' },
@@ -129,6 +169,8 @@ const HomePage = ({ onTrackSelect }) => {
         </section>
       )}
 
+
+
       <RecommendedSection
         apiUrl={`http://localhost:5001/api/recommendations/collab/${user?.id || 1}`}
         title="People who liked what you like also liked..."
@@ -150,37 +192,61 @@ const HomePage = ({ onTrackSelect }) => {
         onTrackSelect={onTrackSelect}
       />
 
+{!loadingFeatured && featuredPlaylists.length > 0 && (
+  <section className="mb-5">
+    <h2 className="mb-4">Featured Playlists</h2>
+    <Row>
+      {featuredPlaylists.map(playlist => (
+        <Col md={3} key={playlist.PlaylistID} className="mb-4">
+          <Card className="h-100 shadow-sm">
+            <Card.Img
+              variant="top"
+              src={playlist.CoverURL || '/default-cover.jpg'} // Fallback image
+            />
+            <Card.Body>
+              <Card.Title>{playlist.Name}</Card.Title>
+              <Card.Text>
+                {playlist.Description || 'No description'} <br />
+                {playlist.total_likes} likes • {playlist.total_plays} plays
+              </Card.Text>
+              <Button variant="success" size="sm">
+                <FaPlay className="me-1" /> Play
+              </Button>
+            </Card.Body>
+          </Card>
+        </Col>
+      ))}
+    </Row>
+    <div className="text-center mt-3">
+      <Button variant="outline-primary" as={Link} to="/playlists">View All Playlists</Button>
+    </div>
+  </section>
+)}
 
-      {/* Featured Playlists */}
-      <section className="mb-5">
-        <h2 className="mb-4">Featured Playlists</h2>
-        <Row>
-          {featuredPlaylists.map(playlist => (
-            <Col md={3} key={playlist.id} className="mb-4">
-              <Card className="h-100 shadow-sm">
-                <Card.Img variant="top" src={playlist.image} />
-                <Card.Body>
-                  <Card.Title>{playlist.title}</Card.Title>
-                  <Card.Text>
-                    By {playlist.creator} • {playlist.tracks} tracks
-                  </Card.Text>
-                  <div className="d-flex justify-content-between">
-                    <Button variant="success" size="sm">
-                      <FaPlay className="me-1" /> Play
-                    </Button>
-                    <Button variant="outline-danger" size="sm">
-                      <FaHeart />
-                    </Button>
-                  </div>
-                </Card.Body>
-              </Card>
-            </Col>
-          ))}
-        </Row>
-        <div className="text-center mt-3">
-          <Button variant="outline-primary" as={Link} to="/playlists">View All Playlists</Button>
-        </div>
-      </section>
+{user && !loadingPersonalized && personalizedPlaylists.length > 0 && (
+  <section className="mb-5">
+    <h2 className="mb-4">Playlists You Might Like</h2>
+    <Row>
+      {personalizedPlaylists.map((playlist) => (
+        <Col md={3} key={playlist.PlaylistID} className="mb-4">
+          <Card className="h-100 shadow-sm">
+            <Card.Img variant="top" src={playlist.CoverURL || '/default-cover.jpg'} />
+            <Card.Body>
+              <Card.Title>{playlist.Name}</Card.Title>
+              <Card.Text>
+                {playlist.Description || 'No description'}<br />
+                {playlist.total_likes} likes • {playlist.total_plays} plays
+              </Card.Text>
+              <Button variant="success" size="sm">
+                <FaPlay className="me-1" /> Play
+              </Button>
+            </Card.Body>
+          </Card>
+        </Col>
+      ))}
+    </Row>
+  </section>
+)}
 
       {/* Live Streams */}
       <section className="mb-5">

@@ -80,6 +80,10 @@ const LibraryPage = () => {
         </Card>
       </section>
 
+      <Button as={Link} to="/library/liked" variant="outline-primary">
+  View Liked Songs
+</Button>
+
       {/* Followed Artists */}
       <section className="mb-5">
         <h2 className="mb-4">Followed Artists</h2>

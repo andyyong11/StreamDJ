@@ -11,6 +11,7 @@ import 'slick-carousel/slick/slick-theme.css';
 import Layout from './components/layout/Layout';
 
 // Pages
+import LikedSongsPage from './pages/LikedSongsPage';
 import HomePage from './pages/HomePage';
 import ProfilePage from './pages/ProfilePage';
 import DiscoverPage from './pages/DiscoverPage';
@@ -95,6 +96,14 @@ function App() {
             element={
               <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
                 <StreamPlayerPage />
+              </Layout>
+            }
+          />
+          <Route
+            path="/library/liked"
+            element={
+              <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+                <LikedSongsPage onTrackSelect={handleTrackSelect} />
               </Layout>
             }
           />
