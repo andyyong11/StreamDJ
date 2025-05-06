@@ -69,16 +69,26 @@ const playlistModel = {
     },
 
     // Add track to playlist
-    async addTrack(playlistId, trackId, position) {
-        try {
-            return await db.one(
-                'INSERT INTO "PlaylistTrack" ("PlaylistID", "TrackID", "Position") VALUES ($1, $2, $3) RETURNING *',
-                [playlistId, trackId, position]
-            );
-        } catch (error) {
-            throw new Error(`Error adding track to playlist: ${error.message}`);
-        }
-    },
+// Add track to playlist
+async addTrack(playlistId, trackId, position = null) {
+    try {
+      if (position === null) {
+        const result = await db.oneOrNone(
+          `SELECT MAX("Position") + 1 AS pos FROM "PlaylistTrack" WHERE "PlaylistID" = $1`,
+          [playlistId]
+        );
+        position = result?.pos || 1;
+      }
+  
+      return await db.one(
+        `INSERT INTO "PlaylistTrack" ("PlaylistID", "TrackID", "Position", "AddedAt")
+         VALUES ($1, $2, $3, NOW()) RETURNING *`,
+        [playlistId, trackId, position]
+      );
+    } catch (error) {
+      throw new Error(`Error adding track to playlist: ${error.message}`);
+    }
+  },    
 
     // Remove track from playlist
     async removeTrack(playlistId, trackId) {

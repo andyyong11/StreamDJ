@@ -1,4 +1,5 @@
 import { useAuth } from '../../context/AuthContext';
+import AddToPlaylistModal from './AddToPlaylistModal';
 import React, { useState, useEffect, useRef } from 'react';
 import { Container, Row, Col, ProgressBar, Button } from 'react-bootstrap';
 import {
@@ -18,6 +19,7 @@ const MusicPlayer = ({ track }) => {
   const [hoverTime, setHoverTime] = useState(null);
   const [hoverPosition, setHoverPosition] = useState(0);
   const audioRef = useRef(null);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const togglePlay = () => setIsPlaying(!isPlaying);
 
@@ -218,10 +220,16 @@ const MusicPlayer = ({ track }) => {
             {/* 👇 New Buttons Here */}
             <Button variant="link" className="text-white p-0"><FaShareAlt /></Button>
             <Button variant="link" className="text-white p-0"><FaListUl /></Button>
-            <Button variant="link" className="text-white p-0"><FaPlus /></Button>
+            <Button variant="link" className="text-white p-0" onClick={() => setShowAddModal(true)}><FaPlus /></Button>
           </Col>
         </Row>
         <audio ref={audioRef} src={audioSrc} />
+        <AddToPlaylistModal
+          show={showAddModal}
+          onHide={() => setShowAddModal(false)}
+          track={track}
+          userId={user?.id}
+        />
       </Container>
     </div>
   );
