@@ -28,13 +28,13 @@ import PlaylistPage from './pages/PlaylistPage';
 import LoginModal from './components/auth/LoginModal';
 import RegisterModal from './components/auth/RegisterModal';
 import UploadAlbumPage from './pages/UploadAlbumPage';
-import StreamPlayerPage from './pages/StreamPlayerPage';
+// import StreamPlayerPage from './pages/StreamPlayerPage';
 import AlbumPage from './pages/AlbumPage';
 import UserAlbumsPage from './pages/UserAlbumsPage';
 import EditAlbumPage from './pages/EditAlbumPage';
 import EditTrackPage from './pages/EditTrackPage';
 import CreatorDashboard from './pages/CreatorDashboard';
-import PlaylistPage from './pages/PlaylistPage';
+// import PlaylistPage from './pages/PlaylistPage';
 
 // Components
 import PrivateRoute from './components/auth/PrivateRoute';

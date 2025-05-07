@@ -18,8 +18,8 @@ const MusicPlayer = ({ track, currentPlaylist = [], onTrackSelect }) => {
   const [isShuffle, setIsShuffle] = useState(false);
   const [hoverTime, setHoverTime] = useState(null);
   const [hoverPosition, setHoverPosition] = useState(0);
-  const [audioSrc, setAudioSrc] = useState('');
-  const [coverArtSrc, setCoverArtSrc] = useState('https://placehold.co/300x300');
+  // const [audioSrc, setAudioSrc] = useState('');
+  // const [coverArtSrc, setCoverArtSrc] = useState('https://placehold.co/300x300');
   const audioRef = useRef(null);
   const [showAddModal, setShowAddModal] = useState(false);
 

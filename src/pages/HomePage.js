@@ -6,7 +6,7 @@ import Slider from 'react-slick';
 import TrendingSection from '../components/sections/TrendingSection';
 import RecommendedSection from '../components/sections/RecommendedSection';
 import AlbumsSection from '../components/sections/AlbumsSection';
-import PlaylistCard from '../components/cards/PlaylistCard';
+import PlaylistCard from '../components/cards/playlistCard';
 import LiveStreamCard from '../components/cards/LiveStreamCard';
 import TrackCard from '../components/cards/TrackCard';
 import { useAuth } from '../context/AuthContext';

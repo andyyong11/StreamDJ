@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Container, Row, Col, Card, Button } from 'react-bootstrap';
+import { Container, Row, Col, Card, Button, Nav } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import { FaPlay, FaHeart } from 'react-icons/fa';
+import { FaPlay, FaHeart, FaMusic, FaCompactDisc, FaList } from 'react-icons/fa';
 
-const LibraryPage = ({ userId }) => {
+const LibraryPage = ({ user, userId, activeSection, handleSectionChange, renderContent, likedPlaylists = [], handleUnlike }) => {
   const [savedPlaylists, setSavedPlaylists] = useState([]);
   const [coverMap, setCoverMap] = useState({});
 
@@ -14,7 +14,7 @@ const LibraryPage = ({ userId }) => {
         console.warn('No token found. User may need to log in.');
         return;
       }
-  
+
       fetch(`http://localhost:5001/api/playlists/user/${userId}`, {
         headers: { Authorization: `Bearer ${token}` }
       })
@@ -25,7 +25,7 @@ const LibraryPage = ({ userId }) => {
             return;
           }
           setSavedPlaylists(data);
-  
+
           const covers = {};
           for (const playlist of data) {
             const res = await fetch(`http://localhost:5001/api/playlists/${playlist.PlaylistID}/covers`);
@@ -39,7 +39,6 @@ const LibraryPage = ({ userId }) => {
         });
     }
   }, [userId]);
-   
 
   const likedTracks = [
     { id: 1, title: 'Dreaming', artist: 'NightWave', duration: '3:25' },
@@ -68,8 +67,50 @@ const LibraryPage = ({ userId }) => {
     );
   };
 
+  if (!user) {
+    return (
+      <Container className="py-5 text-center">
+        <h3>Please log in to view your library</h3>
+      </Container>
+    );
+  }
+
   return (
-    <Container style={{ paddingTop: '80px' }}>
+    <Container className="py-4">
+      <h1 className="mb-4">My Library</h1>
+
+      {/* Navigation Tabs */}
+      <Nav variant="tabs" className="mb-4">
+        <Nav.Item>
+          <Nav.Link
+            active={activeSection === 'liked-tracks'}
+            onClick={() => handleSectionChange('liked-tracks')}
+          >
+            <FaMusic className="me-2" /> Liked Tracks
+          </Nav.Link>
+        </Nav.Item>
+        <Nav.Item>
+          <Nav.Link
+            active={activeSection === 'liked-albums'}
+            onClick={() => handleSectionChange('liked-albums')}
+          >
+            <FaCompactDisc className="me-2" /> Liked Albums
+          </Nav.Link>
+        </Nav.Item>
+        <Nav.Item>
+          <Nav.Link
+            active={activeSection === 'liked-playlists'}
+            onClick={() => handleSectionChange('liked-playlists')}
+          >
+            <FaList className="me-2" /> Liked Playlists
+          </Nav.Link>
+        </Nav.Item>
+      </Nav>
+
+      {/* Rendered Section */}
+      {renderContent()}
+
+      {/* Example section (Your Playlists) */}
       <section className="mb-5">
         <h2 className="mb-4">Your Playlists</h2>
         <Row>
@@ -84,28 +125,12 @@ const LibraryPage = ({ userId }) => {
                   </Card.Body>
                 </Card>
               </Link>
-              {/* <Card className="h-100 shadow-sm">
-                {renderPlaylistCover(coverMap[playlist.PlaylistID])}
-                <Card.Body>
-                  <Card.Title>{playlist.Title}</Card.Title>
-                  <Card.Text>
-                    {playlist.Description || 'No description'}
-                  </Card.Text>
-                  <div className="d-flex justify-content-between">
-                    <Button variant="success" size="sm">
-                      <FaPlay className="me-1" /> Play
-                    </Button>
-                    <Button variant="outline-danger" size="sm">
-                      <FaHeart />
-                    </Button>
-                  </div>
-                </Card.Body>
-              </Card> */}
             </Col>
           ))}
         </Row>
       </section>
 
+      {/* Liked Tracks */}
       <section className="mb-5">
         <h2 className="mb-4">Liked Tracks</h2>
         <Card className="shadow-sm">
@@ -132,11 +157,12 @@ const LibraryPage = ({ userId }) => {
             </table>
           </Card.Body>
         </Card>
-        <Button as={Link} to="/library/liked" variant="outline-primary">
+        <Button as={Link} to="/library/liked" variant="outline-primary" className="mt-3">
           View Liked Songs
         </Button>
       </section>
 
+      {/* Followed Artists */}
       <section className="mb-5">
         <h2 className="mb-4">Followed Artists</h2>
         <Row>
@@ -155,218 +181,54 @@ const LibraryPage = ({ userId }) => {
                 <Button variant="outline-primary" size="sm" as={Link} to={`/profile/${artist.id}`}>
                   View Profile
                 </Button>
-              </div>
-            ) : (
-              <Row>
-                {likedPlaylists.map(playlist => (
-                  <Col md={3} key={playlist.PlaylistID || playlist.id} className="mb-4">
-                    <Card className="h-100 shadow-sm">
-                      <Card.Img 
-                        variant="top" 
-                        src={playlist.CoverUrl || playlist.image || 'https://via.placeholder.com/300'} 
-                        alt={playlist.Title || playlist.title}
-                      />
-                      <Card.Body>
-                        <Card.Title>{playlist.Title || playlist.title}</Card.Title>
-                        <Card.Text>
-                          By {playlist.CreatorName || playlist.creator} • {playlist.TrackCount || playlist.tracks || 0} tracks
-                        </Card.Text>
-                        <div className="d-flex justify-content-between">
-                          <Button 
-                            variant="success" 
-                            size="sm"
-                            as={Link}
-                            to={`/playlist/${playlist.PlaylistID || playlist.id}`}
-                          >
-                            <FaPlay className="me-1" /> Play
-                          </Button>
-                          <Button 
-                            variant="outline-danger" 
-                            size="sm"
-                            onClick={() => handleUnlike(playlist.PlaylistID || playlist.id, 'playlist')}
-                          >
-                            <FaHeart />
-                          </Button>
-                        </div>
-                      </Card.Body>
-                    </Card>
-                  </Col>
-                ))}
-              </Row>
-            )}
-          </section>
-        );
-        
-      default:
-        return (
-          <section className="text-center py-5">
-            <h3>Please select a section from the navigation menu</h3>
-          </section>
-        );
-    }
-  };
+              </Card>
+            </Col>
+          ))}
+        </Row>
+      </section>
 
-  if (!user) {
-    return (
-      <Container className="py-5 text-center">
-        <h3>Please log in to view your library</h3>
-      </Container>
-    );
-  }
-
-  return (
-    <Container className="py-4">
-      <h1 className="mb-4">My Library</h1>
-      
-      {/* Navigation Tabs */}
-      <Nav variant="tabs" className="mb-4">
-        <Nav.Item>
-          <Nav.Link 
-            active={activeSection === 'liked-tracks'} 
-            onClick={() => handleSectionChange('liked-tracks')}
-          >
-            <FaMusic className="me-2" /> Liked Tracks
-          </Nav.Link>
-        </Nav.Item>
-        <Nav.Item>
-          <Nav.Link 
-            active={activeSection === 'liked-albums'} 
-            onClick={() => handleSectionChange('liked-albums')}
-          >
-            <FaCompactDisc className="me-2" /> Liked Albums
-          </Nav.Link>
-        </Nav.Item>
-        <Nav.Item>
-          <Nav.Link 
-            active={activeSection === 'liked-playlists'} 
-            onClick={() => handleSectionChange('liked-playlists')}
-          >
-            <FaList className="me-2" /> Liked Playlists
-          </Nav.Link>
-        </Nav.Item>
-      </Nav>
-      
-      {/* Render the content for the active section */}
-      {renderContent()}
+      {/* Liked Playlists */}
+      <section className="mb-5">
+        <h2 className="mb-4">Liked Playlists</h2>
+        <Row>
+          {likedPlaylists.map((playlist) => (
+            <Col md={3} key={playlist.PlaylistID || playlist.id} className="mb-4">
+              <Card className="h-100 shadow-sm">
+                <Card.Img
+                  variant="top"
+                  src={playlist.CoverUrl || playlist.image || 'https://via.placeholder.com/300'}
+                  alt={playlist.Title || playlist.title}
+                />
+                <Card.Body>
+                  <Card.Title>{playlist.Title || playlist.title}</Card.Title>
+                  <Card.Text>
+                    By {playlist.CreatorName || playlist.creator} • {playlist.TrackCount || playlist.tracks || 0} tracks
+                  </Card.Text>
+                  <div className="d-flex justify-content-between">
+                    <Button
+                      variant="success"
+                      size="sm"
+                      as={Link}
+                      to={`/playlist/${playlist.PlaylistID || playlist.id}`}
+                    >
+                      <FaPlay className="me-1" /> Play
+                    </Button>
+                    <Button
+                      variant="outline-danger"
+                      size="sm"
+                      onClick={() => handleUnlike(playlist.PlaylistID || playlist.id, 'playlist')}
+                    >
+                      <FaHeart />
+                    </Button>
+                  </div>
+                </Card.Body>
+              </Card>
+            </Col>
+          ))}
+        </Row>
+      </section>
     </Container>
   );
 };
 
 export default LibraryPage;
-
-
-// import React from 'react';
-// import { Container, Row, Col, Card, Button } from 'react-bootstrap';
-// import { Link } from 'react-router-dom';
-// import { FaPlay, FaHeart } from 'react-icons/fa';
-
-// const LibraryPage = () => {
-//   // Mock data
-//   const savedPlaylists = [
-//     { id: 1, title: 'Lo-Fi Study', creator: 'DJ Focus', image: 'https://via.placeholder.com/300', tracks: 22 },
-//     { id: 2, title: 'Late Night Chill', creator: 'RelaxBeats', image: 'https://via.placeholder.com/300', tracks: 30 }
-//   ];
-
-//   const likedTracks = [
-//     { id: 1, title: 'Dreaming', artist: 'NightWave', duration: '3:25' },
-//     { id: 2, title: 'Skyline', artist: 'LoFiZone', duration: '4:02' },
-//     { id: 3, title: 'Rainy Mood', artist: 'Quiet Storm', duration: '3:58' }
-//   ];
-
-//   const followedArtists = [
-//     { id: 1, name: 'DJ Chill', genre: 'Lo-Fi', image: 'https://via.placeholder.com/150', followers: '820K' },
-//     { id: 2, name: 'BassBeats', genre: 'Electronic', image: 'https://via.placeholder.com/150', followers: '1.1M' }
-//   ];
-
-//   return (
-//     <Container style={{ paddingTop: '80px' }}>
-//       {/* Saved Playlists */}
-//       <section className="mb-5">
-//         <h2 className="mb-4">Your Playlists</h2>
-//         <Row>
-//           {savedPlaylists.map(playlist => (
-//             <Col md={3} key={playlist.id} className="mb-4">
-//               <Card className="h-100 shadow-sm">
-//                 <Card.Img variant="top" src={playlist.image} />
-//                 <Card.Body>
-//                   <Card.Title>{playlist.title}</Card.Title>
-//                   <Card.Text>
-//                     By {playlist.creator} • {playlist.tracks} tracks
-//                   </Card.Text>
-//                   <div className="d-flex justify-content-between">
-//                     <Button variant="success" size="sm">
-//                       <FaPlay className="me-1" /> Play
-//                     </Button>
-//                     <Button variant="outline-danger" size="sm">
-//                       <FaHeart />
-//                     </Button>
-//                   </div>
-//                 </Card.Body>
-//               </Card>
-//             </Col>
-//           ))}
-//         </Row>
-//       </section>
-
-//       {/* Liked Tracks */}
-//       <section className="mb-5">
-//         <h2 className="mb-4">Liked Tracks</h2>
-//         <Card className="shadow-sm">
-//           <Card.Body>
-//             <table className="table table-hover">
-//               <thead>
-//                 <tr>
-//                   <th>#</th>
-//                   <th>Title</th>
-//                   <th>Artist</th>
-//                   <th>Duration</th>
-//                 </tr>
-//               </thead>
-//               <tbody>
-//                 {likedTracks.map((track, index) => (
-//                   <tr key={track.id}>
-//                     <td>{index + 1}</td>
-//                     <td>{track.title}</td>
-//                     <td>{track.artist}</td>
-//                     <td>{track.duration}</td>
-//                   </tr>
-//                 ))}
-//               </tbody>
-//             </table>
-//           </Card.Body>
-//         </Card>
-//       </section>
-
-//       <Button as={Link} to="/library/liked" variant="outline-primary">
-//   View Liked Songs
-// </Button>
-
-//       {/* Followed Artists */}
-//       <section className="mb-5">
-//         <h2 className="mb-4">Followed Artists</h2>
-//         <Row>
-//           {followedArtists.map(artist => (
-//             <Col md={3} key={artist.id} className="mb-4 text-center">
-//               <Card className="h-100 shadow-sm p-3">
-//                 <img
-//                   src={artist.image}
-//                   alt={artist.name}
-//                   className="rounded-circle mb-2"
-//                   style={{ width: '100px', height: '100px' }}
-//                 />
-//                 <h5>{artist.name}</h5>
-//                 <p className="text-muted">{artist.genre}</p>
-//                 <p className="small">{artist.followers} followers</p>
-//                 <Button variant="outline-primary" size="sm" as={Link} to={`/profile/${artist.id}`}>
-//                   View Profile
-//                 </Button>
-//               </Card>
-//             </Col>
-//           ))}
-//         </Row>
-//       </section>
-//     </Container>
-//   );
-// };
-
-// export default LibraryPage;
