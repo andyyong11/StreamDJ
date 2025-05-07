@@ -2,7 +2,10 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const path = require('path'); // Path module for resolving static file paths
+
+const path = require('path'); // ✅ Added to resolve static file path
+const dbConfig = require('./src/db/config');
+
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 const { Pool } = require('pg');
@@ -72,6 +75,26 @@ if (process.env.NODE_ENV !== 'production') {
     format: winston.format.simple()
   }));
 }
+
+// Import routes
+const authRoutes = require('./src/routes/authRoutes');
+const userRoutes = require('./src/routes/userRoutes');
+const playlistRoutes = require('./src/routes/playlistRoutes');
+const trackRoutes = require('./src/routes/trackRoutes');
+
+const trendingRoutes = require('./src/routes/trendingRoutes');
+const recommendRoutes = require('./src/routes/recommendRoutes');
+const libraryRoutes = require('./src/routes/libraryRoutes');
+
+const streamRoutes = require('./src/routes/streamRoutes');
+
+
+// Import middleware
+const authenticateToken = require('./src/middleware/authenticateToken');
+
+// Import services
+const StreamKeyService = require('./src/services/streamKeyService');
+const nms = require('./src/services/streamServer');
 
 // Creating express object
 const app = express();
@@ -184,11 +207,19 @@ const createPool = async (retries = 5) => {
   });
 
   try {
+    console.log('Attempting to connect to database with:', {
+      host: process.env.DB_HOST, 
+      port: process.env.DB_PORT,
+      database: process.env.DB_NAME,
+      user: process.env.DB_USER,
+      // Password hidden for security
+    });
+    
     await pool.query('SELECT NOW()');
     logger.info('Database connection established');
     
     // Create a pg-promise wrapper for models that need it
-    const db = pgp({
+    const dbConnection = pgp({
       host: process.env.DB_HOST,
       port: process.env.DB_PORT,
       database: process.env.DB_NAME,
@@ -196,8 +227,14 @@ const createPool = async (retries = 5) => {
       password: process.env.DB_PASSWORD
     });
     
-    return { pool, db };
+    return { pool, db: dbConnection };
   } catch (err) {
+    logger.error('Database connection error details:', {
+      message: err.message,
+      code: err.code,
+      stack: err.stack
+    });
+    
     if (retries === 0) {
       logger.error('Failed to connect to database after multiple retries', err);
       throw err;
@@ -223,11 +260,15 @@ app.use('/api/streams', (req, res, next) => {
 });
 app.use('/api/users', authenticateToken, userRoutes);
 app.use('/api/public-playlists', publicPlaylistRoutes);
-app.use('/api/playlists', authenticateToken, playlistRoutes);
+// Allow public access to playlists routes without authentication
+app.use('/api/playlists', playlistRoutes);
 app.use('/api/tracks', trackRoutes);
 app.use('/api/albums', albumRoutes);
 app.use('/api/trending', trendingRoutes);
 app.use('/api/recommendations', recommendRoutes);
+app.use('/api/trending', trendingRoutes);
+app.use('/api/recommendations', recommendRoutes);
+app.use('/api/library', libraryRoutes);
 
 // Initialize database and services
 const initializeDatabase = async () => {
@@ -243,11 +284,6 @@ const initializeDatabase = async () => {
     process.exit(1);
   }
 };
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
-});
 
 // Serve HLS media files
 app.use('/live', express.static(path.join(NORMALIZED_MEDIA_PATH, 'live'), {
@@ -635,8 +671,24 @@ const cleanup = async () => {
   }
 };
 
+// Start server
+httpServer.listen(PORT, () => {
+  logger.info(`Server is running on port ${PORT}`);
+  // Initialize database after server starts
+  initializeDatabase();
+  // Start media server
+  try {
+    if (!nms.nmsCore) {
+      nms.run();
+      logger.info('Media Server started successfully');
+    }
+  } catch (err) {
+    logger.error('Failed to start Media Server:', err);
+  }
+});
+
 process.on('SIGTERM', cleanup);
-process.on('SIGINT', cleanup); 
+process.on('SIGINT', cleanup);
 
 // Start server
 httpServer.listen(PORT, () => {

@@ -3,7 +3,7 @@ import NavigationBar from './Navbar';
 import Footer from './Footer';
 import MusicPlayer from '../player/MusicPlayer';
 
-const Layout = ({ children, onTrackSelect, currentTrack, openLoginModal, openRegisterModal }) => {
+const Layout = ({ children, onTrackSelect, currentTrack, currentPlaylist, openLoginModal, openRegisterModal }) => {
   return (
     <div className="d-flex flex-column min-vh-100">
       <NavigationBar 
@@ -14,10 +14,36 @@ const Layout = ({ children, onTrackSelect, currentTrack, openLoginModal, openReg
       <main className="flex-grow-1">
         {children}
       </main>
-      {currentTrack && <MusicPlayer track={currentTrack} />}
+      {currentTrack && (
+        <MusicPlayer
+          track={currentTrack}
+          currentPlaylist={currentPlaylist}
+          onTrackSelect={onTrackSelect}
+        />
+      )}
       <Footer />
     </div>
   );
 };
 
 export default Layout;
+
+// import React from 'react';
+// import NavigationBar from './Navbar';
+// import Footer from './Footer';
+// import MusicPlayer from '../player/MusicPlayer';
+
+// const Layout = ({ children, onTrackSelect, currentTrack }) => {
+//   return (
+//     <div className="d-flex flex-column min-vh-100">
+//       <NavigationBar onTrackSelect={onTrackSelect} />
+//       <main className="flex-grow-1">
+//         {children}
+//       </main>
+//       {currentTrack && <MusicPlayer track={currentTrack} />}
+//       <Footer />
+//     </div>
+//   );
+// };
+
+// export default Layout;

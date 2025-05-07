@@ -15,19 +15,73 @@ import '../styles/PlayButton.css';
 
 const HomePage = ({ playTrack }) => {
   const { user } = useAuth();
-  const navigate = useNavigate();
+  // Trending
+  const [trending, setTrending] = useState([]);
+  const [loadingTrending, setLoadingTrending] = useState(true);
+
+  useEffect(() => {
+    const fetchTrending = async () => {
+      try {
+        const res = await fetch('http://localhost:5001/api/trending');
+        const data = await res.json();
+        setTrending(data);
+      } catch (err) {
+        console.error('Failed to fetch trending tracks:', err);
+      } finally {
+        setLoadingTrending(false);
+      }
+    };
+
+    fetchTrending();
+  }, []);
+
+  // Mock data for featured content
+  const [featuredPlaylists, setFeaturedPlaylists] = useState([]);
+  const [loadingFeatured, setLoadingFeatured] = useState(true);
   
-  // Recent listens tracks
-  const [recentListens, setRecentListens] = useState([]);
-  const [loadingRecent, setLoadingRecent] = useState(true);
+  // mock data for personalized playlists
+  const [personalizedPlaylists, setPersonalizedPlaylists] = useState([]);
+  console.log('Personalized Playlists:', personalizedPlaylists);
+  const [loadingPersonalized, setLoadingPersonalized] = useState(true);
+
+  useEffect(() => {
+    const fetchFeaturedPlaylists = async () => {
+      try {
+        const res = await fetch('http://localhost:5001/api/playlists/featured');
+        const data = await res.json();
+        // ✅ Ensure it's an array before setting it
+        setFeaturedPlaylists(Array.isArray(data) ? data : []);
+        console.log('Look at me');
+        console.log(data);
+      } catch (err) {
+        console.error('Failed to fetch featured playlists:', err);
+        setFeaturedPlaylists([]); // fallback to empty
+      } finally {
+        setLoadingFeatured(false);
+      }
+    };
   
-  // Featured playlists
-  const [featuredPlaylists, setFeaturedPlaylists] = useState([
-    { id: 1, title: 'Summer Hits 2023', creator: 'StreamDJ', image: 'https://thumbs.dreamstime.com/b/happy-new-year-happy-new-year-greeting-card-colorful-fireworks-sparkling-burning-number-beautiful-holiday-web-banner-248472064.jpg', tracks: 25 },
-    { id: 2, title: 'Chill Vibes', creator: 'DJ Relaxx', image: 'https://lofigirl.com/wp-content/uploads/2023/02/DAY_UPDATE_ILLU.jpg', tracks: 18 },
-    { id: 3, title: 'Workout Mix', creator: 'FitBeats', image: 'https://thumbs.dreamstime.com/b/weightlifter-clapping-hands-preparing-workout-gym-focus-dust-112033565.jpg', tracks: 32 },
-    { id: 4, title: 'EDM Anthems', creator: 'ElectroMaster', image: 'https://www.ikmultimedia.com/products/stedm/main-banner/mobile.jpg', tracks: 40 }
-  ]);
+    fetchFeaturedPlaylists();
+  }, []);
+
+// Personalized featured playlists (based on user behavior)
+useEffect(() => {
+  const fetchPersonalized = async () => {
+    if (!user) return;
+    try {
+      const res = await fetch(`http://localhost:5001/api/playlists/featured/personalized/${user.id}`);
+      const data = await res.json();
+      setPersonalizedPlaylists(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to fetch personalized playlists:', err);
+    } finally {
+      setLoadingPersonalized(false);
+    }
+  };
+
+  fetchPersonalized();
+}, [user]);
+
 
   const [liveStreams, setLiveStreams] = useState([]);
   const [loadingStreams, setLoadingStreams] = useState(true);
@@ -243,32 +297,84 @@ const HomePage = ({ playTrack }) => {
         </section>
       )}
 
-      {/* Recommended for You */}
+
+
+      <RecommendedSection
+        apiUrl={`http://localhost:5001/api/recommendations/collab/${user?.id || 1}`}
+        title="People who liked what you like also liked..."
+        onTrackSelect={onTrackSelect}
+      />
+
+      {user && (
+        <RecommendedSection
+          apiUrl={`http://localhost:5001/api/recommendations/recent-genre/${user.id}`}
+          title="Because You Listened To..."
+          onTrackSelect={onTrackSelect}
+        />
+      )}
+
+      {/* ✅ Recommended Section (from external component) */}
       <RecommendedSection
         title="Recommended For You"
         apiUrl={`http://localhost:5001/api/recommendations/${user ? user.id : '1'}`}
         onTrackSelect={handlePlayTrack}
       />
 
-      {/* Featured Playlists */}
-      <section className="mb-5">
-        <Container>
-          <h2 className="mb-4">Featured Playlists</h2>
-          <Row>
-            {featuredPlaylists.map(playlist => (
-              <Col md={3} key={playlist.id} className="mb-4">
-                <PlaylistCard 
-                  playlist={playlist} 
-                  onPlayClick={() => handlePlayPlaylist(playlist.id)} 
-                />
-              </Col>
-            ))}
-          </Row>
-          <div className="text-center mt-3">
-            <Button variant="outline-primary" as={Link} to="/playlists">View All Playlists</Button>
-          </div>
-        </Container>
-      </section>
+{!loadingFeatured && featuredPlaylists.length > 0 && (
+  <section className="mb-5">
+    <h2 className="mb-4">Featured Playlists</h2>
+    <Row>
+      {featuredPlaylists.map(playlist => (
+        <Col md={3} key={playlist.PlaylistID} className="mb-4">
+          <Card className="h-100 shadow-sm">
+            <Card.Img
+              variant="top"
+              src={playlist.CoverURL || '/default-cover.jpg'} // Fallback image
+            />
+            <Card.Body>
+              <Card.Title>{playlist.Name}</Card.Title>
+              <Card.Text>
+                {playlist.Description || 'No description'} <br />
+                {playlist.total_likes} likes • {playlist.total_plays} plays
+              </Card.Text>
+              <Button variant="success" size="sm">
+                <FaPlay className="me-1" /> Play
+              </Button>
+            </Card.Body>
+          </Card>
+        </Col>
+      ))}
+    </Row>
+    <div className="text-center mt-3">
+      <Button variant="outline-primary" as={Link} to="/playlists">View All Playlists</Button>
+    </div>
+  </section>
+)}
+
+{user && !loadingPersonalized && personalizedPlaylists.length > 0 && (
+  <section className="mb-5">
+    <h2 className="mb-4">Playlists You Might Like</h2>
+    <Row>
+      {personalizedPlaylists.map((playlist) => (
+        <Col md={3} key={playlist.PlaylistID} className="mb-4">
+          <Card className="h-100 shadow-sm">
+            <Card.Img variant="top" src={playlist.CoverURL || '/default-cover.jpg'} />
+            <Card.Body>
+              <Card.Title>{playlist.Name}</Card.Title>
+              <Card.Text>
+                {playlist.Description || 'No description'}<br />
+                {playlist.total_likes} likes • {playlist.total_plays} plays
+              </Card.Text>
+              <Button variant="success" size="sm">
+                <FaPlay className="me-1" /> Play
+              </Button>
+            </Card.Body>
+          </Card>
+        </Col>
+      ))}
+    </Row>
+  </section>
+)}
 
       {/* Live Streams */}
       <section className="mb-5">
