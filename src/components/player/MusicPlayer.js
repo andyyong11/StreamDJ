@@ -8,7 +8,7 @@ import {
   FaShareAlt, FaListUl, FaPlus
 } from 'react-icons/fa';
 
-const MusicPlayer = ({ track }) => {
+const MusicPlayer = ({ track, currentPlaylist = [], onTrackSelect }) => {
   const { user } = useAuth();
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -53,26 +53,47 @@ const MusicPlayer = ({ track }) => {
     const audio = audioRef.current;
     if (audio) {
       audio.volume = volume / 100;
-      isPlaying ? audio.play().catch(err => console.error('Playback error:', err)) : audio.pause();
+      if (!isPlaying) {
+        audio.pause();
+      }
     }
   }, [isPlaying, volume]);
 
   useEffect(() => {
-    const audio = audioRef.current;
-    if (audio) {
-      const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
-      const handleEnded = () => {
-        setIsPlaying(false);
-        setCurrentTime(0);
-      };
-      audio.addEventListener('timeupdate', handleTimeUpdate);
-      audio.addEventListener('ended', handleEnded);
-      return () => {
-        audio.removeEventListener('timeupdate', handleTimeUpdate);
-        audio.removeEventListener('ended', handleEnded);
-      };
+    if (track && audioRef.current) {
+      audioRef.current.src = `http://localhost:5001/${track.FilePath?.replace(/\\/g, '/')}`;
+      audioRef.current.play().catch(err => console.error('Auto-play failed:', err));
+      setIsPlaying(true);
+      setCurrentTime(0);
     }
   }, [track]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+  
+    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
+  
+    const handleEnded = () => {
+      const currentIndex = currentPlaylist.findIndex((t) => t.TrackID === track?.TrackID);
+      const nextTrack = currentPlaylist[currentIndex + 1];
+  
+      if (nextTrack && onTrackSelect) {
+        onTrackSelect(nextTrack, currentPlaylist);
+      } else {
+        setIsPlaying(false);
+        setCurrentTime(0);
+      }
+    };
+  
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('ended', handleEnded);
+  
+    return () => {
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('ended', handleEnded);
+    };
+  }, [track, currentPlaylist, onTrackSelect]);  
 
   useEffect(() => {
     const fetchLikeStatus = async () => {
@@ -106,6 +127,25 @@ const MusicPlayer = ({ track }) => {
   }, [track, isPlaying]);
 
   if (!track) return null;
+
+  // 🔽 Place these HERE — after all useEffects
+  const getCurrentTrackIndex = () =>
+    currentPlaylist.findIndex((t) => t.TrackID === track?.TrackID);
+
+  const handleNext = () => {
+    const currentIndex = getCurrentTrackIndex();
+    if (currentIndex >= 0 && currentIndex < currentPlaylist.length - 1) {
+      onTrackSelect(currentPlaylist[currentIndex + 1], currentPlaylist);
+    }
+  };
+
+  const handlePrevious = () => {
+    const currentIndex = getCurrentTrackIndex();
+    if (currentIndex > 0) {
+      onTrackSelect(currentPlaylist[currentIndex - 1], currentPlaylist);
+    }
+  };
+
 
   const audioSrc = `http://localhost:5001/${track.FilePath?.replace(/\\/g, '/')}`;
   const coverArtSrc = track.CoverArt
@@ -143,7 +183,9 @@ const MusicPlayer = ({ track }) => {
               <Button variant="link" className="text-light mx-2" onClick={() => setIsShuffle(!isShuffle)}>
                 <FaRandom color={isShuffle ? '#1DB954' : 'white'} />
               </Button>
-              <Button variant="link" className="text-light mx-2"><FaStepBackward /></Button>
+              <Button variant="link" className="text-light mx-2" onClick={handlePrevious}>
+  <FaStepBackward />
+</Button>
               <Button
                 variant="light"
                 className="rounded-circle mx-2"
@@ -152,7 +194,9 @@ const MusicPlayer = ({ track }) => {
               >
                 {isPlaying ? <FaPause /> : <FaPlay />}
               </Button>
-              <Button variant="link" className="text-light mx-2"><FaStepForward /></Button>
+              <Button variant="link" className="text-light mx-2" onClick={handleNext}>
+  <FaStepForward />
+</Button>
               <Button variant="link" className="text-light mx-2" onClick={() => setIsRepeat(!isRepeat)}>
                 <FaRedo color={isRepeat ? '#1DB954' : 'white'} />
               </Button>

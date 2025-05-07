@@ -7,6 +7,7 @@ const AddToPlaylistModal = ({ show, onHide, track, userId }) => {
   const [newPlaylistName, setNewPlaylistName] = useState('');
   const [search, setSearch] = useState('');
   const [showNewInput, setShowNewInput] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     if (userId) {
@@ -27,12 +28,13 @@ const AddToPlaylistModal = ({ show, onHide, track, userId }) => {
       setNewPlaylistName('');
       setSearch('');
       setSelectedPlaylist(null);
+      setErrorMessage('');
     }
   }, [show]);
 
   const createPlaylist = async () => {
     if (!newPlaylistName.trim()) return;
-  
+
     const res = await fetch('http://localhost:5001/api/playlists', {
       method: 'POST',
       headers: {
@@ -40,22 +42,22 @@ const AddToPlaylistModal = ({ show, onHide, track, userId }) => {
         Authorization: `Bearer ${localStorage.getItem('token')}`
       },
       body: JSON.stringify({
-        title: newPlaylistName, // ✅ use "title" since that's the DB column
+        title: newPlaylistName,
         isPublic: true
       })
     });
-  
+
     const data = await res.json();
     setPlaylists([...playlists, data]);
     setNewPlaylistName('');
     setShowNewInput(false);
-  };  
+  };
 
   const addToPlaylist = async () => {
     if (!selectedPlaylist || !track) return;
-  
+
     try {
-      const res = await fetch(`http://localhost:5001/api/playlists/${selectedPlaylist}/tracks`, {
+      const response = await fetch(`http://localhost:5001/api/playlists/${selectedPlaylist}/tracks`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -63,19 +65,24 @@ const AddToPlaylistModal = ({ show, onHide, track, userId }) => {
         },
         body: JSON.stringify({ trackId: track.TrackID })
       });
-  
-      if (!res.ok) {
-        const errorData = await res.json();
-        console.error('Failed to add track:', errorData.error);
+
+      if (!response.ok) {
+        const data = await response.json();
+        if (data?.error?.toLowerCase().includes('duplicate')) {
+          setErrorMessage('This track is already in the playlist.');
+        } else {
+          setErrorMessage('Failed to add track to the playlist.');
+        }
+        return;
       }
-  
-      onHide(); // Close modal
+
+      setErrorMessage('');
+      onHide(); // Success: close modal
     } catch (err) {
-      console.error('Error adding to playlist:', err);
+      console.error('Add track failed:', err);
+      setErrorMessage('Something went wrong.');
     }
   };
-  
-  
 
   const filtered = playlists.filter(p =>
     p.Title?.toLowerCase().includes(search.toLowerCase())
@@ -145,6 +152,12 @@ const AddToPlaylistModal = ({ show, onHide, track, userId }) => {
             </ListGroup.Item>
           ))}
         </ListGroup>
+
+        {errorMessage && (
+          <div className="text-danger mt-3 text-center fw-semibold">
+            {errorMessage}
+          </div>
+        )}
       </Modal.Body>
       <Modal.Footer>
         <Button variant="secondary" onClick={onHide}>Cancel</Button>
@@ -155,6 +168,7 @@ const AddToPlaylistModal = ({ show, onHide, track, userId }) => {
 };
 
 export default AddToPlaylistModal;
+
 
 // import React, { useEffect, useState } from 'react';
 // import { Modal, Button, Form, ListGroup } from 'react-bootstrap';

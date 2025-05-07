@@ -70,25 +70,37 @@ const playlistModel = {
 
     // Add track to playlist
 // Add track to playlist
+// Add track to playlist (prevent duplicates)
 async addTrack(playlistId, trackId, position = null) {
     try {
-      if (position === null) {
-        const result = await db.oneOrNone(
-          `SELECT MAX("Position") + 1 AS pos FROM "PlaylistTrack" WHERE "PlaylistID" = $1`,
-          [playlistId]
+        // Check if track already exists in the playlist
+        const exists = await db.oneOrNone(
+            `SELECT 1 FROM "PlaylistTrack" WHERE "PlaylistID" = $1 AND "TrackID" = $2`,
+            [playlistId, trackId]
         );
-        position = result?.pos || 1;
-      }
-  
-      return await db.one(
-        `INSERT INTO "PlaylistTrack" ("PlaylistID", "TrackID", "Position", "AddedAt")
-         VALUES ($1, $2, $3, NOW()) RETURNING *`,
-        [playlistId, trackId, position]
-      );
+
+        if (exists) {
+            throw new Error('Track already exists in the playlist');
+        }
+
+        // Auto-position if not provided
+        if (position === null) {
+            const result = await db.oneOrNone(
+                `SELECT MAX("Position") + 1 AS pos FROM "PlaylistTrack" WHERE "PlaylistID" = $1`,
+                [playlistId]
+            );
+            position = result?.pos || 1;
+        }
+
+        return await db.one(
+            `INSERT INTO "PlaylistTrack" ("PlaylistID", "TrackID", "Position", "AddedAt")
+             VALUES ($1, $2, $3, NOW()) RETURNING *`,
+            [playlistId, trackId, position]
+        );
     } catch (error) {
-      throw new Error(`Error adding track to playlist: ${error.message}`);
+        throw new Error(`Error adding track to playlist: ${error.message}`);
     }
-  },    
+},    
 
     // Remove track from playlist
     async removeTrack(playlistId, trackId) {

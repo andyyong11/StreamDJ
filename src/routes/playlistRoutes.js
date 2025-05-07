@@ -81,15 +81,46 @@ router.get('/user/:userId', auth, async (req, res) => {
 });
 
 // Get playlist by ID (public)
+
+// Get playlist by ID including tracks
+// Get playlist by ID with tracks
 router.get('/:id', async (req, res) => {
   try {
-    const playlist = await db.oneOrNone(`SELECT * FROM "Playlist" WHERE "PlaylistID" = $1`, [req.params.id]);
-    if (!playlist) return res.status(404).json({ error: 'Playlist not found' });
-    res.json(playlist);
+    const playlist = await db.oneOrNone(
+      `SELECT * FROM "Playlist" WHERE "PlaylistID" = $1`,
+      [req.params.id]
+    );
+
+    if (!playlist) {
+      return res.status(404).json({ error: 'Playlist not found' });
+    }
+
+    const tracks = await db.any(
+      `SELECT t.*
+       FROM "Track" t
+       JOIN "PlaylistTrack" pt ON pt."TrackID" = t."TrackID"
+       WHERE pt."PlaylistID" = $1
+       ORDER BY pt."Position" ASC`,
+      [req.params.id]
+    );
+
+    res.json({ ...playlist, tracks }); // ✅ Combine and send
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
+
+
+
+// router.get('/:id', async (req, res) => {
+//   try {
+//     const playlist = await db.oneOrNone(`SELECT * FROM "Playlist" WHERE "PlaylistID" = $1`, [req.params.id]);
+//     if (!playlist) return res.status(404).json({ error: 'Playlist not found' });
+//     res.json(playlist);
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// });
 
 // Create new playlist (protected)
 
@@ -188,6 +219,24 @@ router.delete('/:id/tracks/:trackId', auth, async (req, res) => {
     res.status(204).send();
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+});
+
+// Get cover art for playlist (first 1–4 tracks)
+router.get('/:id/covers', async (req, res) => {
+  try {
+    const covers = await db.any(`
+      SELECT t."CoverArt"
+      FROM "PlaylistTrack" pt
+      JOIN "Track" t ON t."TrackID" = pt."TrackID"
+      WHERE pt."PlaylistID" = $1
+      ORDER BY pt."Position"
+      LIMIT 4
+    `, [req.params.id]);
+
+    res.json(covers.map(c => c.CoverArt));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 
