@@ -9,7 +9,8 @@ import {
 } from 'react-icons/fa';
 
 const MusicPlayer = ({ track, currentPlaylist = [], onTrackSelect }) => {
-  const { user } = useAuth();
+const { user } = useAuth();
+const MusicPlayer = ({ track }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [volume, setVolume] = useState(80);
@@ -39,13 +40,17 @@ const MusicPlayer = ({ track, currentPlaylist = [], onTrackSelect }) => {
     }
   };
 
+  const toggleFavorite = () => setIsFavorite(!isFavorite);
+
   const formatTime = (seconds) => {
     if (isNaN(seconds)) return '0:00';
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = Math.floor(seconds % 60);
+
     const paddedMins = hrs > 0 ? String(mins).padStart(2, '0') : mins;
     const paddedSecs = String(secs).padStart(2, '0');
+
     return hrs > 0 ? `${hrs}:${paddedMins}:${paddedSecs}` : `${mins}:${paddedSecs}`;
   };
 
@@ -151,6 +156,22 @@ const MusicPlayer = ({ track, currentPlaylist = [], onTrackSelect }) => {
   const coverArtSrc = track.CoverArt
     ? `http://localhost:5001/${track.CoverArt.replace(/\\/g, '/')}`
     : '/default-cover.jpg';
+        setCurrentTime(0); // reset the progress bar
+      }; // when song ends, stop the playing state
+  
+      audio.addEventListener('timeupdate', handleTimeUpdate);
+      audio.addEventListener('ended', handleEnded); // ✅ new event
+  
+      return () => {
+        audio.removeEventListener('timeupdate', handleTimeUpdate);
+        audio.removeEventListener('ended', handleEnded); // ✅ clean up
+      };
+    }
+  }, [track]);
+
+  if (!track) return null;
+
+  const filename = track.FilePath.split('\\').pop();
 
   return (
     <div className="fixed-bottom bg-dark text-light py-2 border-top">
@@ -159,18 +180,17 @@ const MusicPlayer = ({ track, currentPlaylist = [], onTrackSelect }) => {
           {/* Track Info */}
           <Col md={3} className="d-flex align-items-center">
             <img
-              src={coverArtSrc}
+              src={`/uploads/coverart/${filename.replace('.mp3', '.jpg')}`}
               alt={`${track.Title} cover`}
               className="me-3"
               style={{ width: '60px', height: '60px', objectFit: 'cover' }}
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = '/default-cover.jpg';
-              }}
             />
             <div className="d-flex flex-column">
               <h6 className="mb-1">{track.Title}</h6>
               <small style={{ color: 'white' }}>{track.Artist}</small>
+            <div>
+              <h6 className="mb-0">{track.Title}</h6>
+              <small className="text-muted">{track.Artist}</small>
             </div>
             <Button variant="link" className="text-light ms-3" onClick={toggleFavorite}>
               <FaHeart color={isFavorite ? 'red' : 'white'} />
@@ -205,6 +225,7 @@ const MusicPlayer = ({ track, currentPlaylist = [], onTrackSelect }) => {
             {/* Progress Bar */}
             <div className="d-flex align-items-center position-relative" style={{ height: '30px' }}>
               <small className="text-muted me-2">{formatTime(currentTime)}</small>
+
               <div style={{ flexGrow: 1, position: 'relative' }}>
                 <ProgressBar
                   now={(currentTime / (audioRef.current?.duration || 1)) * 100}
@@ -244,6 +265,7 @@ const MusicPlayer = ({ track, currentPlaylist = [], onTrackSelect }) => {
                   </div>
                 )}
               </div>
+
               <small className="text-muted ms-2">{formatTime(audioRef.current?.duration || 0)}</small>
             </div>
           </Col>
@@ -274,6 +296,8 @@ const MusicPlayer = ({ track, currentPlaylist = [], onTrackSelect }) => {
           track={track}
           userId={user?.id}
         />
+
+        <audio ref={audioRef} src={`/uploads/audio/${filename}`} />
       </Container>
     </div>
   );

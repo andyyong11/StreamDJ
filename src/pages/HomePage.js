@@ -1,33 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Container, Row, Col, Card, Button, Carousel, Badge } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { FaPlay, FaHeart, FaMusic, FaHeadphones, FaMicrophone, FaEllipsisH } from 'react-icons/fa';
-import Slider from 'react-slick';
-import RecommendedSection from './recommendedSection'; // ✅ Import here
-import { useAuth } from '../context/AuthContext';
 
-const HomePage = ({ onTrackSelect }) => {
-  const { user } = useAuth();
-  // Trending
-  const [trending, setTrending] = useState([]);
-  const [loadingTrending, setLoadingTrending] = useState(true);
-
-  useEffect(() => {
-    const fetchTrending = async () => {
-      try {
-        const res = await fetch('http://localhost:5001/api/trending');
-        const data = await res.json();
-        setTrending(data);
-      } catch (err) {
-        console.error('Failed to fetch trending tracks:', err);
-      } finally {
-        setLoadingTrending(false);
-      }
-    };
-
-    fetchTrending();
-  }, []);
-
+const HomePage = () => {
   // Mock data for featured content
   const [featuredPlaylists, setFeaturedPlaylists] = useState([]);
   const [loadingFeatured, setLoadingFeatured] = useState(true);
@@ -105,7 +81,7 @@ useEffect(() => {
         <Carousel.Item>
           <img
             className="d-block w-100"
-            src="https://crossfadr.com/wp-content/uploads/2018/10/deephousepic.jpg"
+            src="https://crossfadr.com/wp-content/uploads/2018/10/deephousepic.jpg" // example Unsplash direct image
             alt="First slide"
             style={{ height: '400px', objectFit: 'cover', borderRadius: '10px' }}
           />
@@ -247,6 +223,36 @@ useEffect(() => {
     </Row>
   </section>
 )}
+      {/* Featured Playlists */}
+      <section className="mb-5">
+        <h2 className="mb-4">Featured Playlists</h2>
+        <Row>
+          {featuredPlaylists.map(playlist => (
+            <Col md={3} key={playlist.id} className="mb-4">
+              <Card className="h-100 shadow-sm">
+                <Card.Img variant="top" src={playlist.image} />
+                <Card.Body>
+                  <Card.Title>{playlist.title}</Card.Title>
+                  <Card.Text>
+                    By {playlist.creator} • {playlist.tracks} tracks
+                  </Card.Text>
+                  <div className="d-flex justify-content-between">
+                    <Button variant="success" size="sm">
+                      <FaPlay className="me-1" /> Play
+                    </Button>
+                    <Button variant="outline-danger" size="sm">
+                      <FaHeart />
+                    </Button>
+                  </div>
+                </Card.Body>
+              </Card>
+            </Col>
+          ))}
+        </Row>
+        <div className="text-center mt-3">
+          <Button variant="outline-primary" as={Link} to="/playlists">View All Playlists</Button>
+        </div>
+      </section>
 
       {/* Live Streams */}
       <section className="mb-5">

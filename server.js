@@ -1,4 +1,4 @@
-// Requiring modules
+// Requiring module
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
@@ -15,7 +15,6 @@ const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const winston = require('winston');
 const rateLimit = require('express-rate-limit');
-
 require('dotenv').config();
 
 // Configure logger
@@ -48,7 +47,6 @@ const recommendRoutes = require('./src/routes/recommendRoutes');
 const libraryRoutes = require('./src/routes/libraryRoutes');
 
 const streamRoutes = require('./src/routes/streamRoutes');
-
 
 // Import middleware
 const authenticateToken = require('./src/middleware/authenticateToken');
@@ -89,7 +87,6 @@ app.use(limiter);
 // Middleware
 app.use(bodyParser.json());
 
-
 // Serve uploaded audio and cover images
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
@@ -111,6 +108,7 @@ app.get('/test-db', async (req, res) => {
         });
     }
 });
+
 
 // Database connection with retry logic
 const createPool = async (retries = 5) => {
@@ -198,6 +196,28 @@ const initializeDatabase = async () => {
   }
 };
 
+
+// Start server immediately
+httpServer.listen(PORT, () => {
+  logger.info(`Server is running on port ${PORT}`);
+  // Initialize database after server starts
+  initializeDatabase();
+  // Start media server
+  try {
+    if (!nms.nmsCore) {
+      nms.run();
+      logger.info('Media Server started successfully');
+    }
+  } catch (err) {
+    logger.error('Failed to start Media Server:', err);
+  }
+});
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
 // Serve HLS media files
 const mediaPath = path.join(__dirname, 'media');
 const normalizedMediaPath = mediaPath.replace(/\\/g, '/');
@@ -274,7 +294,6 @@ io.on('connection', (socket) => {
     viewerActionDebounce.set(actionKey, now);
     return false; // Action is not debounced
   };
-
 
   const removeViewerFromStream = (viewerId, streamId) => {
     const streamIdStr = streamId.toString();
@@ -605,4 +624,5 @@ httpServer.listen(PORT, () => {
 
 process.on('SIGTERM', cleanup);
 process.on('SIGINT', cleanup);
-
+process.on('SIGTERM', cleanup);
+process.on('SIGINT', cleanup); 
