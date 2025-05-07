@@ -76,25 +76,8 @@ if (process.env.NODE_ENV !== 'production') {
   }));
 }
 
-// Import routes
-const authRoutes = require('./src/routes/authRoutes');
-const userRoutes = require('./src/routes/userRoutes');
-const playlistRoutes = require('./src/routes/playlistRoutes');
-const trackRoutes = require('./src/routes/trackRoutes');
-
-const trendingRoutes = require('./src/routes/trendingRoutes');
-const recommendRoutes = require('./src/routes/recommendRoutes');
+// Import the library routes that isn't already imported
 const libraryRoutes = require('./src/routes/libraryRoutes');
-
-const streamRoutes = require('./src/routes/streamRoutes');
-
-
-// Import middleware
-const authenticateToken = require('./src/middleware/authenticateToken');
-
-// Import services
-const StreamKeyService = require('./src/services/streamKeyService');
-const nms = require('./src/services/streamServer');
 
 // Creating express object
 const app = express();
@@ -689,19 +672,3 @@ httpServer.listen(PORT, () => {
 
 process.on('SIGTERM', cleanup);
 process.on('SIGINT', cleanup);
-
-// Start server
-httpServer.listen(PORT, () => {
-  logger.info(`Server is running on port ${PORT}`);
-  // Initialize database after server starts
-  initializeDatabase();
-  // Start media server
-  try {
-    if (!nms.nmsCore) {
-      nms.run();
-      logger.info('Media Server started successfully');
-    }
-  } catch (err) {
-    logger.error('Failed to start Media Server:', err);
-  }
-});

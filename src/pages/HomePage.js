@@ -15,9 +15,15 @@ import '../styles/PlayButton.css';
 
 const HomePage = ({ playTrack }) => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  
   // Trending
   const [trending, setTrending] = useState([]);
   const [loadingTrending, setLoadingTrending] = useState(true);
+
+  // Recent listens state
+  const [recentListens, setRecentListens] = useState([]);
+  const [loadingRecent, setLoadingRecent] = useState(true);
 
   useEffect(() => {
     const fetchTrending = async () => {
@@ -302,18 +308,18 @@ useEffect(() => {
       <RecommendedSection
         apiUrl={`http://localhost:5001/api/recommendations/collab/${user?.id || 1}`}
         title="People who liked what you like also liked..."
-        onTrackSelect={onTrackSelect}
+        onTrackSelect={handlePlayTrack}
       />
 
       {user && (
         <RecommendedSection
           apiUrl={`http://localhost:5001/api/recommendations/recent-genre/${user.id}`}
           title="Because You Listened To..."
-          onTrackSelect={onTrackSelect}
+          onTrackSelect={handlePlayTrack}
         />
       )}
 
-      {/* ✅ Recommended Section (from external component) */}
+      {/* Recommended Section (from external component) */}
       <RecommendedSection
         title="Recommended For You"
         apiUrl={`http://localhost:5001/api/recommendations/${user ? user.id : '1'}`}
