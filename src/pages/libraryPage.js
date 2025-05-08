@@ -3,7 +3,7 @@ import { Container, Row, Col, Card, Button, Nav } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaPlay, FaHeart, FaMusic, FaCompactDisc, FaList } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
-import PlaylistCard from '../components/cards/playlistCard';
+import PlaylistCard from '../components/cards/PlaylistCard';
 import { API_ENDPOINTS, SERVER_URL } from '../config/apiConfig';
 
 const LibraryPage = ({ 

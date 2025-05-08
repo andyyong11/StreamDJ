@@ -5,7 +5,7 @@ import { FaPlay, FaEdit, FaTrash, FaMusic, FaCompactDisc, FaList, FaPlus, FaSync
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import AlbumCard from '../components/cards/AlbumCard';
-import PlaylistCard from '../components/cards/playlistCard';
+import PlaylistCard from '../components/cards/PlaylistCard';
 import '../styles/PlayButton.css';
 
 // Default placeholder image - using a reliable source
