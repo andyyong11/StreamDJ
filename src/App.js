@@ -27,7 +27,7 @@ const HomePage = React.lazy(() => import('./pages/HomePage'));
 const ProfilePage = React.lazy(() => import('./pages/ProfilePage'));
 const ProfileSettingsPage = React.lazy(() => import('./pages/ProfileSettingsPage'));
 const DiscoverPage = React.lazy(() => import('./pages/discoverPage'));
-const LibraryPage = React.lazy(() => import('./pages/LibraryPage'));
+const LibraryPage = React.lazy(() => import('./pages/libraryPage'));
 const LikedSongsPage = React.lazy(() => import('./pages/LikedSongsPage'));
 const LiveStreamsPage = React.lazy(() => import('./pages/liveStreamsPage'));
 const UploadPage = React.lazy(() => import('./pages/uploadPage'));
