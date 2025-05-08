@@ -23,10 +23,13 @@ router.get('/', async (req, res) => {
 router.get('/featured', async (req, res) => {
   try {
     const featured = await db.any(`
-      SELECT p.*, COUNT(DISTINCT tl."LikeID") AS total_likes, COUNT(DISTINCT lh."PlayedAt") AS total_plays
+      SELECT p.*, 
+             CAST(COUNT(DISTINCT pt."TrackID") AS INTEGER) as "TrackCount",
+             COUNT(DISTINCT tl."LikeID") AS total_likes, 
+             COUNT(DISTINCT lh."PlayedAt") AS total_plays
       FROM "Playlist" p
-      JOIN "PlaylistTrack" pt ON pt."PlaylistID" = p."PlaylistID"
-      JOIN "Track" t ON t."TrackID" = pt."TrackID"
+      LEFT JOIN "PlaylistTrack" pt ON pt."PlaylistID" = p."PlaylistID"
+      LEFT JOIN "Track" t ON t."TrackID" = pt."TrackID"
       LEFT JOIN "TrackLikes" tl ON tl."TrackID" = t."TrackID"
       LEFT JOIN "ListenerHistory" lh ON lh."TrackID" = t."TrackID"
       WHERE p."IsPublic" = true
@@ -34,7 +37,14 @@ router.get('/featured', async (req, res) => {
       ORDER BY (COUNT(DISTINCT tl."LikeID") + COUNT(DISTINCT lh."PlayedAt")) DESC
       LIMIT 10;
     `);
-    res.json(featured);
+    
+    // Convert numeric string values to actual numbers
+    const processedFeatured = featured.map(playlist => ({
+      ...playlist,
+      TrackCount: parseInt(playlist.TrackCount, 10) || 0
+    }));
+    
+    res.json(processedFeatured);
   } catch (err) {
     console.error('Error fetching featured playlists:', err);
     res.status(500).json({ error: 'Failed to fetch featured playlists' });
@@ -46,10 +56,13 @@ router.get('/featured/personalized/:userId', async (req, res) => {
   const { userId } = req.params;
   try {
     const personalized = await db.any(`
-      SELECT p.*, COUNT(DISTINCT tl."LikeID") AS total_likes, COUNT(DISTINCT lh."PlayedAt") AS total_plays
+      SELECT p.*,
+             CAST(COUNT(DISTINCT pt."TrackID") AS INTEGER) as "TrackCount", 
+             COUNT(DISTINCT tl."LikeID") AS total_likes, 
+             COUNT(DISTINCT lh."PlayedAt") AS total_plays
       FROM "Playlist" p
-      JOIN "PlaylistTrack" pt ON pt."PlaylistID" = p."PlaylistID"
-      JOIN "Track" t ON t."TrackID" = pt."TrackID"
+      LEFT JOIN "PlaylistTrack" pt ON pt."PlaylistID" = p."PlaylistID"
+      LEFT JOIN "Track" t ON t."TrackID" = pt."TrackID"
       LEFT JOIN "TrackLikes" tl ON tl."TrackID" = t."TrackID" AND tl."UserID" = $1
       LEFT JOIN "ListenerHistory" lh ON lh."TrackID" = t."TrackID" AND lh."UserID" = $1
       WHERE p."IsPublic" = true
@@ -57,7 +70,14 @@ router.get('/featured/personalized/:userId', async (req, res) => {
       ORDER BY (COUNT(DISTINCT tl."LikeID") + COUNT(DISTINCT lh."PlayedAt")) DESC
       LIMIT 10;
     `, [userId]);
-    res.json(personalized);
+    
+    // Convert numeric string values to actual numbers
+    const processedPersonalized = personalized.map(playlist => ({
+      ...playlist,
+      TrackCount: parseInt(playlist.TrackCount, 10) || 0
+    }));
+    
+    res.json(processedPersonalized);
   } catch (err) {
     console.error('Error fetching personalized playlists:', err);
     res.status(500).json({ error: 'Failed to fetch personalized playlists' });
@@ -72,10 +92,23 @@ router.get('/user/:userId', auth, async (req, res) => {
       return res.status(403).json({ error: 'Unauthorized' });
     }
     const playlists = await db.any(
-      `SELECT * FROM "Playlist" WHERE "UserID" = $1 ORDER BY "CreatedAt" DESC`,
+      `SELECT p.*, 
+             CAST(COUNT(pt."TrackID") AS INTEGER) as "TrackCount" 
+      FROM "Playlist" p
+      LEFT JOIN "PlaylistTrack" pt ON p."PlaylistID" = pt."PlaylistID"
+      WHERE p."UserID" = $1 
+      GROUP BY p."PlaylistID"
+      ORDER BY p."CreatedAt" DESC`,
       [userId]
     );
-    res.json(playlists);
+    
+    // Convert numeric string values to actual numbers
+    const processedPlaylists = playlists.map(playlist => ({
+      ...playlist,
+      TrackCount: parseInt(playlist.TrackCount, 10) || 0
+    }));
+    
+    res.json(processedPlaylists);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -88,7 +121,7 @@ router.get('/liked/:userId', async (req, res) => {
         
         const query = `
             SELECT p.*, u."Username" AS CreatorName, 
-                   COUNT(pt."TrackID") AS TrackCount
+                   CAST(COUNT(pt."TrackID") AS INTEGER) AS "TrackCount"
             FROM "Playlist" p
             JOIN "PlaylistLikes" pl ON p."PlaylistID" = pl."PlaylistID"
             JOIN "User" u ON p."UserID" = u."UserID"
@@ -100,7 +133,13 @@ router.get('/liked/:userId', async (req, res) => {
         
         const likedPlaylists = await db.any(query, [userId]);
         
-        res.json(likedPlaylists);
+        // Convert numeric string values to actual numbers
+        const processedPlaylists = likedPlaylists.map(playlist => ({
+            ...playlist,
+            TrackCount: parseInt(playlist.TrackCount, 10) || 0
+        }));
+        
+        res.json(processedPlaylists);
     } catch (error) {
         console.error('Error fetching liked playlists:', error);
         res.status(500).json({ error: 'Failed to fetch liked playlists' });
@@ -112,7 +151,8 @@ router.get('/:id', async (req, res) => {
   try {
     // Step 1: Get the playlist basic info first with creator name
     const playlist = await db.oneOrNone(
-      `SELECT p.*, u."Username" as "CreatorName", u."UserID" as "CreatorID"
+      `SELECT p.*, u."Username" as "CreatorName", u."UserID" as "CreatorID",
+              (SELECT COUNT(*) FROM "PlaylistTrack" WHERE "PlaylistID" = p."PlaylistID") as "TrackCount"
        FROM "Playlist" p
        LEFT JOIN "User" u ON p."UserID" = u."UserID" 
        WHERE p."PlaylistID" = $1`,
@@ -138,7 +178,8 @@ router.get('/:id', async (req, res) => {
       // Step 3: Return both together
       res.json({ 
         ...playlist, 
-        Tracks: tracks 
+        Tracks: tracks,
+        TrackCount: tracks.length // Add an explicit track count
       });
     } catch (trackError) {
       console.error(`ERROR fetching tracks for playlist ${req.params.id}:`, trackError);
@@ -146,6 +187,7 @@ router.get('/:id', async (req, res) => {
       res.json({ 
         ...playlist, 
         Tracks: [],
+        TrackCount: 0,
         trackError: trackError.message
       });
     }
@@ -323,6 +365,7 @@ router.get('/featured/covers', async (req, res) => {
                    p."Title", 
                    p."UserID",
                    u."Username" as "CreatorName",
+                   CAST((SELECT COUNT(*) FROM "PlaylistTrack" WHERE "PlaylistID" = p."PlaylistID") AS INTEGER) as "TrackCount",
                    (
                      SELECT "CoverArt"
                      FROM "PlaylistTrack" pt
@@ -336,7 +379,13 @@ router.get('/featured/covers', async (req, res) => {
             LIMIT 8
         `);
         
-        res.json(featuredWithCovers);
+        // Convert numeric string values to actual numbers
+        const processedFeatured = featuredWithCovers.map(playlist => ({
+            ...playlist,
+            TrackCount: parseInt(playlist.TrackCount, 10) || 0
+        }));
+        
+        res.json(processedFeatured);
     } catch (err) {
         console.error('Error fetching featured playlists with covers:', err);
         res.status(500).json({ error: 'Failed to fetch featured playlists with covers' });

@@ -74,9 +74,11 @@ const DiscoverPage = ({ playTrack }) => {
         return `/images/Default Album.png`;
       } else if (type === 'playlist') {
         return `/images/Default Playlist.png`;
+      } else if (type === 'track') {
+        return `/images/Default Track.png`;
       } else if (type === 'genre') {
-        // For genres we'll let the error handler find the appropriate image
-        return `/images/default-${type}.jpg`; // This will trigger error handler
+        // Use Default Album as fallback for genres
+        return `/images/Default Album.png`;
       }
       
       // Generic fallback for any other type

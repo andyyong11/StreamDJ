@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import socketService from '../services/socket';
-import { FaEye } from 'react-icons/fa';
+import { FaEye, FaPlay } from 'react-icons/fa';
 import Hls from 'hls.js';
+import '../styles/StreamPlayer.css';
 
 const MAX_RETRIES = 30; // 30 retries = 150 seconds with 5s interval
 const RETRY_INTERVAL = 5000; // 5 seconds
@@ -15,6 +16,8 @@ const StreamPlayer = ({ streamId, streamKey, onViewerCountChange }) => {
   const [error, setError] = useState(null);
   const [status, setStatus] = useState('Initializing...');
   const [viewerCount, setViewerCount] = useState(0);
+  const [isMuted, setIsMuted] = useState(true); // Start muted to bypass autoplay restrictions
+  const [showPlayOverlay, setShowPlayOverlay] = useState(true); // Show play overlay initially
 
   const destroyHls = () => {
     if (hlsRef.current) {
@@ -67,6 +70,34 @@ const StreamPlayer = ({ streamId, streamKey, onViewerCountChange }) => {
     };
   }, [streamId, updateViewerCount]);
 
+  // Handle user interaction to start playing
+  const handlePlayClick = () => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    video.play()
+      .then(() => {
+        setIsPlaying(true);
+        setShowPlayOverlay(false);
+        setError(null);
+        setStatus('Stream playing');
+      })
+      .catch(err => {
+        console.error('Play failed:', err);
+        setError('Failed to play stream: ' + err.message);
+        setStatus('Playback failed');
+      });
+  };
+
+  // Toggle mute state
+  const toggleMute = () => {
+    if (!videoRef.current) return;
+    
+    const newMutedState = !isMuted;
+    setIsMuted(newMutedState);
+    videoRef.current.muted = newMutedState;
+  };
+
   const setupStream = async () => {
     if (!streamKey) {
       setError('No stream key available');
@@ -81,44 +112,65 @@ const StreamPlayer = ({ streamId, streamKey, onViewerCountChange }) => {
     destroyHls();
 
     setStatus('Setting up stream...');
-    const streamUrl = `http://localhost:8000/live/${streamKey}/index.m3u8`;
-    console.log('Attempting to connect to stream:', streamUrl);
+    
+    // Try different URLs in case one works better for the client
+    // This helps with potential CORS or network issues
+    const streamUrls = [
+      `http://localhost:8000/live/${streamKey}/index.m3u8`,
+      `/live/${streamKey}/index.m3u8`, // Relative URL might work better
+      `${window.location.protocol}//${window.location.hostname}:8000/live/${streamKey}/index.m3u8`
+    ];
+    
+    // Use the first URL for logging
+    console.log('Attempting to connect to stream:', streamUrls[0]);
 
-    // Check if stream is available
-    try {
-      const response = await fetch(streamUrl);
-      const content = await response.text();
-      console.log('Stream response:', response.status, content);
-
-      if (!response.ok) {
-        if (retryCountRef.current >= MAX_RETRIES) {
-          setError('Stream failed to start after maximum retries');
-          setStatus('Stream unavailable');
-          return false;
+    // Try each URL until one works
+    let responseOk = false;
+    let content = '';
+    let workingUrl = '';
+    
+    for (const url of streamUrls) {
+      try {
+        console.log('Trying stream URL:', url);
+        const response = await fetch(url);
+        content = await response.text();
+        console.log('Stream response:', response.status, content.substring(0, 100));
+        
+        if (response.ok && content.includes('#EXTM3U')) {
+          responseOk = true;
+          workingUrl = url;
+          console.log('Found working stream URL:', workingUrl);
+          break;
         }
-        setStatus(`Waiting for stream to start... (Attempt ${retryCountRef.current + 1}/${MAX_RETRIES})`);
-        return false;
+      } catch (err) {
+        console.error(`Error checking stream at ${url}:`, err);
       }
+    }
 
-      // Reset retry count on successful connection
-      retryCountRef.current = 0;
-      
-      if (!content.includes('#EXTM3U')) {
-        console.error('Invalid M3U8 content:', content);
-        setError('Invalid stream format');
-        setStatus('Stream format error');
+    if (!responseOk) {
+      if (retryCountRef.current >= MAX_RETRIES) {
+        setError('Stream failed to start after maximum retries');
+        setStatus('Stream unavailable');
         return false;
       }
-    } catch (err) {
-      console.error('Error checking stream:', err);
-      setStatus('Stream not available');
+      setStatus(`Waiting for stream to start... (Attempt ${retryCountRef.current + 1}/${MAX_RETRIES})`);
+      return false;
+    }
+
+    // Reset retry count on successful connection
+    retryCountRef.current = 0;
+    
+    if (!content.includes('#EXTM3U')) {
+      console.error('Invalid M3U8 content:', content);
+      setError('Invalid stream format');
+      setStatus('Stream format error');
       return false;
     }
 
     if (Hls.isSupported()) {
       setStatus('HLS is supported, creating instance...');
       const hls = new Hls({
-        debug: true,
+        debug: false, // Set to false to reduce console noise
         enableWorker: true,
         lowLatencyMode: true,
         backBufferLength: 90,
@@ -128,7 +180,14 @@ const StreamPlayer = ({ streamId, streamKey, onViewerCountChange }) => {
         maxBufferHole: 0.5,
         liveSyncDurationCount: 3,
         liveMaxLatencyDurationCount: 10,
-        liveDurationInfinity: true
+        liveDurationInfinity: true,
+        // Add additional configuration to improve reliability
+        fragLoadingTimeOut: 20000,
+        manifestLoadingTimeOut: 20000,
+        manifestLoadingMaxRetry: 6,
+        fragLoadingMaxRetry: 6,
+        levelLoadingTimeOut: 20000,
+        levelLoadingMaxRetry: 6
       });
 
       hlsRef.current = hls;
@@ -141,6 +200,9 @@ const StreamPlayer = ({ streamId, streamKey, onViewerCountChange }) => {
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         console.log('HLS: Manifest parsed');
         setStatus('Stream ready');
+        
+        // Auto-play with muted audio to bypass browser restrictions
+        video.muted = isMuted;
         video.play()
           .then(() => {
             setIsPlaying(true);
@@ -150,6 +212,7 @@ const StreamPlayer = ({ streamId, streamKey, onViewerCountChange }) => {
             console.error('Playback failed:', err);
             setError('Failed to play stream: ' + err.message);
             setStatus('Playback failed');
+            setShowPlayOverlay(true);
           });
       });
 
@@ -174,14 +237,17 @@ const StreamPlayer = ({ streamId, streamKey, onViewerCountChange }) => {
         }
       });
 
-      hls.loadSource(streamUrl);
+      hls.loadSource(workingUrl);
       hls.attachMedia(video);
       return true;
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
       setStatus('Using native HLS support...');
-      video.src = streamUrl;
+      video.src = workingUrl;
       video.addEventListener('loadedmetadata', () => {
         setStatus('Stream ready');
+        
+        // Auto-play with muted audio to bypass browser restrictions
+        video.muted = isMuted;
         video.play()
           .then(() => {
             setIsPlaying(true);
@@ -191,6 +257,7 @@ const StreamPlayer = ({ streamId, streamKey, onViewerCountChange }) => {
             console.error('Native playback failed:', err);
             setError('Failed to play stream: ' + err.message);
             setStatus('Playback failed');
+            setShowPlayOverlay(true);
           });
       });
       return true;
@@ -259,36 +326,64 @@ const StreamPlayer = ({ streamId, streamKey, onViewerCountChange }) => {
     }
   };
 
+  // Update video status display to be more selective
+  const getDisplayStatus = () => {
+    // Only show status when it's important, hide common statuses
+    const hiddenStatuses = ['Stream ready', 'Stream playing', 'Media attached'];
+    return hiddenStatuses.includes(status) ? '' : status;
+  };
+
   return (
-    <div className="stream-player position-relative">
-      <video 
-        ref={videoRef}
-        style={{ width: '100%', maxHeight: '80vh' }}
-        playsInline
-        controls
-      />
-      
-      {/* Viewer count overlay */}
-      {isPlaying && (
-        <div 
-          className="position-absolute d-flex align-items-center" 
-          style={{ 
-            top: '1rem', 
-            right: '1rem', 
-            background: 'rgba(0, 0, 0, 0.7)', 
-            color: 'white',
-            padding: '0.5rem 0.75rem',
-            borderRadius: '4px',
-            zIndex: 10
-          }}
-        >
-          <FaEye className="me-2" />
-          <span>{viewerCount} watching</span>
+    <div className="stream-player-container">
+      {error && (
+        <div className="stream-error-overlay">
+          <div className="stream-error-message">
+            {error}
+            <button 
+              className="btn btn-primary mt-2"
+              onClick={() => {
+                setError(null);
+                retryCountRef.current = 0;
+                setupStream();
+              }}
+            >
+              Retry
+            </button>
+          </div>
         </div>
       )}
       
-      <div className="status">Stream Status: {status}</div>
-      {error && <div className="error" style={{ color: 'red' }}>{error}</div>}
+      {showPlayOverlay && !error && (
+        <div className="stream-play-overlay" onClick={handlePlayClick}>
+          <button className="play-button">
+            <FaPlay />
+          </button>
+          <div className="play-text">Click to play</div>
+        </div>
+      )}
+      
+      <video
+        ref={videoRef}
+        className="video-js"
+        controls
+        autoPlay
+        muted={isMuted}
+        playsInline
+        style={{
+          width: '100%',
+          height: '100%',
+          backgroundColor: '#000'
+        }}
+      />
+      
+      <div className="stream-status-overlay">
+        <div className="stream-viewer-count">
+          <FaEye /> {viewerCount}
+        </div>
+        {getDisplayStatus() && (
+          <div className="stream-status">{getDisplayStatus()}</div>
+        )}
+      </div>
     </div>
   );
 };

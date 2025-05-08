@@ -282,7 +282,7 @@ const BrowsePage = ({ playTrack }) => {
   // Alternative cover image component with multiple fallbacks for better reliability
   const CoverImage = ({ track }) => {
     const [error, setError] = useState(false);
-    const fallbackImage = 'https://placehold.co/100x100?text=No+Cover';
+    const fallbackImage = '/images/Default Track.png';
     
     // Try different path formats if the default one fails
     const tryAlternativePath = () => {

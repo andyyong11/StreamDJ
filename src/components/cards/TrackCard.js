@@ -4,6 +4,7 @@ import { FaPlay, FaHeart } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import '../../styles/PlayButton.css';
+import '../../styles/custom.css';
 import api from '../../services/api';
 import CoverImage from '../ui/CoverImage';
 
@@ -44,6 +45,7 @@ const TrackCard = ({ track, onTrackSelect, isLiked: propIsLiked, onLikeClick }) 
   }, [track, user, propIsLiked]);
 
   const handleLikeToggle = async (e) => {
+    e.preventDefault(); // Prevent default behavior
     e.stopPropagation(); // Prevent card click
     
     // If a custom like handler is provided, use that instead
@@ -105,9 +107,14 @@ const TrackCard = ({ track, onTrackSelect, isLiked: propIsLiked, onLikeClick }) 
   
   return (
     <Card 
-      className="h-100 border"
+      className="h-100 border cursor-pointer"
       onClick={handleCardClick}
-      style={{ cursor: 'pointer', borderRadius: '8px', overflow: 'hidden' }}
+      style={{ 
+        textDecoration: 'none',
+        color: 'inherit',
+        borderRadius: '8px',
+        overflow: 'hidden'
+      }}
     >
       <div className="card-img-container">
         <CoverImage 

@@ -18,12 +18,32 @@ import '../styles/PlayButton.css';
 
 // Default image handling functions
 const formatImageUrl = (url, type) => {
-  if (!url) return `/images/default-${type}.jpg`;
+  if (!url) {
+    // Use the exact filenames as they exist in the public/images directory
+    if (type === 'track') {
+      return `/images/Default Track.png`;
+    } else if (type === 'album') {
+      return `/images/Default Album.png`;
+    } else if (type === 'playlist') {
+      return `/images/Default Playlist.png`;
+    } else {
+      return `/images/default-${type}.jpg`;
+    }
+  }
   return url;
 };
 
 const handleImageError = (e, type) => {
-  e.target.src = `/images/default-${type}.jpg`;
+  // Use the exact filenames as they exist in the public/images directory
+  if (type === 'track') {
+    e.target.src = `/images/Default Track.png`;
+  } else if (type === 'album') {
+    e.target.src = `/images/Default Album.png`;
+  } else if (type === 'playlist') {
+    e.target.src = `/images/Default Playlist.png`;
+  } else {
+    e.target.src = `/images/default-${type}.jpg`;
+  }
 };
 
 const HomePage = ({ playTrack }) => {
@@ -73,7 +93,17 @@ const HomePage = ({ playTrack }) => {
         setLoadingFeatured(true);
         const response = await api.get(API_ENDPOINTS.featuredPlaylists);
         if (response?.data) {
-          setFeaturedPlaylists(Array.isArray(response.data) ? response.data : []);
+          const playlists = Array.isArray(response.data) ? response.data : [];
+          
+          // Debug track counts in featured playlists
+          console.log('Featured playlists data:', playlists.map(p => ({
+            title: p.Title,
+            trackCount: p.TrackCount,
+            trackCountType: typeof p.TrackCount,
+            rawData: p
+          })));
+          
+          setFeaturedPlaylists(playlists);
         } else {
           setFeaturedPlaylists([]);
         }
@@ -293,7 +323,7 @@ const HomePage = ({ playTrack }) => {
 
   // Handle join stream
   const handleJoinStream = (streamId) => {
-    navigate(`/stream/${streamId}`);
+    navigate(`/streams/${streamId}`);
   };
 
   // Handle play album
@@ -391,7 +421,7 @@ const HomePage = ({ playTrack }) => {
           <Carousel.Caption>
             <h1>Live DJ Sessions</h1>
             <p>Join live streams from top DJs around the world.</p>
-            <Button variant="primary" as={Link} to="/liveStreams">Join Now</Button>
+            <Button variant="primary" as={Link} to="/live-streams">Join Now</Button>
           </Carousel.Caption>
         </Carousel.Item>
       </Carousel>
@@ -491,7 +521,7 @@ const HomePage = ({ playTrack }) => {
             ))}
           </Row>
           <div className="text-center mt-3">
-            <Button variant="outline-primary" as={Link} to="/liveStreams">View All Live Streams</Button>
+            <Button variant="outline-primary" as={Link} to="/live-streams">View All Live Streams</Button>
           </div>
         </Container>
       </section>
@@ -574,7 +604,7 @@ const HomePage = ({ playTrack }) => {
                           )}
                         </td>
                         <td>{formatDuration(track.Duration)}</td>
-                        <td>{new Intl.NumberFormat('en-US').format(track.PlayCount)}</td>
+                        <td>{new Intl.NumberFormat('en-US').format(track.PlayCount || track.play_count || 0)}</td>
                         <td>
                           <Button 
                             variant="success" 

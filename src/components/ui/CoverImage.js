@@ -28,13 +28,8 @@ const CoverImage = ({
 }) => {
   // Format image URL properly
   const formatImageUrl = (url, type) => {
-    // For debugging
-    console.log(`Formatting image URL for ${type}:`, { originalUrl: url });
-    
     // Handle null/undefined urls
     if (!url) {
-      console.log(`No URL provided for ${type}, using default`);
-      
       // Use actual filenames from the directory for default images
       if (type === 'album') {
         return `/images/Default Album.png`;
@@ -76,12 +71,6 @@ const CoverImage = ({
 
   // Handle image loading error
   const handleImageError = (e) => {
-    // Log the error for debugging
-    console.error(`Image load error for ${type}:`, {
-      src: e.target.src,
-      error: 'Failed to load image'
-    });
-
     e.target.onerror = null; // Prevent infinite error loop
     
     // Use appropriate fallback image

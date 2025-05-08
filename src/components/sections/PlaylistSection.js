@@ -76,23 +76,32 @@ const PlaylistSection = ({ title, playlists, loading, onPlaylistClick, onViewAll
       <h2 className="mb-4">{title}</h2>
       <div className="position-relative slider-container">
         <Slider {...settings}>
-          {playlists.map(playlist => (
-            <div key={playlist.PlaylistID || playlist.id} className="px-2">
-              <PlaylistCard 
-                playlist={{
-                  ...playlist,
-                  PlaylistID: playlist.PlaylistID || playlist.id,
-                  Title: playlist.Title || playlist.Name,
-                  TrackCount: playlist.TrackCount || 0,
-                  CreatorName: playlist.CreatorName || playlist.Username || 'Unknown Creator'
-                }} 
-                onPlayClick={() => onPlaylistClick(playlist.PlaylistID || playlist.id)}
-                onLikeClick={onLikeClick ? (e) => onLikeClick(playlist.PlaylistID || playlist.id, e) : undefined}
-                showLikeButton={!!onLikeClick}
-                isLiked={playlist.IsLiked}
-              />
-            </div>
-          ))}
+          {playlists.map(playlist => {
+            // Debug the track count
+            console.log(`Playlist ${playlist.Title || playlist.Name} track count:`, {
+              TrackCount: playlist.TrackCount,
+              Quantity: playlist.Quantity,
+              trackCount: playlist.trackCount
+            });
+            
+            return (
+              <div key={playlist.PlaylistID || playlist.id} className="px-2">
+                <PlaylistCard 
+                  playlist={{
+                    ...playlist,
+                    PlaylistID: playlist.PlaylistID || playlist.id,
+                    Title: playlist.Title || playlist.Name,
+                    TrackCount: playlist.TrackCount || playlist.Quantity || playlist.trackCount || 0,
+                    CreatorName: playlist.CreatorName || playlist.Username || 'Unknown Creator'
+                  }} 
+                  onPlayClick={() => onPlaylistClick(playlist.PlaylistID || playlist.id)}
+                  onLikeClick={onLikeClick ? (e) => onLikeClick(playlist.PlaylistID || playlist.id, e) : undefined}
+                  showLikeButton={!!onLikeClick}
+                  isLiked={playlist.IsLiked}
+                />
+              </div>
+            );
+          })}
         </Slider>
       </div>
       {onViewAllClick && (

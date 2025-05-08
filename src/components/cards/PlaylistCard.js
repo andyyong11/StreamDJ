@@ -1,24 +1,14 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Button } from 'react-bootstrap';
-<<<<<<< HEAD
-import { FaPlay, FaHeart } from 'react-icons/fa';
-import { Link } from 'react-router-dom';
-import CoverImage from '../ui/CoverImage';
-import '../../styles/PlayButton.css';
-
-const PlaylistCard = ({ playlist, onPlayClick, onLikeClick, isLiked = false, showLikeButton = true }) => {
-  // Handle link click separately to avoid triggering card click
-  const handleCreatorClick = (e) => {
-    e.stopPropagation();
-=======
 import { useNavigate } from 'react-router-dom';
-import { FaPlay, FaHeart, FaMusic } from 'react-icons/fa';
+import { FaPlay, FaHeart, FaMusic, FaTrash } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
 import '../../styles/PlayButton.css';
 import '../../styles/PlaylistCoverGrid.css';
+import '../../styles/custom.css';
 import api from '../../services/api';
 
-const PlaylistCard = ({ playlist, onPlayClick }) => {
+const PlaylistCard = ({ playlist, onPlayClick, onDeleteClick, showDelete = false }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isLiked, setIsLiked] = useState(false);
@@ -61,7 +51,8 @@ const PlaylistCard = ({ playlist, onPlayClick }) => {
   }, [playlist, user]);
 
   const handleLikeToggle = async (e) => {
-    e.stopPropagation();
+    e.preventDefault(); // Prevent default behavior
+    e.stopPropagation(); // Prevent card click
     if (!user || !playlist?.PlaylistID) return;
     setIsLikeLoading(true);
     try {
@@ -79,85 +70,75 @@ const PlaylistCard = ({ playlist, onPlayClick }) => {
 
   const handleCardClick = () => {
     navigate(`/playlist/${playlist.PlaylistID}`);
->>>>>>> dff1d1802586d643334f83f1ed71cc713e6ce7e3
   };
 
   // Handle play button click
   const handlePlayClick = (e) => {
-<<<<<<< HEAD
-    e.stopPropagation(); // Prevent card navigation
-    if (onPlayClick) {
-      onPlayClick(playlist);
-    }
-  };
-
-  // Handle like button click
-  const handleLikeClick = (e) => {
-    e.stopPropagation(); // Prevent card navigation
-    if (onLikeClick) {
-      onLikeClick(playlist.PlaylistID, e);
-    }
-  };
-
-  return (
-    <Card 
-      className="h-100 border" 
-      as={Link} 
-      to={`/playlists/${playlist.PlaylistID}`}
-      style={{ 
-        textDecoration: 'none',
-        color: 'inherit',
-        borderRadius: '8px',
-        overflow: 'hidden'
-      }}
-    >
-      <div className="card-img-container">
-        <CoverImage
-          src={playlist.CoverURL || playlist.CoverArt}
-          alt={playlist.Title || 'Playlist'}
-          type="playlist"
-          className="cover-image"
-          rounded="sm"
-        />
-        <Button
-          variant="success"
-          className="play-button-circle"
-          onClick={handlePlayClick}
-          aria-label="Play playlist"
-        >
-          <FaPlay size={18} />
-        </Button>
-        
-        {showLikeButton && onLikeClick && (
-          <Button
-            variant={isLiked ? "danger" : "light"}
-            className={`like-button-circle ${isLiked ? 'liked' : ''}`}
-            onClick={handleLikeClick}
-            aria-label={isLiked ? "Unlike playlist" : "Like playlist"}
-=======
     e.stopPropagation();
     onPlayClick ? onPlayClick(playlist) : navigate(`/playlist/${playlist.PlaylistID}?autoplay=true`);
   };
 
+  // Handle delete button click
+  const handleDeleteClick = (e) => {
+    e.preventDefault(); // Prevent default behavior
+    e.stopPropagation(); // Prevent card navigation
+    
+    if (onDeleteClick && playlist?.PlaylistID) {
+      onDeleteClick(playlist.PlaylistID);
+    }
+  };
+
   const formatTrackCount = (count) => {
-    if (!count && count !== 0) return '0';
-    return count.toString();
+    // Debug what we're actually getting
+    console.log(`FormatTrackCount for ${playlist.Title} received:`, {
+      count,
+      type: typeof count,
+      asNumber: Number(count),
+      trackCount: playlist.TrackCount,
+      trackCountType: typeof playlist.TrackCount,
+      playlistObj: playlist
+    });
+    
+    // Handle string values that might be numbers
+    if (typeof count === 'string') {
+      const parsed = parseInt(count, 10);
+      if (!isNaN(parsed)) {
+        return parsed.toString();
+      }
+    }
+    
+    // Handle numeric values
+    if (typeof count === 'number') {
+      return count.toString();
+    }
+    
+    // If we have null, undefined, or any other non-numeric value
+    return '0';
+  };
+
+  // Format image URL with proper default handling
+  const formatImageUrl = (url, type) => {
+    if (!url) {
+      return `/images/Default ${type.charAt(0).toUpperCase() + type.slice(1)}.png`;
+    }
+    return url;
   };
 
   const handleImageError = (e, type) => {
-    e.target.src = `/images/default-${type}.jpg`;
+    // Update to use the correct filename format with proper capitalization
+    e.target.src = `/images/Default ${type.charAt(0).toUpperCase() + type.slice(1)}.png`;
   };
 
   return (
-    <Card className="h-100 shadow-sm" onClick={handleCardClick} style={{ cursor: 'pointer' }}>
-      <div className="position-relative">
-        {/* ✅ Display 2x2 grid if there are 4 covers */}
+    <Card className="h-100 border cursor-pointer" onClick={handleCardClick}>
+      <div className="card-img-container">
+        {/* Display 2x2 grid if there are 4 covers */}
         {coverArts.length >= 4 ? (
           <div className="cover-grid playlist-cover-grid">
             {coverArts.slice(0, 4).map((src, i) => (
               <img
                 key={i}
-                src={src}
+                src={formatImageUrl(src, 'playlist')}
                 alt={`Track cover ${i + 1}`}
                 className="cover-tile"
                 onError={(e) => handleImageError(e, 'playlist')}
@@ -166,68 +147,58 @@ const PlaylistCard = ({ playlist, onPlayClick }) => {
           </div>
         ) : (
           <img
-            src={coverArts[0] || playlist.CoverURL || '/images/default-playlist.jpg'}
+            src={formatImageUrl(coverArts[0] || playlist.CoverURL, 'playlist')}
             alt={playlist.Title || 'Playlist'}
-            className="cover-single"
+            className="cover-image"
             onError={(e) => handleImageError(e, 'playlist')}
           />
         )}
 
-        <Button variant="success" className="play-button" onClick={handlePlayClick}>
-          <FaPlay />
+        <Button
+          variant="success"
+          className="play-button-circle"
+          onClick={handlePlayClick}
+          aria-label="Play playlist"
+        >
+          <FaPlay size={18} />
         </Button>
 
         {user && (
           <Button
-            variant={isLiked ? 'danger' : 'outline-light'}
-            className="position-absolute top-0 end-0 m-2"
-            size="sm"
+            variant={isLiked ? "danger" : "light"}
+            className={`like-button-circle ${isLiked ? 'liked' : ''}`}
             onClick={handleLikeToggle}
             disabled={isLikeLoading}
->>>>>>> dff1d1802586d643334f83f1ed71cc713e6ce7e3
+            aria-label={isLiked ? "Unlike playlist" : "Like playlist"}
           >
             <FaHeart size={16} />
           </Button>
         )}
-<<<<<<< HEAD
+        
+        {showDelete && onDeleteClick && (
+          <Button
+            variant="danger"
+            className="delete-button-circle"
+            onClick={handleDeleteClick}
+            aria-label="Delete playlist"
+          >
+            <FaTrash size={16} />
+          </Button>
+        )}
       </div>
+
       <Card.Body className="p-3">
-        <Card.Title className="mb-1 text-truncate fs-6 fw-bold">
-          {playlist.Title || playlist.Name || 'Untitled Playlist'}
-        </Card.Title>
+        <Card.Title className="mb-1 text-truncate fs-6 fw-bold">{playlist.Title || 'Untitled Playlist'}</Card.Title>
         <div className="text-muted small">
-          By{' '}
-          {playlist.UserID ? (
-            <Link 
-              to={`/profile/${playlist.UserID}`} 
-              className="text-decoration-none text-muted"
-              onClick={handleCreatorClick}
-            >
-              {playlist.CreatorName || playlist.Username || 'Unknown'}
-            </Link>
-          ) : (
-            <span>{playlist.CreatorName || playlist.Username || 'Unknown'}</span>
-          )}
-          {playlist.TrackCount !== undefined && (
-            <span className="d-block small text-muted">
-              {playlist.TrackCount || 0} tracks
-            </span>
-          )}
-        </div>
-=======
-
-        <span className="position-absolute bottom-0 start-0 m-2 badge bg-dark text-white d-flex align-items-center">
-          <FaMusic className="me-1" />
-          {formatTrackCount(playlist.TrackCount)} tracks
-        </span>
-      </div>
-
-      <Card.Body>
-        <Card.Title className="text-truncate">{playlist.Title || 'Untitled Playlist'}</Card.Title>
-        <Card.Text className="text-muted small">
           By {playlist.CreatedBy || playlist.CreatorName || 'Unknown Creator'}
-        </Card.Text>
->>>>>>> dff1d1802586d643334f83f1ed71cc713e6ce7e3
+          
+          <div className="d-flex justify-content-between align-items-center mt-1">
+            <span className="small text-muted">
+              <FaMusic className="me-1" style={{ fontSize: '0.7rem' }} /> 
+              {formatTrackCount(playlist.TrackCount)} tracks
+            </span>
+          </div>
+        </div>
       </Card.Body>
     </Card>
   );

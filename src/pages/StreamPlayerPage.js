@@ -122,32 +122,38 @@ const StreamPlayerPage = ({ openLoginModal }) => {
 
   return (
     <Container fluid className="mt-4">
-      <Row>
-        <Col md={9}>
-          <div className="video-container">
+      <Row className="stream-player-row">
+        <Col md={8} lg={9}>
+          <div className="video-container mb-4">
             <StreamPlayer 
               streamId={streamId} 
               streamKey={stream.StreamKey}
               onViewerCountChange={handleViewerCountChange}
             />
           </div>
-          {user && user.id === stream.UserID && (
-            <StreamControls 
-              streamId={streamId} 
-              streamData={stream} 
-              onStreamUpdated={handleStreamUpdate}
-              viewerCount={viewerCount}
-            />
-          )}
-          <h2 className="mt-3">
+          
+          <h2 className="mt-3 mb-4">
             {stream.Title || 'Untitled Stream'} 
             <span className="text-muted ms-2" style={{ fontSize: '1rem' }}>
               • {viewerCount} watching now
             </span>
           </h2>
+          
+          {user && user.id === stream.UserID && (
+            <div className="mb-4">
+              <StreamControls 
+                streamId={streamId} 
+                streamData={stream} 
+                onStreamUpdated={handleStreamUpdate}
+                viewerCount={viewerCount}
+              />
+            </div>
+          )}
         </Col>
-        <Col md={3}>
-          <ChatBox streamId={streamId} openLoginModal={openLoginModal} />
+        <Col md={4} lg={3} className="chat-column">
+          <div className="chat-container">
+            <ChatBox streamId={streamId} openLoginModal={openLoginModal} />
+          </div>
         </Col>
       </Row>
     </Container>

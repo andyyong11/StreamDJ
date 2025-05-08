@@ -202,7 +202,7 @@ router.post('/', async (req, res) => {
 });
 
 // Update track
-router.put('/:id', upload.fields([
+router.put('/:id', authenticateToken, upload.fields([
   { name: 'coverArt', maxCount: 1 }
 ]), async (req, res) => {
   try {
@@ -230,11 +230,27 @@ router.put('/:id', upload.fields([
 });
 
 // Delete track
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
   try {
-    await trackModel.delete(req.params.id);
+    const trackId = req.params.id;
+    const userId = req.user.id;
+    
+    // Verify the track exists and belongs to the user
+    const track = await trackModel.getById(trackId);
+    if (!track) {
+      return res.status(404).json({ error: 'Track not found' });
+    }
+    
+    // Check ownership
+    if (track.UserID !== userId) {
+      return res.status(403).json({ error: 'You do not have permission to delete this track' });
+    }
+    
+    // Delete the track
+    await trackModel.delete(trackId);
     res.status(204).send();
   } catch (error) {
+    console.error('Error deleting track:', error);
     res.status(400).json({ error: error.message });
   }
 });

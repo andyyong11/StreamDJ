@@ -12,26 +12,16 @@ const UserAlbumsPage = () => {
   const [albums, setAlbums] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
-  // Determine if this is the current user's album collection
-  const isCurrentUser = user && (!userId || user.id === parseInt(userId));
-  const targetUserId = userId || (user ? user.id : null);
-  
-  // Handle playing an album
-  const handlePlayAlbum = (album) => {
-    navigate(`/albums/${album.AlbumID}?autoplay=true`);
-  };
-  
+  const isOwnProfile = !userId || (user && userId === user.id.toString());
+
   useEffect(() => {
-    if (!targetUserId) {
-      setLoading(false);
-      return;
-    }
-    
     const fetchAlbums = async () => {
       try {
-        setLoading(true);
-        const response = await fetch(`http://localhost:5001/api/albums/user/${targetUserId}`, {
+        const endpoint = userId 
+          ? `http://localhost:5001/api/albums/user/${userId}`
+          : 'http://localhost:5001/api/albums/my-albums';
+        
+        const response = await fetch(endpoint, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -41,8 +31,8 @@ const UserAlbumsPage = () => {
           throw new Error('Failed to fetch albums');
         }
         
-        const albumsData = await response.json();
-        setAlbums(albumsData);
+        const data = await response.json();
+        setAlbums(data);
       } catch (err) {
         console.error('Error fetching albums:', err);
         setError(err.message);
@@ -52,70 +42,63 @@ const UserAlbumsPage = () => {
     };
     
     fetchAlbums();
-  }, [targetUserId]);
-  
+  }, [userId, user]);
+
+  const handlePlayAlbum = (album) => {
+    navigate(`/albums/${album.AlbumID}?autoplay=true`);
+  };
+
   if (loading) {
     return (
       <Container className="py-5 text-center">
         <Spinner animation="border" role="status">
-          <span className="visually-hidden">Loading...</span>
+          <span className="visually-hidden">Loading albums...</span>
         </Spinner>
-        <p className="mt-3">Loading albums...</p>
       </Container>
     );
   }
-  
-  if (error) {
-    return (
-      <Container className="py-5">
-        <Alert variant="danger">
-          <Alert.Heading>Error Loading Albums</Alert.Heading>
-          <p>{error}</p>
-        </Alert>
-      </Container>
-    );
-  }
-  
-  if (!targetUserId) {
-    return (
-      <Container className="py-5">
-        <Alert variant="warning">
-          <Alert.Heading>Authentication Required</Alert.Heading>
-          <p>Please log in to view albums.</p>
-        </Alert>
-      </Container>
-    );
-  }
-  
+
   return (
     <Container className="py-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2>{isCurrentUser ? 'My Albums' : 'User Albums'}</h2>
+        <h1>{isOwnProfile ? 'My Albums' : "User's Albums"}</h1>
         
-        {isCurrentUser && (
-          <Button 
-            variant="success" 
-            onClick={() => navigate('/upload-album')}
-          >
+        {isOwnProfile && (
+          <Button variant="primary" onClick={() => navigate('/upload-album')}>
             <FaPlus className="me-2" /> Create New Album
           </Button>
         )}
       </div>
       
-      {albums.length === 0 ? (
-        <Alert variant="info">
-          <Alert.Heading>No Albums Found</Alert.Heading>
-          <p>
-            {isCurrentUser 
-              ? "You haven't created any albums yet. Click 'Create New Album' to get started." 
-              : "This user hasn't created any albums yet."}
-          </p>
+      {error && <Alert variant="danger">{error}</Alert>}
+      
+      {isOwnProfile && (
+        <Alert variant="info" className="mb-4">
+          To manage or delete your albums, please visit the Creator Dashboard section.
         </Alert>
+      )}
+      
+      {albums.length === 0 ? (
+        <div className="text-center py-5">
+          <FaCompactDisc size={48} className="text-muted mb-3" />
+          <h3>No albums found</h3>
+          {isOwnProfile && (
+            <div className="mt-3">
+              <Button variant="primary" onClick={() => navigate('/upload-album')}>
+                Create Your First Album
+              </Button>
+            </div>
+          )}
+        </div>
       ) : (
         <Row>
           {albums.map(album => (
-            <Col key={album.AlbumID} sm={6} md={4} lg={3} className="mb-4">
-              <AlbumCard album={album} onPlayClick={handlePlayAlbum} />
+            <Col md={3} sm={6} key={album.AlbumID} className="mb-4">
+              <AlbumCard
+                album={album}
+                onPlayClick={handlePlayAlbum}
+                showDelete={false}
+              />
             </Col>
           ))}
         </Row>

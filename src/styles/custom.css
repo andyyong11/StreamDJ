@@ -258,6 +258,42 @@ section h2, .section h2 {
   margin-bottom: 1rem;
 }
 
+/* Stream layout improvements */
+.stream-container {
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  background-color: var(--bg-darker, #121212);
+  border: 1px solid var(--border-color, #333);
+  margin-bottom: 2rem;
+}
+
+.stream-controls-container {
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+}
+
+.stream-info-modal .modal-content {
+  background-color: var(--bg-darker, #121212);
+  color: var(--text-color, #fff);
+  border-color: var(--border-color, #333);
+}
+
+.stream-info-modal .form-control {
+  background-color: var(--bg-dark, #181818);
+  border-color: var(--border-color, #333);
+  color: var(--text-color, #fff);
+}
+
+.stream-card {
+  transition: transform 0.2s ease-in-out;
+  height: 100%;
+}
+
+.stream-card:hover {
+  transform: translateY(-5px);
+}
+
 /* Consistent view all buttons */
 .view-all-button {
   margin-top: 1rem;

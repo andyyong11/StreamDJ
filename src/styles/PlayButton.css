@@ -190,4 +190,112 @@
 .menu-button:hover {
   transform: scale(1.1) !important;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Common utility classes */
+.cursor-pointer {
+  cursor: pointer !important;
+}
+
+/* Play button in card */
+.play-button-circle {
+  position: absolute !important;
+  bottom: 16px !important;
+  right: 16px !important;
+  width: 40px !important;
+  height: 40px !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 50% !important;
+  background-color: #198754 !important;
+  border-color: #198754 !important;
+  color: white !important;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease !important;
+  z-index: 10;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2) !important;
+}
+
+.card-img-container:hover .play-button-circle {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+.play-button-circle:hover {
+  transform: scale(1.1) !important;
+  background-color: #157347 !important;
+  border-color: #157347 !important;
+}
+
+/* Like button in card */
+.like-button-circle {
+  position: absolute !important;
+  top: 16px !important;
+  right: 16px !important;
+  width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 50% !important;
+  background-color: white !important;
+  border-color: #dee2e6 !important;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease !important;
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+.like-button-circle.liked {
+  opacity: 1 !important;
+  background-color: #dc3545 !important;
+  border-color: #dc3545 !important;
+  color: white !important;
+}
+
+.like-button-circle:hover {
+  transform: scale(1.1) !important;
+}
+
+.card-img-container:hover .like-button-circle {
+  opacity: 1;
+}
+
+/* Delete button in card */
+.delete-button-circle {
+  position: absolute !important;
+  top: 16px !important;
+  left: 16px !important;
+  width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 50% !important;
+  background-color: #dc3545 !important;
+  border-color: #dc3545 !important;
+  color: white !important;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease !important;
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+.delete-button-circle:hover {
+  transform: scale(1.1) !important;
+  background-color: #bb2d3b !important;
+  border-color: #bb2d3b !important;
+}
+
+.card-img-container:hover .delete-button-circle {
+  opacity: 1;
+}
+
+/* Card Image Container */
+.card-img-container {
+  position: relative;
 } 

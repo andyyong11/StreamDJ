@@ -18,6 +18,8 @@ import RegisterModal from './components/auth/RegisterModal';
 
 // Components
 import PrivateRoute from './components/auth/PrivateRoute';
+import UserAlbumsPage from './pages/UserAlbumsPage';
+import UserPlaylistsPage from './pages/UserPlaylistsPage';
 
 // Loading fallback
 const LoadingFallback = () => <div className="loading-fallback">Loading...</div>;
@@ -37,7 +39,6 @@ const CreatePlaylistPage = React.lazy(() => import('./pages/CreatePlaylistPage')
 const BrowsePage = React.lazy(() => import('./pages/BrowsePage'));
 const UploadAlbumPage = React.lazy(() => import('./pages/UploadAlbumPage'));
 const AlbumPage = React.lazy(() => import('./pages/AlbumPage'));
-const UserAlbumsPage = React.lazy(() => import('./pages/UserAlbumsPage'));
 const EditAlbumPage = React.lazy(() => import('./pages/EditAlbumPage'));
 const EditTrackPage = React.lazy(() => import('./pages/EditTrackPage'));
 const CreatorDashboard = React.lazy(() => import('./pages/CreatorDashboard'));
@@ -277,7 +278,7 @@ function AppContent() {
                 }
               />
               <Route
-                path="/liveStreams"
+                path="/live-streams"
                 element={
                   <Layout 
                     onTrackSelect={handleTrackSelect} 
@@ -285,13 +286,7 @@ function AppContent() {
                     openLoginModal={openLoginModal}
                     openRegisterModal={openRegisterModal}
                   >
-                    <LiveStreamsPage />
-                    {showLoginModal && (
-                      <LoginModal show={showLoginModal} handleClose={() => setShowLoginModal(false)} />
-                    )}
-                    {showRegisterModal && (
-                      <RegisterModal show={showRegisterModal} handleClose={() => setShowRegisterModal(false)} />
-                    )}
+                    <LiveStreamsPage openLoginModal={openLoginModal} />
                   </Layout>
                 }
               />
@@ -314,6 +309,10 @@ function AppContent() {
                     </PrivateRoute>
                   </Layout>
                 }
+              />
+              <Route
+                path="/stream/:streamId"
+                element={<Navigate to={window.location.pathname.replace("/stream/", "/streams/")} replace />}
               />
               <Route
                 path="/streams/:streamId"
@@ -465,6 +464,30 @@ function AppContent() {
                 element={
                   <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
                     <PlaylistPage onTrackSelect={handleTrackSelect} playTrack={playTrack} />
+                  </Layout>
+                }
+              />
+              <Route
+                path="/playlists"
+                element={
+                  <Layout 
+                    onTrackSelect={handleTrackSelect} 
+                    currentTrack={currentTrack}
+                  >
+                    <PrivateRoute>
+                      <UserPlaylistsPage />
+                    </PrivateRoute>
+                  </Layout>
+                }
+              />
+              <Route
+                path="/playlists/user/:userId"
+                element={
+                  <Layout 
+                    onTrackSelect={handleTrackSelect} 
+                    currentTrack={currentTrack}
+                  >
+                    <UserPlaylistsPage />
                   </Layout>
                 }
               />

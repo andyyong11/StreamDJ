@@ -276,10 +276,57 @@ app.get('/api', (req, res) => {
   });
 });
 
-// 404 handler for missing routes
+// 404 handler for missing API routes
 app.use('/api/*', (req, res) => {
   logger.warn(`API Route not found: ${req.method} ${req.originalUrl}`);
   res.status(404).json({ error: 'Route not found', path: req.originalUrl });
+});
+
+// Add this right after the API route handler for /api/* but before the production/development conditional
+// Handle direct numeric ID routes - this is critical for stream page refreshes
+app.get(/^\/\d+$/, (req, res) => {
+  const id = req.path.substring(1);
+  logger.info(`Redirecting direct numeric ID ${id} to /streams/${id}`);
+  res.redirect(`/streams/${id}`);
+});
+
+// Serve static files from React build folder if in production
+if (process.env.NODE_ENV === 'production') {
+  // Serve static files from the React app
+  app.use(express.static(path.join(__dirname, 'client/build')));
+  
+  // Handle React routing, return all client-side requests to React app
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
+  });
+} else {
+  // In development, add a catch-all for client-side routes
+  app.get([
+    '/streams/*', 
+    '/profile/*', 
+    '/playlist/*',
+    '/playlists/*',
+    '/albums/*',
+    '/library/*',
+    '/liked-songs',
+    '/upload',
+    '/upload-album',
+    '/discover',
+    '/browse/*',
+    '/create-playlist',
+    '/edit-album/*',
+    '/edit-track/*',
+    '/creator-dashboard/*'
+  ], (req, res) => {
+    logger.info(`Redirecting client route to React app: ${req.originalUrl}`);
+    res.redirect('/');
+  });
+}
+
+// 404 handler (this should be the last route)
+app.use((req, res) => {
+  logger.warn('Route not found', { path: req.path, method: req.method });
+  res.status(404).json({ error: 'Route not found' });
 });
 
 // Initialize database and services
@@ -300,11 +347,25 @@ const initializeDatabase = async () => {
 // Serve HLS media files
 app.use('/live', express.static(path.join(NORMALIZED_MEDIA_PATH, 'live'), {
   setHeaders: (res, filepath) => {
+    // Allow cross-origin access from any origin
     res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Range');
+    
+    // Set proper content types for HLS streaming
     if (filepath.endsWith('.m3u8')) {
       res.set('Content-Type', 'application/vnd.apple.mpegurl');
     } else if (filepath.endsWith('.ts')) {
       res.set('Content-Type', 'video/mp2t');
+    }
+    
+    // Set caching headers - short cache for manifest, longer for segments
+    if (filepath.endsWith('.m3u8')) {
+      // Short cache for playlist files which change frequently
+      res.set('Cache-Control', 'public, max-age=2');
+    } else if (filepath.endsWith('.ts')) {
+      // Longer cache for static segment files
+      res.set('Cache-Control', 'public, max-age=86400');
     }
   }
 }));
@@ -679,12 +740,6 @@ app.use((err, req, res, next) => {
   if (process.env.NODE_ENV !== 'production') {
     console.error('SERVER ERROR:', err);
   }
-});
-
-// 404 handler
-app.use((req, res) => {
-  logger.warn('Route not found', { path: req.path, method: req.method });
-  res.status(404).json({ error: 'Route not found' });
 });
 
 // Cleanup on server shutdown

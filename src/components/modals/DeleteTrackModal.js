@@ -7,24 +7,34 @@ const DeleteTrackModal = ({ show, handleClose, track, onDelete }) => {
   const [error, setError] = useState(null);
 
   const handleDelete = async () => {
-    if (!track?.TrackID) return;
+    // Check for valid track ID
+    const trackId = track?.TrackID;
+    if (!trackId) {
+      setError('No track to delete. Please try again.');
+      return;
+    }
     
     try {
       setDeleting(true);
       setError(null);
       
-      await api.delete(`/api/tracks/${track.TrackID}`);
+      console.log('Deleting track with ID:', trackId);
+      
+      // Use api service for consistent auth header handling
+      await api.delete(`/api/tracks/${trackId}`);
       
       // Notify parent component about successful deletion
       if (onDelete) {
-        onDelete(track.TrackID);
+        onDelete(trackId);
       }
       
       // Close the modal
       handleClose();
     } catch (err) {
       console.error('Error deleting track:', err);
-      setError('Failed to delete track. Please try again.');
+      const errorMsg = err?.response?.data?.error || err?.message || 'Failed to delete track. Please try again.';
+      console.error('Error details:', errorMsg);
+      setError(errorMsg);
     } finally {
       setDeleting(false);
     }

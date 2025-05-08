@@ -1,24 +1,85 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Container, Row, Col, Card, Button, Badge, Nav, Tab, Spinner, Alert } from 'react-bootstrap';
-import { FaHeart, FaMusic, FaUserFriends, FaPlay, FaEllipsisH, FaCompactDisc, FaList, FaClock, FaUser, FaEdit, FaHeadphones } from 'react-icons/fa';
+import { FaHeart, FaMusic, FaUserFriends, FaPlay, FaEllipsisH, FaCompactDisc, FaList, FaClock, FaUser, FaEdit, FaHeadphones, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import UserListModal from '../components/modals/UserListModal';
 import AlbumCard from '../components/cards/AlbumCard';
+import PlaylistCard from '../components/cards/PlaylistCard';
 import TrackActionMenu from '../components/modals/TrackActionMenu';
 import AddToPlaylistModal from '../components/modals/AddToPlaylistModal';
 import DeleteTrackModal from '../components/modals/DeleteTrackModal';
+import Slider from 'react-slick';
+import 'slick-carousel/slick/slick.css';
+import 'slick-carousel/slick/slick-theme.css';
 import '../styles/PlayButton.css';
+import '../styles/custom.css';
+
+// Custom arrows for the slider
+const SlickArrowLeft = ({ currentSlide, slideCount, ...props }) => (
+  <button
+    {...props}
+    className="slick-prev"
+    aria-hidden="true"
+    aria-disabled={currentSlide === 0}
+    type="button"
+  >
+    <FaChevronLeft />
+  </button>
+);
+
+const SlickArrowRight = ({ currentSlide, slideCount, ...props }) => (
+  <button
+    {...props}
+    className="slick-next"
+    aria-hidden="true"
+    aria-disabled={currentSlide === slideCount - 1}
+    type="button"
+  >
+    <FaChevronRight />
+  </button>
+);
+
+// Default placeholder image path
+const DEFAULT_PLACEHOLDER = '/images/Default Track.png';
 
 // Default image handling functions
 const formatImageUrl = (url, type) => {
-  if (!url) return `/images/default-${type}.jpg`;
+  if (!url) {
+    // Use the correct image path based on type
+    if (type === 'track') {
+      return `/images/Default Track.png`;
+    } else if (type === 'album') {
+      return `/images/Default Album.png`;
+    } else if (type === 'playlist') {
+      return `/images/Default Playlist.png`;
+    } else {
+      return `/images/default-${type}.jpg`;
+    }
+  }
+  
+  // Handle relative server paths
+  if (!url.startsWith('http') && !url.startsWith('/images/')) {
+    return `http://localhost:5001/${url.replace(/^\/+/, '')}`;
+  }
+  
   return url;
 };
 
 const handleImageError = (e, type) => {
-  e.target.src = `/images/default-${type}.jpg`;
+  e.target.onerror = null; // Prevent infinite error loops
+  
+  // Use the correct image path based on type
+  if (type === 'track') {
+    e.target.src = `/images/Default Track.png`;
+  } else if (type === 'album') {
+    e.target.src = `/images/Default Album.png`;
+  } else if (type === 'playlist') {
+    e.target.src = `/images/Default Playlist.png`;
+  } else {
+    e.target.src = `/images/default-${type}.jpg`;
+  }
 };
 
 const ProfilePage = ({ playTrack, openLoginModal }) => {
@@ -355,46 +416,118 @@ const ProfilePage = ({ playTrack, openLoginModal }) => {
     }
 
     if (playlists.length === 0) {
-      return <p className="text-muted">No playlists found.</p>;
+      return (
+        <div>
+          <p className="text-muted">No playlists found.</p>
+          {isOwnProfile && (
+            <Button 
+              variant="outline-primary" 
+              onClick={() => navigate('/create-playlist')}
+              className="mt-2"
+            >
+              Create Your First Playlist
+            </Button>
+          )}
+        </div>
+      );
     }
 
-    return (
-      <Row>
-        {playlists.map(playlist => (
-          <Col md={4} key={playlist.PlaylistID} className="mb-4">
-            <Card className="h-100 shadow-sm">
-              <div className="position-relative">
-                <Card.Img 
-                  variant="top" 
-                  src={formatImageUrl(playlist.CoverURL, 'playlist')}
-                  alt={playlist.Title || 'Playlist'}
-                  style={{ height: '180px', objectFit: 'cover' }}
-                  onError={(e) => handleImageError(e, 'playlist')}
-                />
+    const sliderSettings = {
+      dots: true,
+      infinite: playlists.length > 5,
+      speed: 500,
+      slidesToShow: activeTab === 'overview' ? 3 : 4,
+      slidesToScroll: 1,
+      swipeToSlide: true,
+      prevArrow: <SlickArrowLeft />,
+      nextArrow: <SlickArrowRight />,
+      responsive: [
+        { breakpoint: 1200, settings: { slidesToShow: 3 } },
+        { breakpoint: 992, settings: { slidesToShow: 2 } },
+        { breakpoint: 768, settings: { slidesToShow: 1 } }
+      ]
+    };
+
+    // If we're in the overview tab, only show a few playlists
+    const displayPlaylists = activeTab === 'overview' ? playlists.slice(0, 6) : playlists;
+
+    // If we're in full list view, use a regular grid instead of slider
+    if (activeTab === 'playlists' && playlists.length > 4) {
+      return (
+        <div>
+          {isOwnProfile && (
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <div></div>
+              <div>
+                <Button 
+                  variant="outline-primary" 
+                  onClick={() => navigate('/creator-dashboard/my-playlists')}
+                  className="me-2"
+                >
+                  Manage All Playlists
+                </Button>
                 <Button 
                   variant="success" 
-                  className="play-button"
-                  onClick={() => handlePlayPlaylist(playlist.PlaylistID)}
+                  onClick={() => navigate('/create-playlist')}
                 >
-                  <FaPlay />
+                  Create New Playlist
                 </Button>
               </div>
-              <Card.Body>
-                <Card.Title className="text-truncate">{playlist.Title}</Card.Title>
-                <Card.Text>
-                  <small className="text-muted">
-                    {playlist.TrackCount || 0} tracks
-                  </small>
-                </Card.Text>
-              </Card.Body>
-            </Card>
-          </Col>
-        ))}
-      </Row>
+            </div>
+          )}
+          <Row>
+            {playlists.map(playlist => (
+              <Col md={4} lg={3} key={playlist.PlaylistID} className="mb-4">
+                <PlaylistCard 
+                  playlist={playlist}
+                  onPlayClick={() => handlePlayPlaylist(playlist.PlaylistID)}
+                />
+              </Col>
+            ))}
+          </Row>
+        </div>
+      );
+    }
+
+    // Otherwise use the slider (for overview or small list of playlists)
+    return (
+      <div className="position-relative slider-container">
+        <Slider {...sliderSettings}>
+          {displayPlaylists.map(playlist => (
+            <div key={playlist.PlaylistID} className="px-2">
+              <PlaylistCard 
+                playlist={playlist}
+                onPlayClick={() => handlePlayPlaylist(playlist.PlaylistID)}
+              />
+            </div>
+          ))}
+        </Slider>
+        {activeTab === 'overview' && (
+          <div className="text-center mt-3 view-all-button">
+            {playlists.length > 6 && (
+              <Button 
+                variant="outline-primary" 
+                onClick={() => setActiveTab('playlists')}
+                className="me-2"
+              >
+                View All Playlists
+              </Button>
+            )}
+            {isOwnProfile && (
+              <Button 
+                variant="outline-success" 
+                onClick={() => navigate('/creator-dashboard/my-playlists')}
+              >
+                Manage Playlists
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
     );
   };
 
-  // Update the track list display in renderTracks
+  // Update the track list display in renderTracks for overview
   const renderTracks = () => {
     if (loading.tracks) {
       return (
@@ -415,10 +548,10 @@ const ProfilePage = ({ playTrack, openLoginModal }) => {
     }
 
     return (
-      <Card>
+      <Card className="mb-4">
         <Card.Body className="p-0">
           <table className="table table-hover align-middle mb-0">
-            <thead>
+            <thead className="bg-light">
               <tr>
                 <th style={{ width: '40px' }}>#</th>
                 <th style={{ width: '60px' }}>Cover</th>
@@ -445,14 +578,14 @@ const ProfilePage = ({ playTrack, openLoginModal }) => {
                   <td className="text-center">
                     <span className="d-flex align-items-center justify-content-center">
                       <FaHeadphones className="me-1 text-muted" size={14} />
-                      {formatNumber(track.PlayCount)}
+                      {formatNumber(track.PlayCount || track.play_count || 0)}
                     </span>
                   </td>
                   <td>
                     <div className="d-flex justify-content-end align-items-center">
                       <Button 
                         variant="success"
-                        className="play-button-table me-2"
+                        className="play-button-inline me-2"
                         onClick={() => handlePlayTrack(track)}
                       >
                         <FaPlay />
@@ -475,7 +608,7 @@ const ProfilePage = ({ playTrack, openLoginModal }) => {
         </Card.Body>
         {tracks.length > 5 && (
           <Card.Footer className="text-center">
-            <Button variant="link" onClick={() => setActiveTab('tracks')}>
+            <Button variant="outline-primary" onClick={() => setActiveTab('tracks')}>
               View All Tracks
             </Button>
           </Card.Footer>
@@ -484,85 +617,7 @@ const ProfilePage = ({ playTrack, openLoginModal }) => {
     );
   };
 
-  // Render albums section
-  const renderAlbums = () => {
-    if (loading.albums) {
-      return (
-        <div className="text-center py-4">
-          <Spinner animation="border" role="status">
-            <span className="visually-hidden">Loading albums...</span>
-          </Spinner>
-        </div>
-      );
-    }
-
-    if (error.albums) {
-      return <Alert variant="danger">{error.albums}</Alert>;
-    }
-
-    if (albums.length === 0) {
-      return <p className="text-muted">No albums found.</p>;
-    }
-
-    const handlePlayAlbum = (album) => {
-      // Navigate to album page with autoplay flag to start playing immediately
-      navigate(`/albums/${album.AlbumID}?autoplay=true`);
-    };
-
-    return (
-      <Row>
-        {(activeTab === 'overview' ? albums.slice(0, 3) : albums).map(album => (
-          <Col md={activeTab === 'overview' ? 4 : 3} key={album.AlbumID} className="mb-4">
-            <AlbumCard album={album} onPlayClick={handlePlayAlbum} />
-          </Col>
-        ))}
-        {activeTab === 'overview' && albums.length > 3 && (
-          <div className="text-center w-100 mt-2">
-            <Button variant="outline-primary" onClick={() => setActiveTab('albums')}>
-              View All Albums
-            </Button>
-          </div>
-        )}
-      </Row>
-    );
-  };
-
-  // Render overview content
-  const renderOverviewContent = () => {
-    if (loading.profile || loading.tracks || loading.playlists || loading.albums) {
-      return (
-        <div className="text-center py-5">
-          <Spinner animation="border" role="status">
-            <span className="visually-hidden">Loading profile...</span>
-          </Spinner>
-        </div>
-      );
-    }
-
-    return (
-      <>
-        {/* Tracks section */}
-        <section className="mb-5">
-          <h3 className="mb-4">Created Tracks</h3>
-          {renderTracks()}
-        </section>
-
-        {/* Playlists section */}
-        <section className="mb-5">
-          <h3 className="mb-4">Playlists</h3>
-          {renderPlaylists()}
-        </section>
-
-        {/* Albums section */}
-        <section className="mb-5">
-          <h3 className="mb-4">Albums</h3>
-          {renderAlbums()}
-        </section>
-      </>
-    );
-  };
-
-  // Similarly update the renderTracksContent function for the full tracks view
+  // Function for full tracks view with date column
   const renderTracksContent = () => {
     if (loading.tracks) {
       return (
@@ -583,10 +638,10 @@ const ProfilePage = ({ playTrack, openLoginModal }) => {
     }
 
     return (
-      <Card>
+      <Card className="mb-4">
         <Card.Body className="p-0">
           <table className="table table-hover align-middle mb-0">
-            <thead>
+            <thead className="bg-light">
               <tr>
                 <th style={{ width: '40px' }}>#</th>
                 <th style={{ width: '60px' }}>Cover</th>
@@ -614,7 +669,7 @@ const ProfilePage = ({ playTrack, openLoginModal }) => {
                   <td className="text-center">
                     <span className="d-flex align-items-center justify-content-center">
                       <FaHeadphones className="me-1 text-muted" size={14} />
-                      {formatNumber(track.PlayCount)}
+                      {formatNumber(track.PlayCount || track.play_count || 0)}
                     </span>
                   </td>
                   <td className="text-center">{new Date(track.CreatedAt).toLocaleDateString()}</td>
@@ -622,7 +677,7 @@ const ProfilePage = ({ playTrack, openLoginModal }) => {
                     <div className="d-flex justify-content-end align-items-center">
                       <Button 
                         variant="success"
-                        className="play-button-table me-2"
+                        className="play-button-inline me-2"
                         onClick={() => handlePlayTrack(track)}
                       >
                         <FaPlay />
@@ -644,6 +699,176 @@ const ProfilePage = ({ playTrack, openLoginModal }) => {
           </table>
         </Card.Body>
       </Card>
+    );
+  };
+
+  // Render albums section
+  const renderAlbums = () => {
+    if (loading.albums) {
+      return (
+        <div className="text-center py-4">
+          <Spinner animation="border" role="status">
+            <span className="visually-hidden">Loading albums...</span>
+          </Spinner>
+        </div>
+      );
+    }
+
+    if (error.albums) {
+      return <Alert variant="danger">{error.albums}</Alert>;
+    }
+
+    if (albums.length === 0) {
+      return (
+        <div>
+          <p className="text-muted">No albums found.</p>
+          {isOwnProfile && (
+            <Button 
+              variant="outline-primary" 
+              onClick={() => navigate('/upload-album')}
+              className="mt-2"
+            >
+              Create Your First Album
+            </Button>
+          )}
+        </div>
+      );
+    }
+
+    const handlePlayAlbum = (album) => {
+      // Navigate to album page with autoplay flag to start playing immediately
+      navigate(`/albums/${album.AlbumID}?autoplay=true`);
+    };
+
+    const sliderSettings = {
+      dots: true,
+      infinite: albums.length > 5,
+      speed: 500,
+      slidesToShow: activeTab === 'overview' ? 3 : 4,
+      slidesToScroll: 1,
+      swipeToSlide: true,
+      prevArrow: <SlickArrowLeft />,
+      nextArrow: <SlickArrowRight />,
+      responsive: [
+        { breakpoint: 1200, settings: { slidesToShow: 3 } },
+        { breakpoint: 992, settings: { slidesToShow: 2 } },
+        { breakpoint: 768, settings: { slidesToShow: 1 } }
+      ]
+    };
+
+    // If we're in the overview tab, only show a few albums
+    const displayAlbums = activeTab === 'overview' ? albums.slice(0, 6) : albums;
+
+    // If we're in full list view, use a regular grid instead of slider
+    if (activeTab === 'albums' && albums.length > 4) {
+      return (
+        <div>
+          {isOwnProfile && (
+            <div className="d-flex justify-content-between align-items-center mb-4">
+              <div></div>
+              <div>
+                <Button 
+                  variant="outline-primary" 
+                  onClick={() => navigate('/creator-dashboard/my-albums')}
+                  className="me-2"
+                >
+                  Manage All Albums
+                </Button>
+                <Button 
+                  variant="success" 
+                  onClick={() => navigate('/upload-album')}
+                >
+                  Create New Album
+                </Button>
+              </div>
+            </div>
+          )}
+          <Row>
+            {albums.map(album => (
+              <Col md={4} lg={3} key={album.AlbumID} className="mb-4">
+                <AlbumCard album={album} onPlayClick={handlePlayAlbum} />
+              </Col>
+            ))}
+          </Row>
+        </div>
+      );
+    }
+
+    // Otherwise use the slider (for overview or small list of albums)
+    return (
+      <div className="position-relative slider-container">
+        <Slider {...sliderSettings}>
+          {displayAlbums.map(album => (
+            <div key={album.AlbumID} className="px-2">
+              <AlbumCard album={album} onPlayClick={handlePlayAlbum} />
+            </div>
+          ))}
+        </Slider>
+        {activeTab === 'overview' && (
+          <div className="text-center mt-3 view-all-button">
+            {albums.length > 6 && (
+              <Button 
+                variant="outline-primary" 
+                onClick={() => setActiveTab('albums')}
+                className="me-2"
+              >
+                View All Albums
+              </Button>
+            )}
+            {isOwnProfile && (
+              <Button 
+                variant="outline-success" 
+                onClick={() => navigate('/creator-dashboard/my-albums')}
+              >
+                Manage Albums
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Render overview content
+  const renderOverviewContent = () => {
+    if (loading.profile || loading.tracks || loading.playlists || loading.albums) {
+      return (
+        <div className="text-center py-5">
+          <Spinner animation="border" role="status">
+            <span className="visually-hidden">Loading profile...</span>
+          </Spinner>
+        </div>
+      );
+    }
+
+    return (
+      <div className="pb-5">
+        {/* Tracks section */}
+        <section className="mb-5">
+          <h2 className="mb-4">Created Tracks</h2>
+          {renderTracks()}
+        </section>
+
+        {/* Albums section */}
+        <section className="mb-5">
+          <h2 className="mb-4">Albums</h2>
+          {albums.length > 0 ? (
+            renderAlbums()
+          ) : (
+            <p className="text-muted">No albums created yet.</p>
+          )}
+        </section>
+
+        {/* Playlists section */}
+        <section className="mb-5">
+          <h2 className="mb-4">Playlists</h2>
+          {playlists.length > 0 ? (
+            renderPlaylists()
+          ) : (
+            <p className="text-muted">No playlists created yet.</p>
+          )}
+        </section>
+      </div>
     );
   };
 
@@ -683,9 +908,9 @@ const ProfilePage = ({ playTrack, openLoginModal }) => {
   }
 
   return (
-    <Container>
+    <div className="profile-page pb-5">
       {/* Profile Banner */}
-      <Card className="mb-4 border-0">
+      <div className="profile-banner-container mb-4">
         <div 
           className="profile-banner position-relative"
           style={{
@@ -808,72 +1033,74 @@ const ProfilePage = ({ playTrack, openLoginModal }) => {
             </div>
           </div>
         </div>
-      </Card>
+      </div>
 
-      {/* Navigation Tabs */}
-      <Tab.Container id="profile-tabs" activeKey={activeTab} onSelect={handleTabChange}>
-        <Nav variant="tabs" className="mb-4">
-          <Nav.Item>
-            <Nav.Link eventKey="overview">Overview</Nav.Link>
-          </Nav.Item>
+      <Container>
+        {/* Navigation Tabs */}
+        <Tab.Container id="profile-tabs" activeKey={activeTab} onSelect={handleTabChange}>
+          <Nav variant="tabs" className="mb-4">
+            <Nav.Item>
+              <Nav.Link eventKey="overview">Overview</Nav.Link>
+            </Nav.Item>
+            
+            <Nav.Item>
+              <Nav.Link eventKey="tracks">
+                <FaMusic className="me-1" /> Tracks 
+                <Badge bg="secondary" className="ms-2">{tracks.length}</Badge>
+              </Nav.Link>
+            </Nav.Item>
+            
+            <Nav.Item>
+              <Nav.Link eventKey="albums">
+                <FaCompactDisc className="me-1" /> Albums
+                <Badge bg="secondary" className="ms-2">{albums.length}</Badge>
+              </Nav.Link>
+            </Nav.Item>
+            
+            <Nav.Item>
+              <Nav.Link eventKey="playlists">
+                <FaList className="me-1" /> Playlists
+                <Badge bg="secondary" className="ms-2">{playlists.length}</Badge>
+              </Nav.Link>
+            </Nav.Item>
+            
+            {isOwnProfile && (
+              <>
+                {/* Creator Dashboard */}
+                <Nav.Item>
+                  <Nav.Link eventKey="creator-dashboard">Creator Dashboard</Nav.Link>
+                </Nav.Item>
+                
+                {/* Library */}
+                <Nav.Item>
+                  <Nav.Link eventKey="library-tracks">Liked Tracks</Nav.Link>
+                </Nav.Item>
+              </>
+            )}
+          </Nav>
           
-          <Nav.Item>
-            <Nav.Link eventKey="tracks">
-              <FaMusic className="me-1" /> Tracks 
-              <Badge bg="secondary" className="ms-2">{tracks.length}</Badge>
-            </Nav.Link>
-          </Nav.Item>
-          
-          <Nav.Item>
-            <Nav.Link eventKey="albums">
-              <FaCompactDisc className="me-1" /> Albums
-              <Badge bg="secondary" className="ms-2">{albums.length}</Badge>
-            </Nav.Link>
-          </Nav.Item>
-          
-          <Nav.Item>
-            <Nav.Link eventKey="playlists">
-              <FaList className="me-1" /> Playlists
-              <Badge bg="secondary" className="ms-2">{playlists.length}</Badge>
-            </Nav.Link>
-          </Nav.Item>
-          
-          {isOwnProfile && (
-            <>
-              {/* Creator Dashboard */}
-              <Nav.Item>
-                <Nav.Link eventKey="creator-dashboard">Creator Dashboard</Nav.Link>
-              </Nav.Item>
-              
-              {/* Library */}
-              <Nav.Item>
-                <Nav.Link eventKey="library-tracks">Liked Tracks</Nav.Link>
-              </Nav.Item>
-            </>
-          )}
-        </Nav>
-        
-        <Tab.Content>
-          <Tab.Pane eventKey="overview">
-            {renderOverviewContent()}
-          </Tab.Pane>
-          
-          <Tab.Pane eventKey="tracks">
-            <h3 className="mb-4">All Tracks by {profileData.Username}</h3>
-            {renderTracksContent()}
-          </Tab.Pane>
-          
-          <Tab.Pane eventKey="albums">
-            <h3 className="mb-4">Albums by {profileData.Username}</h3>
-            {renderAlbums()}
-          </Tab.Pane>
-          
-          <Tab.Pane eventKey="playlists">
-            <h3 className="mb-4">Playlists by {profileData.Username}</h3>
-            {renderPlaylists()}
-          </Tab.Pane>
-        </Tab.Content>
-      </Tab.Container>
+          <Tab.Content>
+            <Tab.Pane eventKey="overview">
+              {renderOverviewContent()}
+            </Tab.Pane>
+            
+            <Tab.Pane eventKey="tracks">
+              <h2 className="mb-4">All Tracks by {profileData.Username}</h2>
+              {renderTracksContent()}
+            </Tab.Pane>
+            
+            <Tab.Pane eventKey="albums">
+              <h2 className="mb-4">Albums by {profileData.Username}</h2>
+              {renderAlbums()}
+            </Tab.Pane>
+            
+            <Tab.Pane eventKey="playlists">
+              <h2 className="mb-4">Playlists by {profileData.Username}</h2>
+              {renderPlaylists()}
+            </Tab.Pane>
+          </Tab.Content>
+        </Tab.Container>
+      </Container>
       
       {/* Followers Modal */}
       <UserListModal 
@@ -907,7 +1134,7 @@ const ProfilePage = ({ playTrack, openLoginModal }) => {
         track={selectedTrack}
         onDelete={handleTrackDeleted}
       />
-    </Container>
+    </div>
   );
 };
 

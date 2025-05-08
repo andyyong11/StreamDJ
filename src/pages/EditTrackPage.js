@@ -4,6 +4,7 @@ import { Container, Form, Button, Card, Row, Col, Alert, Spinner } from 'react-b
 import { FaSave, FaArrowLeft, FaMusic, FaImage } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 import genreOptions from '../utils/genreOptions';
+import api from '../services/api';
 
 const EditTrackPage = () => {
   const { trackId } = useParams();
@@ -26,37 +27,29 @@ const EditTrackPage = () => {
     const fetchTrackDetails = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`http://localhost:5001/api/tracks/${trackId}`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        const response = await api.get(`/api/tracks/${trackId}`);
+        
+        if (response?.data) {
+          setTrack(response.data);
+          
+          // Initialize form with track data
+          setFormData({
+            title: response.data.Title || '',
+            artist: response.data.Artist || '',
+            genre: response.data.Genre || '',
+            coverArt: null // File uploads start empty
+          });
+          
+          if (response.data.CoverArt) {
+            const coverArtUrl = response.data.CoverArt.startsWith('http') 
+              ? response.data.CoverArt 
+              : `http://localhost:5001/${response.data.CoverArt.replace(/^\/+/, '')}`;
+            setPreviewImage(coverArtUrl);
           }
-        });
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch track details');
         }
-        
-        const trackData = await response.json();
-        setTrack(trackData);
-        
-        // Initialize form with track data
-        setFormData({
-          title: trackData.Title || '',
-          artist: trackData.Artist || '',
-          genre: trackData.Genre || '',
-          coverArt: null // File uploads start empty
-        });
-        
-        if (trackData.CoverArt) {
-          const coverArtUrl = trackData.CoverArt.startsWith('http') 
-            ? trackData.CoverArt 
-            : `http://localhost:5001/${trackData.CoverArt.replace(/^\/+/, '')}`;
-          setPreviewImage(coverArtUrl);
-        }
-        
       } catch (err) {
         console.error('Error fetching track details:', err);
-        setError(err.message);
+        setError(err.message || 'Failed to fetch track details');
       } finally {
         setLoading(false);
       }
@@ -105,25 +98,28 @@ const EditTrackPage = () => {
         apiFormData.append('coverArt', formData.coverArt);
       }
       
-      // Send the update request
-      const response = await fetch(`http://localhost:5001/api/tracks/${trackId}`, {
-        method: 'PUT',
+      // Send the update request using the api service
+      const response = await api.put(`/api/tracks/${trackId}`, apiFormData, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
-        body: apiFormData
+          'Content-Type': 'multipart/form-data'
+        }
       });
       
-      if (!response.ok) {
-        throw new Error('Failed to update track');
-      }
+      console.log('Track updated successfully:', response.data);
       
       // Navigate back to creator dashboard on success
       navigate('/creator-dashboard/my-tracks');
       
     } catch (err) {
       console.error('Error updating track:', err);
-      setError(err.message);
+      // Extract the error message from the response if available
+      let errorMessage = 'Failed to update track';
+      if (err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      setError(errorMessage);
       setSaving(false);
     }
   };

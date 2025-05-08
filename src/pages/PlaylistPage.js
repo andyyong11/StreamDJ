@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Container, Card, Table, Dropdown, Alert, Spinner, Button } from 'react-bootstrap';
-import { FaPlay, FaArrowLeft } from 'react-icons/fa';
+import { Container, Card, Table, Dropdown, Alert, Spinner, Button, Modal, Row, Col } from 'react-bootstrap';
+import { FaPlay, FaArrowLeft, FaTrash, FaPen } from 'react-icons/fa';
 import { BsThreeDots } from 'react-icons/bs';
 import AddToPlaylistModal from '../components/player/AddToPlaylistModal'; // adjust the path as needed
 import { useAuth } from '../context/AuthContext';
@@ -18,6 +18,9 @@ const PlaylistPage = ({ onTrackSelect, playTrack }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [serverResponse, setServerResponse] = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   useEffect(() => {
     console.log(`Loading playlist with ID: ${id}`);
@@ -67,6 +70,14 @@ const PlaylistPage = ({ onTrackSelect, playTrack }) => {
         }
         
         console.log('Playlist data received:', data);
+        // Log track count information for debugging
+        console.log('Playlist track count:', {
+          tracksArray: (data.Tracks || data.tracks || []).length,
+          TrackCount: data.TrackCount,
+          Quantity: data.Quantity,
+          trackCount: data.trackCount,
+          tracks: data.tracks?.length
+        });
         setPlaylist(data);
         
         // Handle different property naming (Tracks vs tracks)
@@ -110,6 +121,34 @@ const PlaylistPage = ({ onTrackSelect, playTrack }) => {
     } catch (err) {
       console.error('Failed to remove track:', err);
     }
+  };
+
+  const handleDeletePlaylist = async () => {
+    try {
+      setDeleteLoading(true);
+      const response = await fetch(`http://localhost:5001/api/playlists/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete playlist');
+      }
+      
+      setDeleteLoading(false);
+      setShowDeleteModal(false);
+      navigate('/playlists');
+    } catch (err) {
+      console.error('Error deleting playlist:', err);
+      alert(`Failed to delete playlist: ${err.message}`);
+      setDeleteLoading(false);
+    }
+  };
+
+  const handlePlayAllTracks = () => {
+    // Implementation of handlePlayAllTracks
   };
 
   if (loading) {
@@ -209,18 +248,78 @@ const PlaylistPage = ({ onTrackSelect, playTrack }) => {
   }
 
   const hasTracks = tracks && tracks.length > 0;
+  const isOwner = user && playlist && user.id === playlist.UserID;
 
   return (
-    <Container style={{ paddingTop: '80px' }}>
-      <Card className="mb-4 p-4 shadow-sm">
-        <h2>{playlist.Title}</h2>
-        <p className="text-muted">{playlist.Description || 'No description available'}</p>
-        <div className="text-muted">
-          <small>Created by: {playlist.CreatorName || 'Unknown'}</small>
-          <br />
-          <small>{hasTracks ? `${tracks.length} tracks` : 'No tracks yet'}</small>
-        </div>
-      </Card>
+    <Container className="py-4">
+      <Button 
+        variant="outline-secondary" 
+        className="mb-3"
+        onClick={() => navigate(-1)}
+      >
+        <FaArrowLeft className="me-2" /> Back
+      </Button>
+      
+      <Row className="mb-4">
+        <Col md={4}>
+          <div className="mb-3">
+            {playlist?.CoverImageURL && (
+              <Card>
+                <Card.Img 
+                  src={playlist.CoverImageURL.startsWith('http') 
+                    ? playlist.CoverImageURL 
+                    : `http://localhost:5001/${playlist.CoverImageURL.replace(/^\/+/, '')}`}
+                  alt={playlist.Title}
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = 'https://placehold.co/300x300';
+                  }}
+                />
+              </Card>
+            )}
+          </div>
+        </Col>
+        
+        <Col md={8}>
+          <Card className="h-100">
+            <Card.Body>
+              <Card.Title className="display-5">{playlist.Title}</Card.Title>
+              
+              <Card.Text className="text-muted">
+                Created by: {playlist.CreatorName}
+                {playlist.CreatedAt && (
+                  <span> • Created: {new Date(playlist.CreatedAt).toLocaleDateString()}</span>
+                )}
+              </Card.Text>
+              
+              {playlist.Description && (
+                <Card.Text>{playlist.Description}</Card.Text>
+              )}
+              
+              <div className="d-flex align-items-center mt-3">
+                <Button 
+                  variant="success" 
+                  onClick={handlePlayAllTracks}
+                  disabled={tracks.length === 0}
+                  className="me-2"
+                >
+                  <FaPlay className="me-2" /> Play All
+                </Button>
+                
+                {isOwner && (
+                  <Button 
+                    variant="outline-primary" 
+                    className="me-2"
+                    onClick={() => setShowEditModal(true)}
+                  >
+                    <FaPen className="me-1" /> Edit
+                  </Button>
+                )}
+              </div>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
 
       {hasTracks ? (
         <>
@@ -324,6 +423,29 @@ const PlaylistPage = ({ onTrackSelect, playTrack }) => {
           userId={user?.id}
         />
       )}
+
+      {/* Delete Confirmation Modal */}
+      <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Delete Playlist</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>Are you sure you want to delete this playlist?</p>
+          <p className="text-danger">This action cannot be undone.</p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
+            Cancel
+          </Button>
+          <Button 
+            variant="danger" 
+            onClick={handleDeletePlaylist}
+            disabled={deleteLoading}
+          >
+            {deleteLoading ? 'Deleting...' : 'Delete Playlist'}
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </Container>
   );
 };

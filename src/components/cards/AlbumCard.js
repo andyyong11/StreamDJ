@@ -1,14 +1,21 @@
 import React from 'react';
 import { Card, Button } from 'react-bootstrap';
-import { FaPlay, FaHeart, FaMusic } from 'react-icons/fa';
-import { Link } from 'react-router-dom';
+import { FaPlay, FaHeart, FaMusic, FaTrash } from 'react-icons/fa';
+import { Link, useNavigate } from 'react-router-dom';
 import CoverImage from '../ui/CoverImage';
 import '../../styles/PlayButton.css';
 
-const AlbumCard = ({ album, onPlayClick, onLikeClick, isLiked = false, showLikeButton = true }) => {
+const AlbumCard = ({ album, onPlayClick, onLikeClick, onDeleteClick, isLiked = false, showLikeButton = true, showDelete = false }) => {
+  const navigate = useNavigate();
+
   // Handle link click separately to avoid triggering card click
   const handleArtistClick = (e) => {
     e.stopPropagation();
+  };
+
+  // Handle navigation to album page
+  const handleNavigateToAlbum = () => {
+    navigate(`/albums/${album.AlbumID}`);
   };
 
   // Handle play button click
@@ -21,6 +28,7 @@ const AlbumCard = ({ album, onPlayClick, onLikeClick, isLiked = false, showLikeB
 
   // Handle like button click
   const handleLikeClick = (e) => {
+    e.preventDefault(); // Prevent default behavior
     e.stopPropagation(); // Prevent card navigation
     
     // Add debug logging
@@ -43,6 +51,16 @@ const AlbumCard = ({ album, onPlayClick, onLikeClick, isLiked = false, showLikeB
     }
   };
 
+  // Handle delete button click
+  const handleDeleteClick = (e) => {
+    e.preventDefault(); // Prevent default behavior
+    e.stopPropagation(); // Prevent card navigation
+    
+    if (onDeleteClick && album?.AlbumID) {
+      onDeleteClick(album.AlbumID);
+    }
+  };
+
   // Format release year or date
   const formatReleaseInfo = () => {
     if (album.ReleaseDate) {
@@ -56,9 +74,8 @@ const AlbumCard = ({ album, onPlayClick, onLikeClick, isLiked = false, showLikeB
 
   return (
     <Card 
-      className="h-100 border" 
-      as={Link} 
-      to={`/albums/${album.AlbumID}`}
+      className="h-100 border cursor-pointer" 
+      onClick={handleNavigateToAlbum}
       style={{ 
         textDecoration: 'none',
         color: 'inherit',
@@ -91,6 +108,17 @@ const AlbumCard = ({ album, onPlayClick, onLikeClick, isLiked = false, showLikeB
             aria-label={isLiked ? "Unlike album" : "Like album"}
           >
             <FaHeart size={16} />
+          </Button>
+        )}
+
+        {showDelete && onDeleteClick && (
+          <Button
+            variant="danger"
+            className="delete-button-circle"
+            onClick={handleDeleteClick}
+            aria-label="Delete album"
+          >
+            <FaTrash size={16} />
           </Button>
         )}
       </div>
