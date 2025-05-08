@@ -12,8 +12,17 @@ import TrackCard from '../components/cards/TrackCard';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { API_ENDPOINTS } from '../config/apiConfig';
-import { formatImageUrl, handleImageError } from '../utils/imageUtils';
 import '../styles/PlayButton.css';
+
+// Default image handling functions
+const formatImageUrl = (url, type) => {
+  if (!url) return `/images/default-${type}.jpg`;
+  return url;
+};
+
+const handleImageError = (e, type) => {
+  e.target.src = `/images/default-${type}.jpg`;
+};
 
 const HomePage = ({ playTrack }) => {
   const { user } = useAuth();

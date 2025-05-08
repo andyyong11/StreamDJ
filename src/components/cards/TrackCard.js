@@ -4,7 +4,6 @@ import { FaPlay, FaHeadphones, FaUser, FaHeart } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import '../../styles/PlayButton.css';
-import { formatImageUrl, handleImageError } from '../../utils/imageUtils';
 import api from '../../services/api';
 
 const TrackCard = ({ track, onTrackSelect }) => {
@@ -92,6 +91,16 @@ const TrackCard = ({ track, onTrackSelect }) => {
   // Handle username click to prevent card click
   const handleUsernameClick = (e) => {
     e.stopPropagation();
+  };
+
+  // Default image handling functions
+  const formatImageUrl = (url, type) => {
+    if (!url) return `/images/default-${type}.jpg`;
+    return url;
+  };
+
+  const handleImageError = (e, type) => {
+    e.target.src = `/images/default-${type}.jpg`;
   };
 
   return (
