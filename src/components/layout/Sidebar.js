@@ -34,7 +34,7 @@ const Sidebar = () => {
 
         {user && (
           <>
-            <Nav.Link as={Link} to={`/library/${user.id}`} className="text-white mb-2">
+            <Nav.Link as={Link} to={`/library`} className="text-white mb-2">
               <FaHeadphones className="me-2" /> Library
             </Nav.Link>
 
@@ -56,7 +56,7 @@ const Sidebar = () => {
           </>
         )}
 
-        <Nav.Link as={Link} to="/liveStreams" className="text-white">
+        <Nav.Link as={Link} to="/live-streams" className="text-white">
           <FaBroadcastTower className="me-2" /> Live Streams
         </Nav.Link>
       </Nav>

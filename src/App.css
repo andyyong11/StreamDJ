@@ -537,3 +537,212 @@ body {
   overflow: hidden;
   width: 100%;
 }
+
+.chat-messages .message-content {
+  color: #e6e6e6;
+  word-break: break-word;
+}
+
+.chat-messages .message-content p {
+  margin-bottom: 0;
+}
+
+.chat-messages .system-message {
+  opacity: 0.8;
+}
+
+.chat-messages .system-message .message-content {
+  color: #a6a6a6;
+  font-style: italic;
+}
+
+.chat-messages .system-message .timestamp {
+  background-color: transparent;
+  color: #a6a6a6;
+}
+
+.chat-messages .empty-message {
+  color: #a6a6a6;
+  font-style: italic;
+}
+
+.chat-input-form {
+  padding: 12px;
+  background-color: #131313;
+  border-top: 1px solid #2a2a2a;
+  flex-shrink: 0;
+}
+
+.chat-box .form-control {
+  background-color: #242424;
+  border-color: #444;
+  color: #fff;
+  height: 38px;
+}
+
+.chat-box .form-control:focus {
+  background-color: #242424;
+  border-color: #666;
+  color: #fff;
+  box-shadow: 0 0 0 0.25rem rgba(61, 182, 245, 0.25);
+}
+
+.chat-box .btn-primary {
+  min-width: 64px;
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+}
+
+.chat-box .btn-primary:hover {
+  background-color: #0b5ed7;
+  border-color: #0a58ca;
+}
+
+.chat-box .btn-primary:disabled {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+  opacity: 0.65;
+}
+
+.chat-container {
+  height: calc(100vh - 100px);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 20px;
+  width: 100%;
+}
+
+@media (max-width: 767px) {
+  .chat-messages {
+    max-height: 400px;
+    min-height: 200px;
+    height: auto;
+  }
+  
+  .chat-container {
+    position: static;
+    margin-top: 2rem;
+    padding-right: 0;
+    height: auto;
+    max-height: 500px;
+  }
+}
+
+/* Loading Fallback */
+.loading-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  width: 100%;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-size: 1.2rem;
+  opacity: 0.8;
+}
+
+.loading-fallback::after {
+  content: '';
+  width: 24px;
+  height: 24px;
+  margin-left: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--primary-color);
+  border-top-color: transparent;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Stream player page layout */
+.stream-player-row {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.chat-column {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.video-container {
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+
+.stream-controls-container {
+  margin-top: 0;
+  margin-bottom: 2rem;
+  border-radius: 12px;
+  overflow: hidden;
+  width: 100%;
+}
+
+/* In your Sidebar component's CSS */
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  z-index: 1040; /* Ensure it stays below the topbar */
+  width: 220px; /* Adjust the width as needed */
+  background-color: var(--boom-bg); /* Sidebar background color */
+}
+
+/* In your Topbar component's CSS */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 1050; /* Ensure it stays above other content */
+  width: 100%;
+  background-color: var(--boom-bg); /* Adjust for your topbar background */
+}
+
+.main-content {
+  margin-left: 300px; /* Ensure content doesn't overlap sidebar */
+  z-index: 1010;
+}
+
+.homepage-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.sidebar {
+  flex: 0 0 250px; /* Adjust width of the sidebar */
+}
+
+.main-content {
+  flex: 1; /* Occupy the remaining space */
+}
+
+/* Ensure responsiveness */
+@media (max-width: 768px) {
+  .homepage-container {
+    flex-direction: column;
+  }
+  .sidebar {
+    width: 100%;
+  }
+}
+
+.search-dropdown {
+  position: absolute;
+  top: 100%; /* Position the dropdown directly below the search input */
+  left: 0;
+  right: 0;
+  z-index: 1050; /* Ensure it appears above other content */
+  max-height: 300px; /* Adjust based on content */
+  overflow-y: auto; /* Scroll if the content is too large */
+}
+
+.footer {
+  background-color: var(--boom-bg);
+}

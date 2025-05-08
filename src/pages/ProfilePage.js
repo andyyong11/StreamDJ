@@ -721,7 +721,7 @@ const ProfilePage = ({ playTrack, openLoginModal }) => {
     if (albums.length === 0) {
       return (
         <div>
-          <p className="text-muted">No albums found.</p>
+          <p className="text-white">No albums found.</p>
           {isOwnProfile && (
             <Button 
               variant="outline-primary" 
@@ -855,7 +855,7 @@ const ProfilePage = ({ playTrack, openLoginModal }) => {
           {albums.length > 0 ? (
             renderAlbums()
           ) : (
-            <p className="text-muted">No albums created yet.</p>
+            <p className="text-white">No albums created yet.</p>
           )}
         </section>
 
@@ -865,7 +865,7 @@ const ProfilePage = ({ playTrack, openLoginModal }) => {
           {playlists.length > 0 ? (
             renderPlaylists()
           ) : (
-            <p className="text-muted">No playlists created yet.</p>
+            <p className="text-white">No playlists created yet.</p>
           )}
         </section>
       </div>
