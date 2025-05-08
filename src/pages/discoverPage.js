@@ -1,6 +1,7 @@
 import React from 'react';
 import { Container, Row, Col, Card, Button } from 'react-bootstrap';
 import { FaPlay, FaHeart, FaMusic } from 'react-icons/fa';
+import '../styles/PlayButton.css';
 
 const DiscoverPage = () => {
   // Mock data
@@ -34,14 +35,19 @@ const DiscoverPage = () => {
           {trendingPlaylists.map(pl => (
             <Col md={3} key={pl.id} className="mb-4">
               <Card className="h-100 shadow-sm">
-                <Card.Img variant="top" src={pl.image} />
+                <div className="position-relative">
+                  <Card.Img variant="top" src={pl.image} />
+                  <Button 
+                    variant="success"
+                    className="play-button"
+                  >
+                    <FaPlay />
+                  </Button>
+                </div>
                 <Card.Body>
                   <Card.Title>{pl.title}</Card.Title>
                   <Card.Text>By {pl.creator} • {pl.tracks} tracks</Card.Text>
-                  <div className="d-flex justify-content-between">
-                    <Button variant="success" size="sm">
-                      <FaPlay className="me-1" /> Play
-                    </Button>
+                  <div className="d-flex justify-content-end">
                     <Button variant="outline-danger" size="sm">
                       <FaHeart />
                     </Button>
@@ -77,15 +83,20 @@ const DiscoverPage = () => {
           {newReleases.map(release => (
             <Col md={4} key={release.id} className="mb-4">
               <Card className="h-100 shadow-sm">
-                <Card.Img variant="top" src={release.image} />
+                <div className="position-relative">
+                  <Card.Img variant="top" src={release.image} />
+                  <Button 
+                    variant="success"
+                    className="play-button"
+                  >
+                    <FaPlay />
+                  </Button>
+                </div>
                 <Card.Body>
                   <Card.Title>{release.title}</Card.Title>
                   <Card.Text>By {release.artist}</Card.Text>
                   <div className="d-flex justify-content-between align-items-center">
                     <span><FaMusic className="me-1" /> {release.duration}</span>
-                    <Button variant="primary" size="sm">
-                      <FaPlay className="me-1" /> Play
-                    </Button>
                   </div>
                 </Card.Body>
               </Card>

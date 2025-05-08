@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { Container, Row, Col, Card, Button, Form, Nav } from 'react-bootstrap';
 import { FaUpload, FaFileAudio, FaImage, FaCompactDisc } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 import UploadAlbumForm from './UploadAlbumPage';
 import genreOptions from '../utils/genreOptions';
+import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const UploadPage = () => {
   const [uploadType, setUploadType] = useState('track'); // 'track' or 'album'
@@ -40,8 +43,11 @@ const UploadPage = () => {
 };
 
 const UploadTrackForm = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  
   const [formData, setFormData] = useState({
-    userId: 1,
+    userId: user?.id || '', // Use the current user's ID instead of hardcoded 1
     title: '',
     genre: '',
     duration: '',
@@ -51,6 +57,7 @@ const UploadTrackForm = () => {
     coverArt: null,
   });
   const [isLoadingDuration, setIsLoadingDuration] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
@@ -86,19 +93,41 @@ const UploadTrackForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsUploading(true);
+    
+    // Validate that we have a user ID
+    if (!formData.userId) {
+      alert('You must be logged in to upload tracks');
+      setIsUploading(false);
+      return;
+    }
+    
     const body = new FormData();
     body.append('userId', formData.userId);
     body.append('title', formData.title);
     body.append('artist', formData.artist);
     body.append('genre', formData.genre);
-    body.append('duration', formData.duration);
+    
+    // Ensure duration is included with a default value if not set
+    const duration = formData.duration ? formData.duration : '0';
+    console.log('Using duration value:', duration);
+    body.append('duration', duration);
+    
     body.append('audioFile', formData.audioFile);
     body.append('coverArt', formData.coverArt);
-    formData.featuredArtists.forEach((username) =>
-      body.append('featuredArtists[]', username)
-    );
+    
+    // Handle featured artists
+    if (formData.featuredArtists && formData.featuredArtists.length > 0) {
+      // Join array into comma-separated string
+      body.append('featuredArtists', formData.featuredArtists.join(','));
+    } else {
+      body.append('featuredArtists', '');
+    }
+
+    console.log('Submitting track with user ID:', formData.userId);
 
     try {
+      console.log('Submitting form data...');
       const res = await fetch('http://localhost:5001/api/tracks/upload', {
         method: 'POST',
         body,
@@ -109,9 +138,20 @@ const UploadTrackForm = () => {
 
       if (res.ok) {
         alert('Track uploaded successfully!');
+        
+        // Clear all track-related API caches
+        api.clearCacheFor('/api/tracks/by-user');
+        api.clearCacheFor('/api/tracks/search');
+        api.clearCacheFor('/api/tracks/search-all');
+        api.clearCacheFor('/api/tracks'); 
+        
+        // For a more aggressive approach, clear the entire API cache
+        // This ensures all data is refreshed including search results
+        api.clearCache();
+        
         // Reset form
         setFormData({
-          userId: 1,
+          userId: user?.id || '',
           title: '',
           genre: '',
           duration: '',
@@ -120,12 +160,19 @@ const UploadTrackForm = () => {
           audioFile: null,
           coverArt: null,
         });
+        
+        // Navigate to the creator dashboard after a short delay
+        setTimeout(() => {
+          navigate('/my-tracks');
+        }, 500);
       } else {
         alert('Upload failed.');
       }
     } catch (error) {
       console.error('Error uploading track:', error);
       alert('Failed to upload track. Please try again.');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -192,24 +239,6 @@ const UploadTrackForm = () => {
             </Form.Select>
           </Form.Group>
 
-          <Form.Group className="mb-3">
-            <Form.Label>Duration (in seconds)</Form.Label>
-            <Form.Control
-              type="number"
-              name="duration"
-              placeholder={isLoadingDuration ? "Detecting duration..." : "e.g., 180"}
-              value={formData.duration}
-              onChange={handleChange}
-              required
-              disabled={isLoadingDuration}
-            />
-            <Form.Text className="text-muted">
-              {isLoadingDuration 
-                ? "Calculating duration from audio file..." 
-                : "Duration will be automatically detected from the audio file."}
-            </Form.Text>
-          </Form.Group>
-
           <Row>
             <Col md={6} className="mb-3">
               <Form.Label>Audio File <FaFileAudio /></Form.Label>
@@ -220,6 +249,11 @@ const UploadTrackForm = () => {
                 onChange={handleChange}
                 required
               />
+              {isLoadingDuration && (
+                <Form.Text className="text-muted">
+                  Calculating duration from audio file...
+                </Form.Text>
+              )}
             </Col>
             <Col md={6} className="mb-3">
               <Form.Label>Cover Art <FaImage /></Form.Label>
@@ -233,7 +267,7 @@ const UploadTrackForm = () => {
             </Col>
           </Row>
 
-          <Button variant="primary" type="submit" className="mt-3">
+          <Button variant="primary" type="submit" className="mt-3" disabled={isUploading}>
             <FaUpload className="me-2" /> Upload Track
           </Button>
         </Form>

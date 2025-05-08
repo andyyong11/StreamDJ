@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import React, { useState, useCallback, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, Future } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import './App.css';
-
-// Carousel Import
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
+import './App.css';
+
+import { AuthProvider, useAuth } from './context/AuthContext';
 
 // Layout
 import Layout from './components/layout/Layout';
@@ -15,39 +15,35 @@ import MusicPlayer from './components/player/MusicPlayer';
 // Pages
 import HomePage from './pages/HomePage';
 import ProfilePage from './pages/ProfilePage';
-import DiscoverPage from './pages/DiscoverPage';
-import LibraryPage from './pages/LibraryPage';
-import LiveStreamsPage from './pages/LiveStreamsPage';
+import ProfileSettingsPage from './pages/ProfileSettingsPage';
+import DiscoverPage from './pages/discoverPage';
+import LibraryPage from './pages/libraryPage';
+import LikedSongsPage from './pages/LikedSongsPage';
+import LiveStreamsPage from './pages/liveStreamsPage';
+import UploadPage from './pages/uploadPage';
+import StreamPlayerPage from './pages/StreamPlayerPage';
+import PlaylistPage from './pages/PlaylistPage';
+
+// Auth
 import LoginModal from './components/auth/LoginModal';
 import RegisterModal from './components/auth/RegisterModal';
-import UploadPage from './pages/UploadPage';
 import UploadAlbumPage from './pages/UploadAlbumPage';
-import StreamPlayerPage from './pages/StreamPlayerPage';
+// import StreamPlayerPage from './pages/StreamPlayerPage';
 import AlbumPage from './pages/AlbumPage';
 import UserAlbumsPage from './pages/UserAlbumsPage';
 import EditAlbumPage from './pages/EditAlbumPage';
 import EditTrackPage from './pages/EditTrackPage';
 import CreatorDashboard from './pages/CreatorDashboard';
-import PlaylistPage from './pages/PlaylistPage';
+// import PlaylistPage from './pages/PlaylistPage';
 
 // Components
 import PrivateRoute from './components/auth/PrivateRoute';
 import TrendingSection from './components/sections/TrendingSection';
 
-// Context
-import { AuthProvider } from './context/AuthContext';
-
-// Create a lazily loaded component loader to improve initial load time
-const LazyRoute = ({ component: Component, ...props }) => {
-  return (
-    <React.Suspense fallback={<div className="loading-spinner">Loading...</div>}>
-      <Component {...props} />
-    </React.Suspense>
-  );
-};
-
-function App() {
+function AppContent() {
+  const { user } = useAuth();
   const [currentTrack, setCurrentTrack] = useState(null);
+  const [currentPlaylist, setCurrentPlaylist] = useState([]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playlist, setPlaylist] = useState([]);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
@@ -116,9 +112,10 @@ function App() {
     };
   }, []);
 
-  const handleTrackSelect = (track) => {
+  const handleTrackSelect = useCallback((track, playlist = []) => {
     setCurrentTrack(track);
-  };
+    setCurrentPlaylist(playlist);
+  }, []);
 
   const handleNextTrack = () => {
     if (playlist.length === 0) return;
@@ -162,7 +159,7 @@ function App() {
 
   return (
     <AuthProvider>
-      <Router>
+      <Router future={{ v7_relativeSplatPath: true }}>
         <div className="content">
           <Routes>
             <Route path="/login" element={<Navigate to="/" replace />} />
@@ -190,8 +187,31 @@ function App() {
             <Route
               path="/profile/:id"
               element={
-                <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
-                  <ProfilePage />
+                <Layout 
+                  onTrackSelect={handleTrackSelect} 
+                  currentTrack={currentTrack}
+                  openLoginModal={openLoginModal}
+                  openRegisterModal={openRegisterModal}
+                >
+                  <ProfilePage 
+                    playTrack={playTrack} 
+                    openLoginModal={openLoginModal}
+                  />
+                </Layout>
+              }
+            />
+            <Route
+              path="/settings/profile"
+              element={
+                <Layout 
+                  onTrackSelect={handleTrackSelect} 
+                  currentTrack={currentTrack}
+                  openLoginModal={openLoginModal}
+                  openRegisterModal={openRegisterModal}
+                >
+                  <PrivateRoute>
+                    <ProfileSettingsPage openLoginModal={openLoginModal} />
+                  </PrivateRoute>
                 </Layout>
               }
             />
@@ -242,10 +262,15 @@ function App() {
               }
             />
             <Route
-              path="/stream/:streamId"
+              path="/streams/:streamId"
               element={
-                <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
-                  <StreamPlayerPage />
+                <Layout 
+                  onTrackSelect={handleTrackSelect} 
+                  currentTrack={currentTrack}
+                  openLoginModal={openLoginModal}
+                  openRegisterModal={openRegisterModal}
+                >
+                  <StreamPlayerPage openLoginModal={openLoginModal} />
                 </Layout>
               }
             />
@@ -376,7 +401,7 @@ function App() {
               path="/playlists/:id"
               element={
                 <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
-                  <PlaylistPage />
+                  <PlaylistPage playTrack={playTrack} />
                 </Layout>
               }
             />
@@ -396,7 +421,263 @@ function App() {
   );
 }
 
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
+}
+
 export default App;
+
+// import React, { useState } from 'react';
+// import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+// import 'bootstrap/dist/css/bootstrap.min.css';
+// import 'slick-carousel/slick/slick.css';
+// import 'slick-carousel/slick/slick-theme.css';
+// import './App.css';
+
+// import { AuthProvider, useAuth } from './context/AuthContext';
+
+// // Layout
+// import Layout from './components/layout/Layout';
+
+// // Pages
+// import HomePage from './pages/HomePage';
+// import ProfilePage from './pages/ProfilePage';
+// import DiscoverPage from './pages/discoverPage';
+// import LibraryPage from './pages/libraryPage';
+// import LikedSongsPage from './pages/LikedSongsPage';
+// import LiveStreamsPage from './pages/liveStreamsPage';
+// import UploadPage from './pages/uploadPage';
+// import StreamPlayerPage from './pages/StreamPlayerPage';
+// import PlaylistPage from './pages/PlaylistPage';
+
+// // Auth
+// import LoginModal from './components/auth/LoginModal';
+// import RegisterModal from './components/auth/RegisterModal';
+// import PrivateRoute from './components/auth/PrivateRoute';
+
+// function AppContent() {
+//   const { user } = useAuth();
+//   const [currentTrack, setCurrentTrack] = useState(null);
+
+//   const handleTrackSelect = (track) => {
+//     setCurrentTrack(track);
+//   };
+
+//   return (
+//     <Router>
+//       <Routes>
+//         <Route path="/login" element={<LoginModal />} />
+//         <Route path="/register" element={<RegisterModal />} />
+//         <Route
+//           path="/"
+//           element={
+//             <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+//               <HomePage />
+//             </Layout>
+//           }
+//         />
+//         <Route
+//           path="/profile/:id"
+//           element={
+//             <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+//               <ProfilePage />
+//             </Layout>
+//           }
+//         />
+//         <Route
+//           path="/discover"
+//           element={
+//             <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+//               <DiscoverPage />
+//             </Layout>
+//           }
+//         />
+//           <Route
+//             path="/library"
+//             element={
+//               <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+//                 <LibraryPage userId={user?.id} />
+//               </Layout>
+//             }
+//           />
+//         <Route
+//           path="/liveStreams"
+//           element={
+//             <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+//               <LiveStreamsPage />
+//             </Layout>
+//           }
+//         />
+//         <Route
+//           path="/upload"
+//           element={
+//             <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+//               <PrivateRoute>
+//                 <UploadPage />
+//               </PrivateRoute>
+//             </Layout>
+//           }
+//         />
+//         <Route
+//           path="/stream/:streamId"
+//           element={
+//             <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+//               <StreamPlayerPage />
+//             </Layout>
+//           }
+//         />
+//         <Route
+//           path="/library/liked"
+//           element={
+//             <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+//               <LikedSongsPage onTrackSelect={handleTrackSelect} />
+//             </Layout>
+//           }
+//         />
+//         <Route
+//           path="/playlist/:id"
+//           element={
+//             <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+//               <PlaylistPage onTrackSelect={handleTrackSelect} />
+//             </Layout>
+//           }
+//         />
+//       </Routes>
+//     </Router>
+//   );
+// }
+
+// function App() {
+//   return (
+//     <AuthProvider>
+//       <AppContent />
+//     </AuthProvider>
+//   );
+// }
+
+// export default App;
+
+
+// import React, { useState } from 'react';
+// import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+// import 'bootstrap/dist/css/bootstrap.min.css';
+// import './App.css';
+
+// // Carousel Import
+// import 'slick-carousel/slick/slick.css';
+// import 'slick-carousel/slick/slick-theme.css';
+
+// // Layout
+// import Layout from './components/layout/Layout';
+
+// // Pages
+// import LikedSongsPage from './pages/LikedSongsPage';
+// import HomePage from './pages/HomePage';
+// import ProfilePage from './pages/ProfilePage';
+// import DiscoverPage from './pages/discoverPage';
+// import LibraryPage from './pages/libraryPage';
+// import LiveStreamsPage from './pages/liveStreamsPage';
+// import LoginModal from './components/auth/LoginModal';
+// import RegisterModal from './components/auth/RegisterModal';
+// import UploadPage from './pages/uploadPage';
+// import StreamPlayerPage from './pages/StreamPlayerPage';
+
+// // Components
+// import PrivateRoute from './components/auth/PrivateRoute';
+
+// // Context
+// import { AuthProvider } from './context/AuthContext';
+
+// function App() {
+//   const [currentTrack, setCurrentTrack] = useState(null);
+
+//   const handleTrackSelect = (track) => {
+//     setCurrentTrack(track);
+//   };
+
+//   return (
+//     <AuthProvider>
+//       <Router>
+//         <Routes>
+//           <Route path="/login" element={<LoginModal />} />
+//           <Route path="/register" element={<RegisterModal />} />
+//           <Route
+//             path="/"
+//             element={
+//               <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+//                 <HomePage />
+//               </Layout>
+//             }
+//           />
+//           <Route
+//             path="/profile/:id"
+//             element={
+//               <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+//                 <ProfilePage />
+//               </Layout>
+//             }
+//           />
+//           <Route
+//             path="/discover"
+//             element={
+//               <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+//                 <DiscoverPage />
+//               </Layout>
+//             }
+//           />
+//           <Route
+//             path="/library"
+//             element={
+//               <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+//                 <LibraryPage />
+//               </Layout>
+//             }
+//           />
+//           <Route
+//             path="/liveStreams"
+//             element={
+//               <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+//                 <LiveStreamsPage />
+//               </Layout>
+//             }
+//           />
+//           <Route
+//             path="/upload"
+//             element={
+//               <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+//                 <PrivateRoute>
+//                   <UploadPage />
+//                 </PrivateRoute>
+//               </Layout>
+//             }
+//           />
+//           <Route
+//             path="/stream/:streamId"
+//             element={
+//               <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+//                 <StreamPlayerPage />
+//               </Layout>
+//             }
+//           />
+//           <Route
+//             path="/library/liked"
+//             element={
+//               <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
+//                 <LikedSongsPage onTrackSelect={handleTrackSelect} />
+//               </Layout>
+//             }
+//           />
+//         </Routes>
+//       </Router>
+//     </AuthProvider>
+//   );
+// }
+
+// export default App;
 
 
 // import React, { useState } from 'react';

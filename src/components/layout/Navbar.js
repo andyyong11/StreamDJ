@@ -23,6 +23,7 @@ import {
 } from 'react-icons/fa';
 import logo from '../assets/cdlogo.png';
 import { useAuth } from '../../context/AuthContext';
+import api from '../../services/api';
 
 const NavigationBar = ({ onTrackSelect, openLoginModal, openRegisterModal }) => {
   const { user, logout } = useAuth();
@@ -33,6 +34,7 @@ const NavigationBar = ({ onTrackSelect, openLoginModal, openRegisterModal }) => 
     artists: [],
     playlists: [],
   });
+  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
     const fetchResults = async () => {
@@ -50,6 +52,8 @@ const NavigationBar = ({ onTrackSelect, openLoginModal, openRegisterModal }) => 
         } catch (err) {
           console.error('Search error:', err);
           setResults({ tracks: [], artists: [], playlists: [] });
+        } finally {
+          setIsSearching(false);
         }
       } else {
         setResults({ tracks: [], artists: [], playlists: [] });

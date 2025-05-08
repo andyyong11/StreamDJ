@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import StreamPlayer from '../components/StreamPlayer';
 import StreamControls from '../components/StreamControls';
 
-const StreamPlayerPage = () => {
+const StreamPlayerPage = ({ openLoginModal }) => {
   const { streamId } = useParams();
   const { token, user } = useAuth();
   const [stream, setStream] = useState(null);
@@ -147,7 +147,7 @@ const StreamPlayerPage = () => {
           </h2>
         </Col>
         <Col md={3}>
-          <ChatBox streamId={streamId} />
+          <ChatBox streamId={streamId} openLoginModal={openLoginModal} />
         </Col>
       </Row>
     </Container>

@@ -3,8 +3,8 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 
-const path = require('path'); // Path module for resolving static file paths
-const db = require('./src/db/config');
+const path = require('path'); // ✅ Added to resolve static file path
+const dbConfig = require('./src/db/config');
 
 const { createServer } = require('http');
 const { Server } = require('socket.io');
@@ -14,11 +14,48 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const winston = require('winston');
+const db = require('./src/db/config');
 
-// Import rate limiter middleware
+// Import middleware
 const { standardLimiter, authLimiter, uiLimiter } = require('./src/middleware/rateLimiter');
+const authenticateToken = require('./src/middleware/authenticateToken');
+
+// Import services
+const StreamKeyService = require('./src/services/streamKeyService');
+const nms = require('./src/services/streamServer');
 
 require('dotenv').config();
+
+// Import routes
+const authRoutes = require('./src/routes/authRoutes');
+const userRoutes = require('./src/routes/userRoutes');
+const playlistRoutes = require('./src/routes/playlistRoutes');
+const publicPlaylistRoutes = require('./src/routes/publicPlaylistRoutes');
+const trackRoutes = require('./src/routes/trackRoutes');
+const albumRoutes = require('./src/routes/albumRoutes');
+const trendingRoutes = require('./src/routes/trendingRoutes');
+const recommendRoutes = require('./src/routes/recommendRoutes');
+const streamRoutes = require('./src/routes/streamRoutes');
+
+// Define port
+const PORT = process.env.PORT || 5001;
+
+// Constants for file paths
+const MEDIA_PATH = path.join(__dirname, 'media');
+const NORMALIZED_MEDIA_PATH = MEDIA_PATH.replace(/\\/g, '/');
+const UPLOADS_PATH = path.join(__dirname, 'uploads');
+const ALBUM_COVERS_PATH = path.join(__dirname, 'uploads/album_covers');
+const COVERS_PATH = path.join(__dirname, 'uploads/covers');
+const PROFILES_PATH = path.join(__dirname, 'uploads/profiles');
+const BANNERS_PATH = path.join(__dirname, 'uploads/banners');
+
+// Create upload directories if they don't exist
+[UPLOADS_PATH, ALBUM_COVERS_PATH, COVERS_PATH, PROFILES_PATH, BANNERS_PATH].forEach(dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+    console.log(`Created directory: ${dir}`);
+  }
+});
 
 // Configure logger
 const logger = winston.createLogger({
@@ -65,9 +102,6 @@ const nms = require('./src/services/streamServer');
 const app = express();
 const httpServer = createServer(app);
 
-// Define port
-const PORT = process.env.PORT || 5001;
-
 // CORS configuration
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
@@ -82,6 +116,12 @@ const corsOptions = {
 
 // Apply CORS middleware before other middleware
 app.use(cors(corsOptions));
+
+// Middleware
+app.use(bodyParser.json());
+
+// Enable ETag caching for improved performance and reduced requests
+app.set('etag', 'strong');
 
 // Apply different rate limiters based on route
 // Apply more strict limits to auth routes
@@ -115,21 +155,21 @@ app.use('/uploads/covers', express.static(path.join(__dirname, 'uploads/covers')
 
 // Test database connection route
 app.get('/test-db', async (req, res) => {
-    try {
-        const result = await db.query('SELECT NOW()');
-        res.json({
-            success: true,
-            message: 'Database connection successful',
-            timestamp: result[0].now
-        });
-    } catch (error) {
-        console.error('Database connection error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Database connection failed',
-            error: error.message
-        });
-    }
+  try {
+    const result = await db.query('SELECT NOW()');
+    res.json({
+      success: true,
+      message: 'Database connection successful',
+      timestamp: result[0].now
+    });
+  } catch (error) {
+    console.error('Database connection error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Database connection failed',
+      error: error.message
+    });
+  }
 });
 
 // Database connection with retry logic
@@ -144,11 +184,19 @@ const createPool = async (retries = 5) => {
   });
 
   try {
+    console.log('Attempting to connect to database with:', {
+      host: process.env.DB_HOST, 
+      port: process.env.DB_PORT,
+      database: process.env.DB_NAME,
+      user: process.env.DB_USER,
+      // Password hidden for security
+    });
+    
     await pool.query('SELECT NOW()');
     logger.info('Database connection established');
     
     // Create a pg-promise wrapper for models that need it
-    const db = pgp({
+    const dbConnection = pgp({
       host: process.env.DB_HOST,
       port: process.env.DB_PORT,
       database: process.env.DB_NAME,
@@ -156,8 +204,14 @@ const createPool = async (retries = 5) => {
       password: process.env.DB_PASSWORD
     });
     
-    return { pool, db };
+    return { pool, db: dbConnection };
   } catch (err) {
+    logger.error('Database connection error details:', {
+      message: err.message,
+      code: err.code,
+      stack: err.stack
+    });
+    
     if (retries === 0) {
       logger.error('Failed to connect to database after multiple retries', err);
       throw err;
@@ -183,11 +237,15 @@ app.use('/api/streams', (req, res, next) => {
 });
 app.use('/api/users', authenticateToken, userRoutes);
 app.use('/api/public-playlists', publicPlaylistRoutes);
-app.use('/api/playlists', authenticateToken, playlistRoutes);
+// Allow public access to playlists routes without authentication
+app.use('/api/playlists', playlistRoutes);
 app.use('/api/tracks', trackRoutes);
 app.use('/api/albums', albumRoutes);
 app.use('/api/trending', trendingRoutes);
 app.use('/api/recommendations', recommendRoutes);
+app.use('/api/trending', trendingRoutes);
+app.use('/api/recommendations', recommendRoutes);
+app.use('/api/library', libraryRoutes);
 
 // Initialize database and services
 const initializeDatabase = async () => {
@@ -204,32 +262,8 @@ const initializeDatabase = async () => {
   }
 };
 
-// Start server
-httpServer.listen(PORT, () => {
-  logger.info(`Server is running on port ${PORT}`);
-  // Initialize database after server starts
-  initializeDatabase();
-  // Start media server
-  try {
-    if (!nms.nmsCore) {
-      nms.run();
-      logger.info('Media Server started successfully');
-    }
-  } catch (err) {
-    logger.error('Failed to start Media Server:', err);
-  }
-});
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
-});
-
 // Serve HLS media files
-const mediaPath = path.join(__dirname, 'media');
-const normalizedMediaPath = mediaPath.replace(/\\/g, '/');
-
-app.use('/live', express.static(path.join(normalizedMediaPath, 'live'), {
+app.use('/live', express.static(path.join(NORMALIZED_MEDIA_PATH, 'live'), {
   setHeaders: (res, filepath) => {
     res.set('Access-Control-Allow-Origin', '*');
     if (filepath.endsWith('.m3u8')) {
@@ -614,6 +648,21 @@ const cleanup = async () => {
   }
 };
 
-process.on('SIGTERM', cleanup);
-process.on('SIGINT', cleanup); 
+// Start server
+httpServer.listen(PORT, () => {
+  logger.info(`Server is running on port ${PORT}`);
+  // Initialize database after server starts
+  initializeDatabase();
+  // Start media server
+  try {
+    if (!nms.nmsCore) {
+      nms.run();
+      logger.info('Media Server started successfully');
+    }
+  } catch (err) {
+    logger.error('Failed to start Media Server:', err);
+  }
+});
 
+process.on('SIGTERM', cleanup);
+process.on('SIGINT', cleanup);

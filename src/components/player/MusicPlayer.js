@@ -1,13 +1,16 @@
 import { useAuth } from '../../context/AuthContext';
+import AddToPlaylistModal from './AddToPlaylistModal';
 import React, { useState, useEffect, useRef } from 'react';
 import { Container, Row, Col, ProgressBar, Button } from 'react-bootstrap';
 import {
   FaPlay, FaPause, FaStepForward, FaStepBackward,
-  FaVolumeUp, FaHeart, FaRandom, FaRedo
+  FaVolumeUp, FaHeart, FaRandom, FaRedo,
+  FaShareAlt, FaListUl, FaPlus
 } from 'react-icons/fa';
 
-const MusicPlayer = ({ track, isPlaying, setIsPlaying, onNext, onPrevious }) => {
-  const { user } = useAuth(); // (Temporary) Can be removed if it's not working
+const MusicPlayer = ({ track, currentPlaylist = [], onTrackSelect }) => {
+  const { user } = useAuth();
+  const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [volume, setVolume] = useState(80);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -15,71 +18,28 @@ const MusicPlayer = ({ track, isPlaying, setIsPlaying, onNext, onPrevious }) => 
   const [isShuffle, setIsShuffle] = useState(false);
   const [hoverTime, setHoverTime] = useState(null);
   const [hoverPosition, setHoverPosition] = useState(0);
-  const [audioSrc, setAudioSrc] = useState('');
-  const [coverArtSrc, setCoverArtSrc] = useState('https://placehold.co/300x300');
+  // const [audioSrc, setAudioSrc] = useState('');
+  // const [coverArtSrc, setCoverArtSrc] = useState('https://placehold.co/300x300');
   const audioRef = useRef(null);
+  const [showAddModal, setShowAddModal] = useState(false);
 
-  // Update paths when track changes
-  useEffect(() => {
-    if (!track) return;
-    
-    // Format audio source path
-    if (track.FilePath) {
-      const normalizedPath = track.FilePath.replace(/\\/g, '/').replace(/^\/+/, '');
-      // If path already starts with uploads/, don't add it again
-      const formattedAudioSrc = normalizedPath.startsWith('uploads/') 
-        ? `http://localhost:5001/${normalizedPath}`
-        : `http://localhost:5001/uploads/${normalizedPath}`;
-      setAudioSrc(formattedAudioSrc);
-    } else {
-      setAudioSrc('');
-    }
-    
-    // Format cover art path
-    if (track.CoverArt) {
-      const normalizedCoverPath = track.CoverArt.toString().replace(/\\/g, '/').replace(/^\/+/, '');
-      const formattedCoverSrc = normalizedCoverPath.startsWith('uploads/') 
-        ? `http://localhost:5001/${normalizedCoverPath}`
-        : `http://localhost:5001/uploads/${normalizedCoverPath}`;
-      setCoverArtSrc(formattedCoverSrc);
-    } else {
-      setCoverArtSrc('https://placehold.co/300x300');
-    }
-    
-    // Don't auto-play when track changes
-    // setIsPlaying(true);
-  }, [track]);
+  const togglePlay = () => setIsPlaying(!isPlaying);
 
-  const togglePlay = () => {
-    if (setIsPlaying) {
-      setIsPlaying(!isPlaying);
-    }
-  };
-  // const toggleFavorite = () => setIsFavorite(!isFavorite);
-
-  // ========================= Updated ToggleFavorite Function Starts ============================================
   const toggleFavorite = async () => {
     if (!track || !user) return;
-  
     const endpoint = isFavorite ? 'unlike' : 'like';
-  
     try {
       const res = await fetch(`http://localhost:5001/api/tracks/${track.TrackID}/${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id })
       });
-  
-      if (res.ok) {
-        setIsFavorite(!isFavorite);
-      } else {
-        console.error('Failed to toggle like');
-      }
+      if (res.ok) setIsFavorite(!isFavorite);
+      else console.error('Failed to toggle like');
     } catch (err) {
       console.error('Error toggling like:', err);
     }
-  };  
-// ==================================== ENDS HERE  ================================
+  };
 
   const formatTime = (seconds) => {
     if (isNaN(seconds)) return '0:00';
@@ -95,38 +55,47 @@ const MusicPlayer = ({ track, isPlaying, setIsPlaying, onNext, onPrevious }) => 
     const audio = audioRef.current;
     if (audio) {
       audio.volume = volume / 100;
-      
-      if (isPlaying) {
-        console.log('Attempting to play audio:', audioSrc);
-        audio.play()
-          .then(() => console.log('Audio playback started'))
-          .catch(err => {
-            console.error('Playback error:', err);
-            console.log('Audio element:', audio);
-            console.log('Audio source:', audioSrc);
-          });
-      } else {
+      if (!isPlaying) {
         audio.pause();
       }
     }
-  }, [isPlaying, volume, audioSrc]);
+  }, [isPlaying, volume]);
+
+  useEffect(() => {
+    if (track && audioRef.current) {
+      audioRef.current.src = `http://localhost:5001/${track.FilePath?.replace(/\\/g, '/')}`;
+      audioRef.current.play().catch(err => console.error('Auto-play failed:', err));
+      setIsPlaying(true);
+      setCurrentTime(0);
+    }
+  }, [track]);
 
   useEffect(() => {
     const audio = audioRef.current;
-    if (audio) {
-      const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
-      const handleEnded = () => {
+    if (!audio) return;
+  
+    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
+  
+    const handleEnded = () => {
+      const currentIndex = currentPlaylist.findIndex((t) => t.TrackID === track?.TrackID);
+      const nextTrack = currentPlaylist[currentIndex + 1];
+  
+      if (nextTrack && onTrackSelect) {
+        onTrackSelect(nextTrack, currentPlaylist);
+      } else {
         setIsPlaying(false);
         setCurrentTime(0);
-      };
-      audio.addEventListener('timeupdate', handleTimeUpdate);
-      audio.addEventListener('ended', handleEnded);
-      return () => {
-        audio.removeEventListener('timeupdate', handleTimeUpdate);
-        audio.removeEventListener('ended', handleEnded);
-      };
-    }
-  }, [track]);
+      }
+    };
+  
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('ended', handleEnded);
+  
+    return () => {
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('ended', handleEnded);
+    };
+  }, [track, currentPlaylist, onTrackSelect]);  
 
   useEffect(() => {
     const fetchLikeStatus = async () => {
@@ -139,9 +108,8 @@ const MusicPlayer = ({ track, isPlaying, setIsPlaying, onNext, onPrevious }) => 
         console.error('Failed to fetch like status:', err);
       }
     };
-  
     fetchLikeStatus();
-  }, [track, user]);  
+  }, [track, user]);
 
   useEffect(() => {
     const logPlay = async () => {
@@ -162,6 +130,30 @@ const MusicPlayer = ({ track, isPlaying, setIsPlaying, onNext, onPrevious }) => 
 
   if (!track) return null;
 
+  // 🔽 Place these HERE — after all useEffects
+  const getCurrentTrackIndex = () =>
+    currentPlaylist.findIndex((t) => t.TrackID === track?.TrackID);
+
+  const handleNext = () => {
+    const currentIndex = getCurrentTrackIndex();
+    if (currentIndex >= 0 && currentIndex < currentPlaylist.length - 1) {
+      onTrackSelect(currentPlaylist[currentIndex + 1], currentPlaylist);
+    }
+  };
+
+  const handlePrevious = () => {
+    const currentIndex = getCurrentTrackIndex();
+    if (currentIndex > 0) {
+      onTrackSelect(currentPlaylist[currentIndex - 1], currentPlaylist);
+    }
+  };
+
+
+  const audioSrc = `http://localhost:5001/${track.FilePath?.replace(/\\/g, '/')}`;
+  const coverArtSrc = track.CoverArt
+    ? `http://localhost:5001/${track.CoverArt.replace(/\\/g, '/')}`
+    : '/default-cover.jpg';
+
   return (
     <div className="fixed-bottom bg-dark text-light py-2 border-top">
       <Container fluid>
@@ -178,10 +170,10 @@ const MusicPlayer = ({ track, isPlaying, setIsPlaying, onNext, onPrevious }) => 
                 e.target.src = 'https://placehold.co/300x300';
               }}
             />
-<div className="d-flex flex-column">
-  <h6 className="mb-1">{track.Title}</h6>
-  <small style={{ color: 'white' }}>{track.Artist}</small>
-</div>
+            <div className="d-flex flex-column">
+              <h6 className="mb-1">{track.Title}</h6>
+              <small style={{ color: 'white' }}>{track.Artist}</small>
+            </div>
             <Button variant="link" className="text-light ms-3" onClick={toggleFavorite}>
               <FaHeart color={isFavorite ? 'red' : 'white'} />
             </Button>
@@ -193,13 +185,9 @@ const MusicPlayer = ({ track, isPlaying, setIsPlaying, onNext, onPrevious }) => 
               <Button variant="link" className="text-light mx-2" onClick={() => setIsShuffle(!isShuffle)}>
                 <FaRandom color={isShuffle ? '#1DB954' : 'white'} />
               </Button>
-              <Button 
-                variant="link" 
-                className="text-light mx-2" 
-                onClick={onPrevious}
-              >
-                <FaStepBackward />
-              </Button>
+              <Button variant="link" className="text-light mx-2" onClick={handlePrevious}>
+  <FaStepBackward />
+</Button>
               <Button
                 variant="light"
                 className="rounded-circle mx-2"
@@ -208,13 +196,9 @@ const MusicPlayer = ({ track, isPlaying, setIsPlaying, onNext, onPrevious }) => 
               >
                 {isPlaying ? <FaPause /> : <FaPlay />}
               </Button>
-              <Button 
-                variant="link" 
-                className="text-light mx-2"
-                onClick={onNext}
-              >
-                <FaStepForward />
-              </Button>
+              <Button variant="link" className="text-light mx-2" onClick={handleNext}>
+  <FaStepForward />
+</Button>
               <Button variant="link" className="text-light mx-2" onClick={() => setIsRepeat(!isRepeat)}>
                 <FaRedo color={isRepeat ? '#1DB954' : 'white'} />
               </Button>
@@ -266,12 +250,12 @@ const MusicPlayer = ({ track, isPlaying, setIsPlaying, onNext, onPrevious }) => 
             </div>
           </Col>
 
-          {/* Volume Control */}
-          <Col md={3} className="d-flex align-items-center justify-content-end">
-            <FaVolumeUp className="me-2" />
+          {/* Volume + New Buttons */}
+          <Col md={3} className="d-flex align-items-center justify-content-end gap-3">
+            <FaVolumeUp />
             <ProgressBar
               now={volume}
-              style={{ width: '100px', height: '5px', cursor: 'pointer' }}
+              style={{ width: '80px', height: '5px', cursor: 'pointer' }}
               onClick={(e) => {
                 const clickX = e.nativeEvent.offsetX;
                 const width = e.currentTarget.clientWidth;
@@ -279,10 +263,19 @@ const MusicPlayer = ({ track, isPlaying, setIsPlaying, onNext, onPrevious }) => 
                 setVolume(newVolume);
               }}
             />
+            {/* 👇 New Buttons Here */}
+            <Button variant="link" className="text-white p-0"><FaShareAlt /></Button>
+            <Button variant="link" className="text-white p-0"><FaListUl /></Button>
+            <Button variant="link" className="text-white p-0" onClick={() => setShowAddModal(true)}><FaPlus /></Button>
           </Col>
         </Row>
-
         <audio ref={audioRef} src={audioSrc} />
+        <AddToPlaylistModal
+          show={showAddModal}
+          onHide={() => setShowAddModal(false)}
+          track={track}
+          userId={user?.id}
+        />
       </Container>
     </div>
   );

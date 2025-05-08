@@ -1,301 +1,70 @@
-import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Button, Nav, Spinner } from 'react-bootstrap';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Container, Row, Col, Card, Button, Nav } from 'react-bootstrap';
+import { Link } from 'react-router-dom';
 import { FaPlay, FaHeart, FaMusic, FaCompactDisc, FaList } from 'react-icons/fa';
-import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
 
-const LibraryPage = ({ section, onTrackSelect }) => {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [activeSection, setActiveSection] = useState(section || 'liked-tracks');
-  
-  // Data states
-  const [likedTracks, setLikedTracks] = useState([]);
-  const [likedAlbums, setLikedAlbums] = useState([]);
-  const [likedPlaylists, setLikedPlaylists] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-  
+const LibraryPage = ({ user, userId, activeSection, handleSectionChange, renderContent, likedPlaylists = [], handleUnlike }) => {
+  const [savedPlaylists, setSavedPlaylists] = useState([]);
+  const [coverMap, setCoverMap] = useState({});
+
   useEffect(() => {
-    if (section) {
-      setActiveSection(section);
-    }
-  }, [section]);
-
-  // Fetch user's liked content when component mounts or user/activeSection changes
-  useEffect(() => {
-    if (!user) return;
-    
-    const fetchLikedContent = async () => {
-      setIsLoading(true);
-      setError(null);
-      
-      try {
-        // Only fetch data for the active section to minimize requests
-        if (activeSection === 'liked-tracks' || activeSection === 'all') {
-          const tracksResponse = await axios.get(`/api/tracks/liked/${user.id}`);
-          setLikedTracks(tracksResponse.data);
-        }
-        
-        if (activeSection === 'liked-albums' || activeSection === 'all') {
-          const albumsResponse = await axios.get(`/api/albums/liked/${user.id}`);
-          setLikedAlbums(albumsResponse.data);
-        }
-        
-        if (activeSection === 'liked-playlists' || activeSection === 'all') {
-          const playlistsResponse = await axios.get(`/api/public-playlists/liked/${user.id}`);
-          setLikedPlaylists(playlistsResponse.data);
-        }
-      } catch (err) {
-        console.error('Error fetching liked content:', err);
-        setError('Failed to load your library. Please try again later.');
-      } finally {
-        setIsLoading(false);
+    if (userId) {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.warn('No token found. User may need to log in.');
+        return;
       }
-    };
-    
-    fetchLikedContent();
-  }, [user, activeSection]);
 
-  // Handle navigation between sections
-  const handleSectionChange = (sectionKey) => {
-    setActiveSection(sectionKey);
-    navigate(`/${sectionKey}`);
-  };
+      fetch(`http://localhost:5001/api/playlists/user/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => res.json())
+        .then(async data => {
+          if (!Array.isArray(data)) {
+            console.error('Expected an array but got:', data);
+            return;
+          }
+          setSavedPlaylists(data);
 
-  // Handle unlike/remove from library
-  const handleUnlike = async (itemId, type) => {
-    try {
-      switch (type) {
-        case 'track':
-          await axios.delete(`/api/tracks/${itemId}/like`, { data: { userId: user.id } });
-          setLikedTracks(likedTracks.filter(track => (track.TrackID || track.id) !== itemId));
-          break;
-        case 'album':
-          await axios.delete(`/api/albums/${itemId}/like`, { data: { userId: user.id } });
-          setLikedAlbums(likedAlbums.filter(album => (album.AlbumID || album.id) !== itemId));
-          break;
-        case 'playlist':
-          await axios.delete(`/api/playlists/${itemId}/like`, { data: { userId: user.id } });
-          setLikedPlaylists(likedPlaylists.filter(playlist => (playlist.PlaylistID || playlist.id) !== itemId));
-          break;
-        default:
-          throw new Error('Unknown item type');
-      }
-    } catch (err) {
-      console.error(`Error unliking ${type}:`, err);
-      setError(`Failed to unlike ${type}. Please try again.`);
+          const covers = {};
+          for (const playlist of data) {
+            const res = await fetch(`http://localhost:5001/api/playlists/${playlist.PlaylistID}/covers`);
+            const coverUrls = await res.json();
+            covers[playlist.PlaylistID] = coverUrls;
+          }
+          setCoverMap(covers);
+        })
+        .catch(err => {
+          console.error('Failed to fetch playlists:', err);
+        });
     }
-  };
+  }, [userId]);
 
-  // Format duration from seconds to mm:ss
-  const formatDuration = (seconds) => {
-    if (!seconds) return '0:00';
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
+  const likedTracks = [
+    { id: 1, title: 'Dreaming', artist: 'NightWave', duration: '3:25' },
+    { id: 2, title: 'Skyline', artist: 'LoFiZone', duration: '4:02' },
+    { id: 3, title: 'Rainy Mood', artist: 'Quiet Storm', duration: '3:58' }
+  ];
 
-  // Render the appropriate content based on active section
-  const renderContent = () => {
-    if (isLoading) {
-      return (
-        <div className="text-center py-5">
-          <Spinner animation="border" role="status">
-            <span className="visually-hidden">Loading...</span>
-          </Spinner>
-          <p className="mt-3">Loading your library...</p>
-        </div>
-      );
+  const followedArtists = [
+    { id: 1, name: 'DJ Chill', genre: 'Lo-Fi', image: 'https://via.placeholder.com/150', followers: '820K' },
+    { id: 2, name: 'BassBeats', genre: 'Electronic', image: 'https://via.placeholder.com/150', followers: '1.1M' }
+  ];
+
+  const renderPlaylistCover = (covers) => {
+    if (!covers || covers.length === 0) return <div className="bg-dark" style={{ height: 200 }} />;
+    if (covers.length === 1) {
+      return <Card.Img variant="top" src={`http://localhost:5001/${covers[0]}`} style={{ height: 200, objectFit: 'cover' }} />;
     }
-    
-    if (error) {
-      return (
-        <div className="alert alert-danger" role="alert">
-          {error}
-        </div>
-      );
-    }
-    
-    switch (activeSection) {
-      case 'liked-tracks':
-        return (
-          <section>
-            <h2 className="mb-4">Liked Tracks</h2>
-            
-            {likedTracks.length === 0 ? (
-              <div className="text-center py-5">
-                <p>You haven't liked any tracks yet.</p>
-                <Button variant="primary" as={Link} to="/discover">
-                  Discover Tracks
-                </Button>
-              </div>
-            ) : (
-              <Card className="shadow-sm">
-                <Card.Body>
-                  <table className="table table-hover">
-                    <thead>
-                      <tr>
-                        <th>#</th>
-                        <th>Title</th>
-                        <th>Artist</th>
-                        <th>Duration</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {likedTracks.map((track, index) => (
-                        <tr key={track.TrackID || track.id}>
-                          <td>{index + 1}</td>
-                          <td>{track.Title || track.title}</td>
-                          <td>{track.Artist || track.artist}</td>
-                          <td>{formatDuration(track.Duration || track.duration)}</td>
-                          <td>
-                            <Button 
-                              variant="success" 
-                              size="sm" 
-                              className="me-2"
-                              onClick={() => {
-                                if (typeof onTrackSelect === 'function') {
-                                  onTrackSelect(track);
-                                }
-                              }}
-                            >
-                              <FaPlay />
-                            </Button>
-                            <Button 
-                              variant="danger" 
-                              size="sm"
-                              onClick={() => handleUnlike(track.TrackID || track.id, 'track')}
-                            >
-                              <FaHeart />
-                            </Button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </Card.Body>
-              </Card>
-            )}
-          </section>
-        );
-        
-      case 'liked-albums':
-        return (
-          <section>
-            <h2 className="mb-4">Liked Albums</h2>
-            
-            {likedAlbums.length === 0 ? (
-              <div className="text-center py-5">
-                <p>You haven't liked any albums yet.</p>
-                <Button variant="primary" as={Link} to="/discover">
-                  Discover Albums
-                </Button>
-              </div>
-            ) : (
-              <Row>
-                {likedAlbums.map(album => (
-                  <Col md={3} key={album.AlbumID || album.id} className="mb-4">
-                    <Card className="h-100 shadow-sm">
-                      <Card.Img 
-                        variant="top" 
-                        src={album.CoverArtUrl || album.image || 'https://via.placeholder.com/300'} 
-                        alt={album.Title || album.title}
-                      />
-                      <Card.Body>
-                        <Card.Title>{album.Title || album.title}</Card.Title>
-                        <Card.Text>
-                          By {album.Artist || album.artist} • {album.TrackCount || album.tracks || 0} tracks
-                        </Card.Text>
-                        <div className="d-flex justify-content-between">
-                          <Button 
-                            variant="success" 
-                            size="sm"
-                            as={Link}
-                            to={`/albums/${album.AlbumID || album.id}`}
-                          >
-                            <FaPlay className="me-1" /> Play
-                          </Button>
-                          <Button 
-                            variant="outline-danger" 
-                            size="sm"
-                            onClick={() => handleUnlike(album.AlbumID || album.id, 'album')}
-                          >
-                            <FaHeart />
-                          </Button>
-                        </div>
-                      </Card.Body>
-                    </Card>
-                  </Col>
-                ))}
-              </Row>
-            )}
-          </section>
-        );
-        
-      case 'liked-playlists':
-        return (
-          <section>
-            <h2 className="mb-4">Liked Playlists</h2>
-            
-            {likedPlaylists.length === 0 ? (
-              <div className="text-center py-5">
-                <p>You haven't liked any playlists yet.</p>
-                <Button variant="primary" as={Link} to="/discover">
-                  Discover Playlists
-                </Button>
-              </div>
-            ) : (
-              <Row>
-                {likedPlaylists.map(playlist => (
-                  <Col md={3} key={playlist.PlaylistID || playlist.id} className="mb-4">
-                    <Card className="h-100 shadow-sm">
-                      <Card.Img 
-                        variant="top" 
-                        src={playlist.CoverUrl || playlist.image || 'https://via.placeholder.com/300'} 
-                        alt={playlist.Title || playlist.title}
-                      />
-                      <Card.Body>
-                        <Card.Title>{playlist.Title || playlist.title}</Card.Title>
-                        <Card.Text>
-                          By {playlist.CreatorName || playlist.creator} • {playlist.TrackCount || playlist.tracks || 0} tracks
-                        </Card.Text>
-                        <div className="d-flex justify-content-between">
-                          <Button 
-                            variant="success" 
-                            size="sm"
-                            as={Link}
-                            to={`/playlist/${playlist.PlaylistID || playlist.id}`}
-                          >
-                            <FaPlay className="me-1" /> Play
-                          </Button>
-                          <Button 
-                            variant="outline-danger" 
-                            size="sm"
-                            onClick={() => handleUnlike(playlist.PlaylistID || playlist.id, 'playlist')}
-                          >
-                            <FaHeart />
-                          </Button>
-                        </div>
-                      </Card.Body>
-                    </Card>
-                  </Col>
-                ))}
-              </Row>
-            )}
-          </section>
-        );
-        
-      default:
-        return (
-          <section className="text-center py-5">
-            <h3>Please select a section from the navigation menu</h3>
-          </section>
-        );
-    }
+    return (
+      <div className="playlist-cover-grid">
+        {covers.slice(0, 4).map((url, idx) => (
+          <img key={idx} src={`http://localhost:5001/${url}`} alt="cover"
+            style={{ width: '50%', height: '100px', objectFit: 'cover', display: 'inline-block' }}
+          />
+        ))}
+      </div>
+    );
   };
 
   if (!user) {
@@ -309,37 +78,155 @@ const LibraryPage = ({ section, onTrackSelect }) => {
   return (
     <Container className="py-4">
       <h1 className="mb-4">My Library</h1>
-      
+
       {/* Navigation Tabs */}
       <Nav variant="tabs" className="mb-4">
         <Nav.Item>
-          <Nav.Link 
-            active={activeSection === 'liked-tracks'} 
+          <Nav.Link
+            active={activeSection === 'liked-tracks'}
             onClick={() => handleSectionChange('liked-tracks')}
           >
             <FaMusic className="me-2" /> Liked Tracks
           </Nav.Link>
         </Nav.Item>
         <Nav.Item>
-          <Nav.Link 
-            active={activeSection === 'liked-albums'} 
+          <Nav.Link
+            active={activeSection === 'liked-albums'}
             onClick={() => handleSectionChange('liked-albums')}
           >
             <FaCompactDisc className="me-2" /> Liked Albums
           </Nav.Link>
         </Nav.Item>
         <Nav.Item>
-          <Nav.Link 
-            active={activeSection === 'liked-playlists'} 
+          <Nav.Link
+            active={activeSection === 'liked-playlists'}
             onClick={() => handleSectionChange('liked-playlists')}
           >
             <FaList className="me-2" /> Liked Playlists
           </Nav.Link>
         </Nav.Item>
       </Nav>
-      
-      {/* Render the content for the active section */}
+
+      {/* Rendered Section */}
       {renderContent()}
+
+      {/* Example section (Your Playlists) */}
+      <section className="mb-5">
+        <h2 className="mb-4">Your Playlists</h2>
+        <Row>
+          {savedPlaylists.map((playlist) => (
+            <Col md={3} key={playlist.PlaylistID} className="mb-4">
+              <Link to={`/playlist/${playlist.PlaylistID}`} className="text-decoration-none text-dark">
+                <Card className="h-100 shadow-sm">
+                  {renderPlaylistCover(coverMap[playlist.PlaylistID])}
+                  <Card.Body>
+                    <Card.Title>{playlist.Title}</Card.Title>
+                    <Card.Text>{playlist.Description || 'No description'}</Card.Text>
+                  </Card.Body>
+                </Card>
+              </Link>
+            </Col>
+          ))}
+        </Row>
+      </section>
+
+      {/* Liked Tracks */}
+      <section className="mb-5">
+        <h2 className="mb-4">Liked Tracks</h2>
+        <Card className="shadow-sm">
+          <Card.Body>
+            <table className="table table-hover">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Title</th>
+                  <th>Artist</th>
+                  <th>Duration</th>
+                </tr>
+              </thead>
+              <tbody>
+                {likedTracks.map((track, index) => (
+                  <tr key={track.id}>
+                    <td>{index + 1}</td>
+                    <td>{track.title}</td>
+                    <td>{track.artist}</td>
+                    <td>{track.duration}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card.Body>
+        </Card>
+        <Button as={Link} to="/library/liked" variant="outline-primary" className="mt-3">
+          View Liked Songs
+        </Button>
+      </section>
+
+      {/* Followed Artists */}
+      <section className="mb-5">
+        <h2 className="mb-4">Followed Artists</h2>
+        <Row>
+          {followedArtists.map((artist) => (
+            <Col md={3} key={artist.id} className="mb-4 text-center">
+              <Card className="h-100 shadow-sm p-3">
+                <img
+                  src={artist.image}
+                  alt={artist.name}
+                  className="rounded-circle mb-2"
+                  style={{ width: '100px', height: '100px' }}
+                />
+                <h5>{artist.name}</h5>
+                <p className="text-muted">{artist.genre}</p>
+                <p className="small">{artist.followers} followers</p>
+                <Button variant="outline-primary" size="sm" as={Link} to={`/profile/${artist.id}`}>
+                  View Profile
+                </Button>
+              </Card>
+            </Col>
+          ))}
+        </Row>
+      </section>
+
+      {/* Liked Playlists */}
+      <section className="mb-5">
+        <h2 className="mb-4">Liked Playlists</h2>
+        <Row>
+          {likedPlaylists.map((playlist) => (
+            <Col md={3} key={playlist.PlaylistID || playlist.id} className="mb-4">
+              <Card className="h-100 shadow-sm">
+                <Card.Img
+                  variant="top"
+                  src={playlist.CoverUrl || playlist.image || 'https://via.placeholder.com/300'}
+                  alt={playlist.Title || playlist.title}
+                />
+                <Card.Body>
+                  <Card.Title>{playlist.Title || playlist.title}</Card.Title>
+                  <Card.Text>
+                    By {playlist.CreatorName || playlist.creator} • {playlist.TrackCount || playlist.tracks || 0} tracks
+                  </Card.Text>
+                  <div className="d-flex justify-content-between">
+                    <Button
+                      variant="success"
+                      size="sm"
+                      as={Link}
+                      to={`/playlist/${playlist.PlaylistID || playlist.id}`}
+                    >
+                      <FaPlay className="me-1" /> Play
+                    </Button>
+                    <Button
+                      variant="outline-danger"
+                      size="sm"
+                      onClick={() => handleUnlike(playlist.PlaylistID || playlist.id, 'playlist')}
+                    >
+                      <FaHeart />
+                    </Button>
+                  </div>
+                </Card.Body>
+              </Card>
+            </Col>
+          ))}
+        </Row>
+      </section>
     </Container>
   );
 };

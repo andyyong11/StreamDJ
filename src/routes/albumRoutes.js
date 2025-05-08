@@ -446,4 +446,31 @@ router.get('/liked/:userId', async (req, res) => {
   }
 });
 
+// Get popular albums - based on number of tracks and profile visits
+router.get('/popular', async (req, res) => {
+  try {
+    const { limit = 8 } = req.query;
+    
+    // Get popular albums by combining various metrics
+    // Updated query to use Track table instead of AlbumTrack
+    const query = `
+      SELECT a.*, u."Username" AS Artist, 
+             (SELECT COUNT(*) FROM "Track" t WHERE t."AlbumID" = a."AlbumID") as "TrackCount"
+      FROM "Album" a
+      JOIN "User" u ON a."UserID" = u."UserID"
+      ORDER BY 
+        "TrackCount" DESC,
+        a."CreatedAt" DESC
+      LIMIT $1
+    `;
+    
+    const popularAlbums = await req.app.locals.db.any(query, [limit]);
+    
+    res.json(popularAlbums);
+  } catch (error) {
+    console.error('Error fetching popular albums:', error);
+    res.status(500).json({ error: 'Failed to fetch popular albums' });
+  }
+});
+
 module.exports = router; 

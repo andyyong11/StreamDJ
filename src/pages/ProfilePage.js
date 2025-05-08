@@ -3,11 +3,21 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Card, Button, Badge, Nav, Tab, Dropdown, DropdownButton, Modal, Form } from 'react-bootstrap';
 import { FaHeart, FaMusic, FaUserFriends, FaEllipsisH, FaCompactDisc, FaList, FaLink } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
+import UserListModal from '../components/modals/UserListModal';
+import AlbumCard from '../components/cards/AlbumCard';
+import TrackActionMenu from '../components/modals/TrackActionMenu';
+import AddToPlaylistModal from '../components/modals/AddToPlaylistModal';
+import DeleteTrackModal from '../components/modals/DeleteTrackModal';
+import '../styles/PlayButton.css';
 
 const ProfilePage = () => {
   const { id } = useParams();
   const { user: currentUser, token, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // State management
   const [activeTab, setActiveTab] = useState('overview');
   const [profileData, setProfileData] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -60,7 +70,142 @@ const ProfilePage = () => {
     }
   };
 
-  const renderOverviewContent = () => {
+  // Toggle follow status
+  const handleToggleFollow = async () => {
+    if (!currentUser || !currentUser.id) {
+      // Open login modal instead of navigation
+      if (openLoginModal) {
+        openLoginModal();
+      }
+      return;
+    }
+    
+    try {
+      setError(prev => ({ ...prev, followToggle: null }));
+      setLoading(prev => ({ ...prev, followToggle: true }));
+      
+      if (isFollowing) {
+        const response = await api.delete(`/api/users/${currentUser.id}/unfollow/${id}`);
+        if (response?.data?.success) {
+          setIsFollowing(false);
+          // Decrement follower count
+          if (profileData) {
+            setProfileData({
+              ...profileData,
+              FollowersCount: Math.max(0, (profileData.FollowersCount || 0) - 1)
+            });
+          }
+        }
+      } else {
+        const response = await api.post(`/api/users/${currentUser.id}/follow/${id}`);
+        if (response?.data?.success) {
+          setIsFollowing(true);
+          // Increment follower count
+          if (profileData) {
+            setProfileData({
+              ...profileData,
+              FollowersCount: (profileData.FollowersCount || 0) + 1
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error toggling follow status:', err);
+      setError(prev => ({ 
+        ...prev, 
+        followToggle: 'Could not update follow status. Please try again.' 
+      }));
+    } finally {
+      setLoading(prev => ({ ...prev, followToggle: false }));
+    }
+  };
+
+  // Update the formatNumber function to better format play counts
+  const formatNumber = (num) => {
+    if (num === undefined || num === null) return '0';
+    
+    // Convert to number if it's a string
+    const count = typeof num === 'string' ? parseInt(num, 10) : num;
+    
+    if (isNaN(count)) return '0';
+    
+    if (count >= 1000000) {
+      return `${(count / 1000000).toFixed(1)}M`;
+    } else if (count >= 1000) {
+      return `${(count / 1000).toFixed(1)}K`;
+    }
+    return count.toLocaleString();
+  };
+
+  // Format track duration
+  const formatDuration = (seconds) => {
+    if (!seconds) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Handle play track
+  const handlePlayTrack = (track) => {
+    if (playTrack) {
+      playTrack(track, tracks);
+    }
+  };
+
+  // Handle play playlist
+  const handlePlayPlaylist = (playlistId) => {
+    navigate(`/playlists/${playlistId}`);
+  };
+
+  // Handle showing followers
+  const handleShowFollowers = (e) => {
+    e.preventDefault();
+    setShowFollowersModal(true);
+  };
+  
+  // Handle showing following
+  const handleShowFollowing = (e) => {
+    e.preventDefault();
+    setShowFollowingModal(true);
+  };
+
+  // Add handlers for track actions
+  const handleAddToPlaylist = (track) => {
+    setSelectedTrack(track);
+    setShowAddToPlaylistModal(true);
+  };
+
+  const handleDeleteTrack = (track) => {
+    setSelectedTrack(track);
+    setShowDeleteTrackModal(true);
+  };
+
+  const handleTrackDeleted = (trackId) => {
+    // Filter out the deleted track from the tracks list
+    setTracks(prev => prev.filter(track => track.TrackID !== trackId));
+    setShowDeleteTrackModal(false);
+  };
+
+  // Render playlists section
+  const renderPlaylists = () => {
+    if (loading.playlists) {
+      return (
+        <div className="text-center py-4">
+          <Spinner animation="border" role="status">
+            <span className="visually-hidden">Loading playlists...</span>
+          </Spinner>
+        </div>
+      );
+    }
+
+    if (error.playlists) {
+      return <Alert variant="danger">{error.playlists}</Alert>;
+    }
+
+    if (playlists.length === 0) {
+      return <p className="text-muted">No playlists found.</p>;
+    }
+
     return (
       <>
         {/* My Playlists */}
@@ -71,7 +216,7 @@ const ProfilePage = () => {
           </Row>
         </section>
 
-        {/* Recently Played Tracks */}
+        {/* Albums section */}
         <section className="mb-5">
           <h3 className="mb-4">Recently Played by {profileData.Username}</h3>
           <Card>
@@ -248,19 +393,7 @@ const ProfilePage = () => {
 
               {/* Library */}
               <Nav.Item>
-                <Nav.Link eventKey="library-tracks">
-                  <FaMusic className="me-1" /> Liked Tracks
-                </Nav.Link>
-              </Nav.Item>
-              <Nav.Item>
-                <Nav.Link eventKey="library-albums">
-                  <FaCompactDisc className="me-1" /> Liked Albums
-                </Nav.Link>
-              </Nav.Item>
-              <Nav.Item>
-                <Nav.Link eventKey="library-playlists">
-                  <FaList className="me-1" /> Liked Playlists
-                </Nav.Link>
+                <Nav.Link eventKey="library-tracks">Liked Tracks</Nav.Link>
               </Nav.Item>
             </>
           )}
@@ -269,6 +402,21 @@ const ProfilePage = () => {
         <Tab.Content>
           <Tab.Pane eventKey="overview">
             {renderOverviewContent()}
+          </Tab.Pane>
+          
+          <Tab.Pane eventKey="tracks">
+            <h3 className="mb-4">All Tracks by {profileData.Username}</h3>
+            {renderTracksContent()}
+          </Tab.Pane>
+          
+          <Tab.Pane eventKey="albums">
+            <h3 className="mb-4">Albums by {profileData.Username}</h3>
+            {renderAlbums()}
+          </Tab.Pane>
+          
+          <Tab.Pane eventKey="playlists">
+            <h3 className="mb-4">Playlists by {profileData.Username}</h3>
+            {renderPlaylists()}
           </Tab.Pane>
         </Tab.Content>
       </Tab.Container>
