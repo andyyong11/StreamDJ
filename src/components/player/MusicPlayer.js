@@ -125,17 +125,31 @@ const MusicPlayer = ({
   useEffect(() => {
     if (track && audioRef.current) {
       audioRef.current.src = `http://localhost:5001/${track.FilePath?.replace(/\\/g, '/')}`;
-      
+      setCurrentTime(0);
+  
       if (isPlaying) {
         audioRef.current.play().catch(err => {
           console.error('Auto-play failed:', err);
           setIsPlaying(false);
         });
       }
-      
-      setCurrentTime(0);
     }
-  }, [track, isPlaying, setIsPlaying]);
+  }, [track]);
+  
+  // useEffect(() => {
+  //   if (track && audioRef.current) {
+  //     audioRef.current.src = `http://localhost:5001/${track.FilePath?.replace(/\\/g, '/')}`;
+      
+  //     if (isPlaying) {
+  //       audioRef.current.play().catch(err => {
+  //         console.error('Auto-play failed:', err);
+  //         setIsPlaying(false);
+  //       });
+  //     }
+      
+  //     setCurrentTime(0);
+  //   }
+  // }, [track, isPlaying, setIsPlaying]);
 
   useEffect(() => {
     const audio = audioRef.current;
