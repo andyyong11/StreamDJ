@@ -5,6 +5,9 @@ import { useNavigate, Link } from 'react-router-dom';
 import Slider from 'react-slick';
 import TrackCard from '../cards/TrackCard';
 import api from '../../services/api';
+import { API_ENDPOINTS } from '../../config/apiConfig';
+import 'slick-carousel/slick/slick.css';
+import 'slick-carousel/slick/slick-theme.css';
 import '../../styles/PlayButton.css';
 
 // Custom arrows for the slider
@@ -32,7 +35,7 @@ const SlickArrowRight = ({ currentSlide, slideCount, ...props }) => (
   </button>
 );
 
-const TrendingSection = ({ onTrackSelect }) => {
+const TrendingSection = ({ onTrackSelect, onViewAllClick }) => {
   const [tracks, setTracks] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -41,18 +44,20 @@ const TrendingSection = ({ onTrackSelect }) => {
     const fetchTrending = async () => {
       try {
         setLoading(true);
-        // Use the API service for consistency
-        const response = await api.get('/api/trending');
+        const response = await api.get(API_ENDPOINTS.trending || '/api/trending');
         if (response?.data) {
-          console.log('Trending tracks data:', response.data); // Debug log
-          setTracks(response.data);
+          setTracks(Array.isArray(response.data) ? response.data : []);
+        } else {
+          setTracks([]);
         }
       } catch (err) {
         console.error('Failed to fetch trending tracks:', err);
+        setTracks([]);
       } finally {
         setLoading(false);
       }
     };
+    
     fetchTrending();
   }, []);
 
@@ -101,24 +106,28 @@ const TrendingSection = ({ onTrackSelect }) => {
     e.target.src = 'https://placehold.co/300x300?text=Track';
   };
 
+  // Only render if we have tracks
+  if (!tracks || tracks.length === 0) {
+    return null;
+  }
+
   if (loading) {
     return (
-      <Container className="text-center py-4">
-        <Spinner animation="border" role="status">
-          <span className="visually-hidden">Loading trending tracks...</span>
-        </Spinner>
+      <Container className="trending-section mb-5">
+        <h2 className="mb-4">Trending Now</h2>
+        <div className="text-center py-4">
+          <Spinner animation="border" role="status">
+            <span className="visually-hidden">Loading trending tracks...</span>
+          </Spinner>
+        </div>
       </Container>
     );
   }
 
-  if (tracks.length === 0) {
-    return null;
-  }
-
   return (
-    <Container className="trending-section py-4">
+    <Container className="trending-section mb-5">
       <h2 className="mb-4">Trending Now</h2>
-      <div className="position-relative">
+      <div className="position-relative slider-container">
         <Slider {...settings}>
           {tracks.map((track) => (
             <div key={track.TrackID || track.id} className="px-2">
@@ -127,6 +136,16 @@ const TrendingSection = ({ onTrackSelect }) => {
           ))}
         </Slider>
       </div>
+      {onViewAllClick && (
+        <div className="text-center mt-3 view-all-button">
+          <button 
+            className="btn btn-outline-primary"
+            onClick={onViewAllClick}
+          >
+            View All Trending
+          </button>
+        </div>
+      )}
     </Container>
   );
 };

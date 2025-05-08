@@ -2,10 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Container, Form, Button, Card, Row, Col, Alert, Spinner } from 'react-bootstrap';
 import { FaSave, FaArrowLeft, FaImage } from 'react-icons/fa';
+import { useAuth } from '../context/AuthContext';
 
 const EditAlbumPage = () => {
   const { albumId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [album, setAlbum] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -36,6 +38,14 @@ const EditAlbumPage = () => {
         const albumData = await response.json();
         setAlbum(albumData);
         
+        // Check if current user is the album owner
+        if (user && albumData.UserID !== user.id) {
+          // Not the owner, redirect to album view page
+          console.log("Unauthorized: User is not the album owner");
+          navigate(`/albums/${albumId}`);
+          return;
+        }
+        
         // Initialize form with album data
         setFormData({
           title: albumData.Title || '',
@@ -57,7 +67,7 @@ const EditAlbumPage = () => {
     };
     
     fetchAlbumDetails();
-  }, [albumId]);
+  }, [albumId, user, navigate]);
   
   const handleChange = (e) => {
     const { name, value, files } = e.target;

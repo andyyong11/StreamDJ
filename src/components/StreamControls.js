@@ -91,7 +91,7 @@ const StreamControls = ({ streamId, streamData, onStreamUpdated, viewerCount = 0
       );
 
       if (response.data.success) {
-        navigate('/liveStreams');
+        navigate('/live-streams');
       } else {
         setError(response.data.error || 'Failed to end stream');
       }
@@ -104,8 +104,8 @@ const StreamControls = ({ streamId, streamData, onStreamUpdated, viewerCount = 0
   };
 
   return (
-    <Card className="mb-4">
-      <Card.Header className="d-flex justify-content-between align-items-center">
+    <Card className="stream-controls-container">
+      <Card.Header className="d-flex justify-content-between align-items-center bg-dark text-white">
         <div className="d-flex align-items-center">
           <h5 className="mb-0">Stream Controls</h5>
           <Badge 
@@ -117,7 +117,7 @@ const StreamControls = ({ streamId, streamData, onStreamUpdated, viewerCount = 0
           </Badge>
         </div>
         <Button 
-          variant="outline-secondary" 
+          variant="outline-light" 
           size="sm" 
           onClick={toggleEdit}
           disabled={isLoading}
@@ -125,7 +125,7 @@ const StreamControls = ({ streamId, streamData, onStreamUpdated, viewerCount = 0
           {isEditing ? 'Cancel' : 'Edit Details'}
         </Button>
       </Card.Header>
-      <Card.Body>
+      <Card.Body className="bg-dark text-white">
         {error && <Alert variant="danger">{error}</Alert>}
         {success && <Alert variant="success">{success}</Alert>}
         
@@ -140,6 +140,7 @@ const StreamControls = ({ streamId, streamData, onStreamUpdated, viewerCount = 0
                 placeholder="Enter stream title"
                 maxLength={100}
                 required
+                className="bg-dark text-white border-secondary"
               />
               <Form.Text className="text-muted">
                 Viewer count will be automatically added to your title
@@ -165,14 +166,14 @@ const StreamControls = ({ streamId, streamData, onStreamUpdated, viewerCount = 0
           </div>
         )}
         
-        <hr />
+        <hr className="border-secondary" />
         
         <div className="d-flex justify-content-between align-items-center mt-3">
           <div>
             <p className="mb-0"><strong>Stream ID:</strong> {streamId}</p>
             <p className="mb-0"><small className="text-muted">Stream Key: {streamData?.StreamKey}</small></p>
             <p className="mb-0 mt-1">
-              <Badge bg="dark">
+              <Badge bg="dark" className="border border-light">
                 <FaEye className="me-1" /> {viewerCount} watching now
               </Badge>
             </p>

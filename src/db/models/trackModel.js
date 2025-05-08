@@ -29,10 +29,26 @@ const trackModel = {
   // Update track
   async update(id, updates) {
     try {
-      const setClause = Object.keys(updates)
+      // Map lowercase keys to capitalized database column names
+      const columnMap = {
+        'title': 'Title',
+        'artist': 'Artist',
+        'genre': 'Genre',
+        'coverArt': 'CoverArt'
+      };
+      
+      // Create a properly capitalized update object
+      const capitalizedUpdates = {};
+      for (const [key, value] of Object.entries(updates)) {
+        // If key is in our map, use the capitalized version, otherwise keep as is
+        const dbColumnName = columnMap[key] || key;
+        capitalizedUpdates[dbColumnName] = value;
+      }
+      
+      const setClause = Object.keys(capitalizedUpdates)
         .map((key, index) => `"${key}" = $${index + 2}`)
         .join(', ');
-      const values = Object.values(updates);
+      const values = Object.values(capitalizedUpdates);
 
       return await db.one(
         `UPDATE "Track" SET ${setClause} WHERE "TrackID" = $1 RETURNING *`,
@@ -46,8 +62,27 @@ const trackModel = {
   // Delete track
   async delete(id) {
     try {
-      await db.none('DELETE FROM "PlaylistTrack" WHERE "TrackID" = $1', [id]);
-      return await db.result('DELETE FROM "Track" WHERE "TrackID" = $1', [id]);
+      // Ensure the ID is being used consistently with proper capitalization
+      const trackId = parseInt(id, 10);
+      if (isNaN(trackId)) {
+        throw new Error('Invalid track ID format');
+      }
+      
+      // Delete from all related tables to avoid foreign key constraint errors
+      // First delete entries from ListenerHistory
+      await db.none('DELETE FROM "ListenerHistory" WHERE "TrackID" = $1', [trackId]);
+      
+      // Delete from TrackLikes if it exists
+      await db.none('DELETE FROM "TrackLikes" WHERE "TrackID" = $1', [trackId]);
+      
+      // Delete from PlaylistTrack join table
+      await db.none('DELETE FROM "PlaylistTrack" WHERE "TrackID" = $1', [trackId]);
+      
+      // Delete from TrackArtist if it exists
+      await db.none('DELETE FROM "TrackArtist" WHERE "TrackID" = $1', [trackId]);
+      
+      // Finally delete the track itself
+      return await db.none('DELETE FROM "Track" WHERE "TrackID" = $1', [trackId]);
     } catch (error) {
       throw new Error(`Error deleting track: ${error.message}`);
     }

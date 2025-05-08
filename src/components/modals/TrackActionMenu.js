@@ -1,61 +1,65 @@
 import React from 'react';
-import { Dropdown, Button } from 'react-bootstrap';
-import { FaEdit, FaShare, FaTrash, FaPlus } from 'react-icons/fa';
+import { Dropdown } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
+import { FaEdit, FaPlus, FaShare, FaTrash } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
-import '../../styles/PlayButton.css';
 
-// Custom toggle that prevents the dropdown from automatically closing when clicked
+// Custom toggle component to prevent the dropdown from closing on click
 const CustomToggle = React.forwardRef(({ children, onClick }, ref) => (
-  <Button
+  <span
     ref={ref}
     onClick={(e) => {
       e.preventDefault();
       onClick(e);
     }}
-    variant="outline-secondary"
-    className="menu-button"
+    className="text-muted"
+    style={{ cursor: 'pointer' }}
   >
     {children}
-  </Button>
+  </span>
 ));
 
-const TrackActionMenu = ({ track, onDeleteTrack, onAddToPlaylist, children }) => {
-  const navigate = useNavigate();
+const TrackActionMenu = ({ 
+  track, 
+  children, 
+  onAddToPlaylist, 
+  onDeleteTrack 
+}) => {
   const { user } = useAuth();
-  const isOwner = user && track.UserID === user.id;
-
+  const navigate = useNavigate();
+  
+  // Check if current user is the owner of this track
+  const isOwner = user && track && track.UserID === user.id;
+  
+  // Handle the action to edit a track
   const handleEditTrack = () => {
+    if (!track || !track.TrackID) return;
     navigate(`/edit-track/${track.TrackID}`);
   };
-
+  
+  // Handle the action to share a track
   const handleShare = () => {
-    // Create a URL to the track
-    const trackUrl = `${window.location.origin}/tracks/${track.TrackID}`;
+    const trackUrl = `${window.location.origin}/track/${track.TrackID}`;
     
-    // Use the Web Share API if available
-    if (navigator.share) {
-      navigator.share({
-        title: track.Title,
-        text: `Check out "${track.Title}" by ${track.Artist || track.Username}`,
-        url: trackUrl,
-      })
-      .catch((error) => console.log('Error sharing:', error));
-    } else {
-      // Fallback to copying to clipboard
+    if (navigator.clipboard) {
       navigator.clipboard.writeText(trackUrl)
         .then(() => {
           alert('Link copied to clipboard!');
         })
-        .catch((err) => {
+        .catch(err => {
           console.error('Failed to copy:', err);
+          // Fallback to prompt
+          prompt('Copy this link:', trackUrl);
         });
+    } else {
+      // Old-school fallback
+      prompt('Copy this link:', trackUrl);
     }
   };
 
   return (
     <Dropdown>
-      <Dropdown.Toggle as={CustomToggle} id={`track-dropdown-${track.TrackID}`}>
+      <Dropdown.Toggle as={CustomToggle} id={`track-dropdown-${track?.TrackID || 'unknown'}`}>
         {children}
       </Dropdown.Toggle>
 

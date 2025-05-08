@@ -76,7 +76,7 @@ const NavigationBar = ({ onTrackSelect, openLoginModal, openRegisterModal }) => 
                 <Nav.Link as={Link} to="/upload"><FaUpload className="me-1" /> Upload</Nav.Link>
               </>
             )}
-            <Nav.Link as={Link} to="/liveStreams">Live Streams</Nav.Link>
+            <Nav.Link as={Link} to="/live-streams">Live Streams</Nav.Link>
           </Nav>
 
           <Form className="d-flex mx-auto position-relative" style={{ width: '40%' }}>

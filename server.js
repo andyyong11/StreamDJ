@@ -127,6 +127,16 @@ app.use('/uploads', (req, res, next) => {
   next();
 }, express.static(UPLOADS_PATH));
 
+app.use('/album_covers', (req, res, next) => {
+  req.url = decodeURIComponent(req.url);
+  next();
+}, express.static(ALBUM_COVERS_PATH));
+
+app.use('/covers', (req, res, next) => {
+  req.url = decodeURIComponent(req.url);
+  next();
+}, express.static(COVERS_PATH));
+
 app.use('/uploads/album_covers', (req, res, next) => {
   req.url = decodeURIComponent(req.url);
   next();
@@ -147,54 +157,51 @@ app.use('/uploads/banners', (req, res, next) => {
   next();
 }, express.static(BANNERS_PATH));
 
-// Add 404 handler for image files to debug missing files
-app.use('/uploads', (req, res, next) => {
+// Serve static files from the public/images directory
+app.use('/images', (req, res, next) => {
+  req.url = decodeURIComponent(req.url);
+  next();
+}, express.static(path.join(__dirname, 'public/images')));
+
+// Catch-all for missing image files to provide fallback images
+app.use(['*.jpg', '*.jpeg', '*.png', '*.gif', '*.webp', '*.svg'], (req, res) => {
   const extension = path.extname(req.url).toLowerCase();
   const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'];
   
   if (imageExtensions.includes(extension)) {
-    logger.info(`Image not found: ${req.method} ${req.originalUrl} -> ${req.url}`);
-    return res.status(404).send('Image not found');
-  }
-  next();
-});
-
-// Test database connection route
-app.get('/test-db', async (req, res) => {
-  try {
-    const result = await db.query('SELECT NOW()');
-    res.json({
-      success: true,
-      message: 'Database connection successful',
-      timestamp: result[0].now
-    });
-  } catch (error) {
-    console.error('Database connection error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Database connection failed',
-      error: error.message
-    });
+    logger.info(`Serving fallback image for: ${req.method} ${req.originalUrl}`);
+    
+    // Redirect to a placeholder image service
+    res.redirect('https://upload.wikimedia.org/wikipedia/commons/3/3f/Placeholder_view_vector.svg');
+  } else {
+    res.status(404).send('File not found');
   }
 });
 
 // Database connection with retry logic
 const createPool = async (retries = 5) => {
+  // Define database connection parameters with defaults
+  const host = process.env.DB_HOST || 'localhost';
+  const port = process.env.DB_PORT || 5432;
+  const database = process.env.DB_NAME || 'StreamDJ1';
+  const user = process.env.DB_USER || 'postgres';
+  const password = process.env.DB_PASSWORD || '';
+  
   const pool = new Pool({
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    database: process.env.DB_NAME,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
+    host,
+    port,
+    database,
+    user,
+    password,
     schema: 'public'
   });
 
   try {
     console.log('Attempting to connect to database with:', {
-      host: process.env.DB_HOST, 
-      port: process.env.DB_PORT,
-      database: process.env.DB_NAME,
-      user: process.env.DB_USER,
+      host, 
+      port,
+      database,
+      user,
       // Password hidden for security
     });
     
@@ -203,11 +210,11 @@ const createPool = async (retries = 5) => {
     
     // Create a pg-promise wrapper for models that need it
     const dbConnection = pgp({
-      host: process.env.DB_HOST,
-      port: process.env.DB_PORT,
-      database: process.env.DB_NAME,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD
+      host,
+      port,
+      database,
+      user,
+      password
     });
     
     return { pool, db: dbConnection };
@@ -249,9 +256,78 @@ app.use('/api/tracks', trackRoutes);
 app.use('/api/albums', albumRoutes);
 app.use('/api/trending', trendingRoutes);
 app.use('/api/recommendations', recommendRoutes);
-app.use('/api/trending', trendingRoutes);
-app.use('/api/recommendations', recommendRoutes);
 app.use('/api/library', libraryRoutes);
+
+// Add root API endpoint
+app.get('/api', (req, res) => {
+  res.json({ 
+    success: true, 
+    message: 'StreamDJ API - Welcome!',
+    endpoints: [
+      '/api/auth',
+      '/api/streams',
+      '/api/users',
+      '/api/playlists',
+      '/api/tracks',
+      '/api/albums',
+      '/api/trending',
+      '/api/recommendations'
+    ]
+  });
+});
+
+// 404 handler for missing API routes
+app.use('/api/*', (req, res) => {
+  logger.warn(`API Route not found: ${req.method} ${req.originalUrl}`);
+  res.status(404).json({ error: 'Route not found', path: req.originalUrl });
+});
+
+// Add this right after the API route handler for /api/* but before the production/development conditional
+// Handle direct numeric ID routes - this is critical for stream page refreshes
+app.get(/^\/\d+$/, (req, res) => {
+  const id = req.path.substring(1);
+  logger.info(`Redirecting direct numeric ID ${id} to /streams/${id}`);
+  res.redirect(`/streams/${id}`);
+});
+
+// Serve static files from React build folder if in production
+if (process.env.NODE_ENV === 'production') {
+  // Serve static files from the React app
+  app.use(express.static(path.join(__dirname, 'client/build')));
+  
+  // Handle React routing, return all client-side requests to React app
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'client/build', 'index.html'));
+  });
+} else {
+  // In development, add a catch-all for client-side routes
+  app.get([
+    '/streams/*', 
+    '/profile/*', 
+    '/playlist/*',
+    '/playlists/*',
+    '/albums/*',
+    '/library/*',
+    '/liked-songs',
+    '/upload',
+    '/upload-album',
+    '/discover',
+    '/browse/*',
+    '/create-playlist',
+    '/edit-album/*',
+    '/edit-track/*',
+    '/creator-dashboard/*'
+  ], (req, res) => {
+    logger.info(`Redirecting client route to React app: ${req.originalUrl}`);
+    res.redirect('/');
+  });
+}
+
+// 404 handler (this should be the last route)
+app.use((req, res) => {
+  logger.warn('Route not found', { path: req.path, method: req.method });
+  res.status(404).json({ error: 'Route not found' });
+});
 
 // Initialize database and services
 const initializeDatabase = async () => {
@@ -271,11 +347,25 @@ const initializeDatabase = async () => {
 // Serve HLS media files
 app.use('/live', express.static(path.join(NORMALIZED_MEDIA_PATH, 'live'), {
   setHeaders: (res, filepath) => {
+    // Allow cross-origin access from any origin
     res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Range');
+    
+    // Set proper content types for HLS streaming
     if (filepath.endsWith('.m3u8')) {
       res.set('Content-Type', 'application/vnd.apple.mpegurl');
     } else if (filepath.endsWith('.ts')) {
       res.set('Content-Type', 'video/mp2t');
+    }
+    
+    // Set caching headers - short cache for manifest, longer for segments
+    if (filepath.endsWith('.m3u8')) {
+      // Short cache for playlist files which change frequently
+      res.set('Cache-Control', 'public, max-age=2');
+    } else if (filepath.endsWith('.ts')) {
+      // Longer cache for static segment files
+      res.set('Cache-Control', 'public, max-age=86400');
     }
   }
 }));
@@ -613,13 +703,19 @@ async function updateStreamListenerCount(streamId, count) {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
+  // Detailed logging for all errors
   logger.error('Unhandled error', { 
     error: err.message, 
     stack: err.stack,
     path: req.path,
-    method: req.method
+    method: req.method,
+    query: req.query,
+    params: req.params,
+    headers: req.headers,
+    body: req.body
   });
   
+  // Specific error handling based on type
   if (err.name === 'UnauthorizedError') {
     return res.status(401).json({ error: 'Invalid token' });
   }
@@ -628,16 +724,22 @@ app.use((err, req, res, next) => {
     return res.status(400).json({ error: err.message });
   }
   
+  if (err.code === '23505') { // PostgreSQL unique constraint violation
+    return res.status(409).json({ error: 'Duplicate entry', detail: err.detail });
+  }
+  
+  // Improve 500 error response with more details in non-production
   res.status(500).json({ 
-    error: 'Something went wrong!',
-    message: process.env.NODE_ENV === 'development' ? err.message : undefined
+    error: 'Server error occurred',
+    message: err.message, // Always include the message for better debugging
+    detail: process.env.NODE_ENV !== 'production' ? err.detail || err.hint || null : undefined,
+    stack: process.env.NODE_ENV !== 'production' ? err.stack : undefined
   });
-});
-
-// 404 handler
-app.use((req, res) => {
-  logger.warn('Route not found', { path: req.path, method: req.method });
-  res.status(404).json({ error: 'Route not found' });
+  
+  // Also log to console in development for easier debugging
+  if (process.env.NODE_ENV !== 'production') {
+    console.error('SERVER ERROR:', err);
+  }
 });
 
 // Cleanup on server shutdown

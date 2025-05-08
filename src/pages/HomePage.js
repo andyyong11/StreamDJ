@@ -6,12 +6,45 @@ import Slider from 'react-slick';
 import TrendingSection from '../components/sections/TrendingSection';
 import RecommendedSection from '../components/sections/RecommendedSection';
 import AlbumsSection from '../components/sections/AlbumsSection';
-import PlaylistCard from '../components/cards/playlistCard';
+import PlaylistSection from '../components/sections/PlaylistSection';
+import PlaylistCard from '../components/cards/PlaylistCard';
 import LiveStreamCard from '../components/cards/LiveStreamCard';
 import TrackCard from '../components/cards/TrackCard';
+import ProfileImage from '../components/ui/ProfileImage';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+import { API_ENDPOINTS } from '../config/apiConfig';
 import '../styles/PlayButton.css';
+
+// Default image handling functions
+const formatImageUrl = (url, type) => {
+  if (!url) {
+    // Use the exact filenames as they exist in the public/images directory
+    if (type === 'track') {
+      return `/images/Default Track.png`;
+    } else if (type === 'album') {
+      return `/images/Default Album.png`;
+    } else if (type === 'playlist') {
+      return `/images/Default Playlist.png`;
+    } else {
+      return `/images/default-${type}.jpg`;
+    }
+  }
+  return url;
+};
+
+const handleImageError = (e, type) => {
+  // Use the exact filenames as they exist in the public/images directory
+  if (type === 'track') {
+    e.target.src = `/images/Default Track.png`;
+  } else if (type === 'album') {
+    e.target.src = `/images/Default Album.png`;
+  } else if (type === 'playlist') {
+    e.target.src = `/images/Default Playlist.png`;
+  } else {
+    e.target.src = `/images/default-${type}.jpg`;
+  }
+};
 
 const HomePage = ({ playTrack }) => {
   const { user } = useAuth();
@@ -28,11 +61,16 @@ const HomePage = ({ playTrack }) => {
   useEffect(() => {
     const fetchTrending = async () => {
       try {
-        const res = await fetch('http://localhost:5001/api/trending');
-        const data = await res.json();
-        setTrending(data);
+        setLoadingTrending(true);
+        const response = await api.get(API_ENDPOINTS.trending);
+        if (response?.data) {
+          setTrending(Array.isArray(response.data) ? response.data : []);
+        } else {
+          setTrending([]);
+        }
       } catch (err) {
         console.error('Failed to fetch trending tracks:', err);
+        setTrending([]);
       } finally {
         setLoadingTrending(false);
       }
@@ -41,24 +79,34 @@ const HomePage = ({ playTrack }) => {
     fetchTrending();
   }, []);
 
-  // Mock data for featured content
+  // Featured playlists
   const [featuredPlaylists, setFeaturedPlaylists] = useState([]);
   const [loadingFeatured, setLoadingFeatured] = useState(true);
   
-  // mock data for personalized playlists
+  // Personalized playlists
   const [personalizedPlaylists, setPersonalizedPlaylists] = useState([]);
-  console.log('Personalized Playlists:', personalizedPlaylists);
   const [loadingPersonalized, setLoadingPersonalized] = useState(true);
 
   useEffect(() => {
     const fetchFeaturedPlaylists = async () => {
       try {
-        const res = await fetch('http://localhost:5001/api/playlists/featured');
-        const data = await res.json();
-        // ✅ Ensure it's an array before setting it
-        setFeaturedPlaylists(Array.isArray(data) ? data : []);
-        console.log('Look at me');
-        console.log(data);
+        setLoadingFeatured(true);
+        const response = await api.get(API_ENDPOINTS.featuredPlaylists);
+        if (response?.data) {
+          const playlists = Array.isArray(response.data) ? response.data : [];
+          
+          // Debug track counts in featured playlists
+          console.log('Featured playlists data:', playlists.map(p => ({
+            title: p.Title,
+            trackCount: p.TrackCount,
+            trackCountType: typeof p.TrackCount,
+            rawData: p
+          })));
+          
+          setFeaturedPlaylists(playlists);
+        } else {
+          setFeaturedPlaylists([]);
+        }
       } catch (err) {
         console.error('Failed to fetch featured playlists:', err);
         setFeaturedPlaylists([]); // fallback to empty
@@ -70,23 +118,33 @@ const HomePage = ({ playTrack }) => {
     fetchFeaturedPlaylists();
   }, []);
 
-// Personalized featured playlists (based on user behavior)
-useEffect(() => {
-  const fetchPersonalized = async () => {
-    if (!user) return;
-    try {
-      const res = await fetch(`http://localhost:5001/api/playlists/featured/personalized/${user.id}`);
-      const data = await res.json();
-      setPersonalizedPlaylists(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error('Failed to fetch personalized playlists:', err);
-    } finally {
-      setLoadingPersonalized(false);
-    }
-  };
+  // Personalized featured playlists (based on user behavior)
+  useEffect(() => {
+    const fetchPersonalized = async () => {
+      if (!user) {
+        setLoadingPersonalized(false);
+        return;
+      }
+      
+      try {
+        setLoadingPersonalized(true);
+        // Using a safe path that checks if the endpoint exists
+        const response = await api.get(`/api/playlists/featured/personalized/${user.id}`);
+        if (response?.data) {
+          setPersonalizedPlaylists(Array.isArray(response.data) ? response.data : []);
+        } else {
+          setPersonalizedPlaylists([]);
+        }
+      } catch (err) {
+        console.error('Failed to fetch personalized playlists:', err);
+        setPersonalizedPlaylists([]);
+      } finally {
+        setLoadingPersonalized(false);
+      }
+    };
 
-  fetchPersonalized();
-}, [user]);
+    fetchPersonalized();
+  }, [user]);
 
 
   const [liveStreams, setLiveStreams] = useState([]);
@@ -104,9 +162,16 @@ useEffect(() => {
     const fetchLiveStreams = async () => {
       try {
         setLoadingStreams(true);
-        const response = await api.get('/api/streams/active');
+        const response = await api.get(API_ENDPOINTS.activeStreams);
         if (response?.data) {
-          setLiveStreams(response.data.slice(0, 3)); // Get first 3 live streams
+          setLiveStreams(Array.isArray(response.data) ? response.data.slice(0, 3) : []); // Get first 3 live streams
+        } else {
+          // Fallback data
+          setLiveStreams([
+            { LiveStreamID: 1, Title: 'Friday Night Party', Username: 'DJ Sparkle', ListenerCount: 1243 },
+            { LiveStreamID: 2, Title: 'Ambient Sounds', Username: 'ChillWave', ListenerCount: 856 },
+            { LiveStreamID: 3, Title: 'Hip Hop Mix', Username: 'BeatMaster', ListenerCount: 2105 }
+          ]);
         }
       } catch (error) {
         console.error('Error fetching live streams:', error);
@@ -134,11 +199,12 @@ useEffect(() => {
       
       try {
         setLoadingRecent(true);
-        // This endpoint should be created in the backend to fetch tracks the current user has listened to recently
-        // It's different from /api/tracks/by-user/${id} which gets tracks created by a user
-        const response = await api.get(`/api/users/${user.id}/recent-listens`);
+        // Use the API_ENDPOINTS helper
+        const response = await api.get(API_ENDPOINTS.recentListens(user.id));
         if (response?.data) {
-          setRecentListens(response.data.slice(0, 4)); // Get first 4 recent tracks
+          setRecentListens(Array.isArray(response.data) ? response.data.slice(0, 4) : []); // Get first 4 recent tracks
+        } else {
+          setRecentListens([]);
         }
       } catch (error) {
         console.error('Error fetching recent listens:', error);
@@ -156,19 +222,28 @@ useEffect(() => {
     const fetchTopArtists = async () => {
       try {
         setLoadingArtists(true);
-        const response = await api.get('/api/users/top');
+        const response = await api.get(API_ENDPOINTS.topUsers);
         if (response?.data) {
-          setTopArtists(response.data.slice(0, 5)); // Get top 5 artists
+          setTopArtists(Array.isArray(response.data) ? response.data.slice(0, 5) : []); // Get top 5 artists
+        } else {
+          // Fallback data
+          setTopArtists([
+            { UserID: 1, Username: 'ElectroQueen', Genre: 'Electronic', ProfileImage: null, FollowerCount: 1200000 },
+            { UserID: 2, Username: 'BeatMaster', Genre: 'Hip Hop', ProfileImage: null, FollowerCount: 980000 },
+            { UserID: 3, Username: 'RockLegend', Genre: 'Rock', ProfileImage: null, FollowerCount: 1500000 },
+            { UserID: 4, Username: 'JazzMaster', Genre: 'Jazz', ProfileImage: null, FollowerCount: 750000 },
+            { UserID: 5, Username: 'PopStar', Genre: 'Pop', ProfileImage: null, FollowerCount: 2300000 }
+          ]);
         }
       } catch (error) {
         console.error('Error fetching top artists:', error);
         // Fallback data
         setTopArtists([
-          { UserID: 1, Username: 'ElectroQueen', Genre: 'Electronic', ProfileImage: 'https://via.placeholder.com/150', FollowerCount: 1200000 },
-          { UserID: 2, Username: 'BeatMaster', Genre: 'Hip Hop', ProfileImage: 'https://via.placeholder.com/150', FollowerCount: 980000 },
-          { UserID: 3, Username: 'RockLegend', Genre: 'Rock', ProfileImage: 'https://via.placeholder.com/150', FollowerCount: 1500000 },
-          { UserID: 4, Username: 'JazzMaster', Genre: 'Jazz', ProfileImage: 'https://via.placeholder.com/150', FollowerCount: 750000 },
-          { UserID: 5, Username: 'PopStar', Genre: 'Pop', ProfileImage: 'https://via.placeholder.com/150', FollowerCount: 2300000 }
+          { UserID: 1, Username: 'ElectroQueen', Genre: 'Electronic', ProfileImage: null, FollowerCount: 1200000 },
+          { UserID: 2, Username: 'BeatMaster', Genre: 'Hip Hop', ProfileImage: null, FollowerCount: 980000 },
+          { UserID: 3, Username: 'RockLegend', Genre: 'Rock', ProfileImage: null, FollowerCount: 1500000 },
+          { UserID: 4, Username: 'JazzMaster', Genre: 'Jazz', ProfileImage: null, FollowerCount: 750000 },
+          { UserID: 5, Username: 'PopStar', Genre: 'Pop', ProfileImage: null, FollowerCount: 2300000 }
         ]);
       } finally {
         setLoadingArtists(false);
@@ -183,9 +258,18 @@ useEffect(() => {
     const fetchPopularTracks = async () => {
       try {
         setLoadingPopular(true);
-        const response = await api.get('/api/tracks/popular');
+        const response = await api.get(API_ENDPOINTS.popularTracks);
         if (response?.data) {
-          setPopularTracks(response.data.slice(0, 10)); // Get top 10 tracks
+          setPopularTracks(Array.isArray(response.data) ? response.data.slice(0, 10) : []); // Get top 10 tracks
+        } else {
+          // Fallback data
+          setPopularTracks([
+            { TrackID: 1, Title: 'Summer Groove', Artist: 'BeachDJ', Duration: 225, PlayCount: 1250000 },
+            { TrackID: 2, Title: 'Midnight City', Artist: 'Urban Beats', Duration: 252, PlayCount: 980000 },
+            { TrackID: 3, Title: 'Chill Wave', Artist: 'Ambient Master', Duration: 330, PlayCount: 750000 },
+            { TrackID: 4, Title: 'Dance Floor', Artist: 'Party Mix', Duration: 202, PlayCount: 2100000 },
+            { TrackID: 5, Title: 'Deep House', Artist: 'Club Masters', Duration: 375, PlayCount: 1800000 }
+          ]);
         }
       } catch (error) {
         console.error('Error fetching popular tracks:', error);
@@ -233,17 +317,80 @@ useEffect(() => {
 
   // Handle play playlist
   const handlePlayPlaylist = (playlistId) => {
-    navigate(`/playlists/${playlistId}`);
+    // Navigate to the playlist page with autoplay flag
+    navigate(`/playlists/${playlistId}?autoplay=true`);
   };
 
   // Handle join stream
   const handleJoinStream = (streamId) => {
-    navigate(`/stream/${streamId}`);
+    navigate(`/streams/${streamId}`);
   };
 
   // Handle play album
-  const handlePlayAlbum = (album) => {
-    navigate(`/albums/${album.AlbumID}`);
+  const handlePlayAlbum = (albumId) => {
+    // Navigate to the album page with autoplay flag
+    navigate(`/albums/${albumId}?autoplay=true`);
+  };
+
+  // Handle liking a playlist
+  const handleLikePlaylist = async (playlistId, e) => {
+    e.stopPropagation();
+    if (!user) {
+      // Redirect to login or show login modal
+      navigate('/login');
+      return;
+    }
+
+    try {
+      await api.post(`/api/playlists/${playlistId}/like`, { userId: user.id });
+      // Could update UI to show liked status
+    } catch (error) {
+      console.error('Error liking playlist:', error);
+    }
+  };
+
+  // Handle liking an album
+  const handleLikeAlbum = async (albumId, e) => {
+    e.stopPropagation();
+    if (!user) {
+      // Redirect to login or show login modal
+      navigate('/login');
+      return;
+    }
+
+    // Log the album ID and ensure it's a valid value
+    console.log(`Album ID received: ${albumId}, type: ${typeof albumId}`);
+    
+    // Make sure albumId is treated as a number
+    const albumIdNum = parseInt(albumId, 10);
+    if (isNaN(albumIdNum)) {
+      console.error('Invalid album ID:', albumId);
+      return;
+    }
+
+    try {
+      console.log(`Checking like status for album ${albumIdNum}, endpoint: /api/albums/${albumIdNum}/like-status`);
+      // First check the current like status
+      const checkResponse = await api.get(`/api/albums/${albumIdNum}/like-status`, {
+        params: { userId: user.id }
+      });
+      
+      console.log(`Current like status for album ${albumIdNum}:`, checkResponse.data);
+      const isLiked = checkResponse?.data?.liked;
+      const endpoint = isLiked ? 'unlike' : 'like';
+      
+      console.log(`Sending ${endpoint} request for album ${albumIdNum}, endpoint: /api/albums/${albumIdNum}/${endpoint}`);
+      // Perform the like/unlike operation
+      const likeResponse = await api.post(`/api/albums/${albumIdNum}/${endpoint}`, { userId: user.id });
+      console.log(`Album ${endpoint} response:`, likeResponse.data);
+      
+      // UI feedback happens via the AlbumsSection component state
+    } catch (error) {
+      console.error(`Error toggling album like status for album ${albumIdNum}:`, error);
+      console.error('API error details:', error.response?.data || 'No response data');
+      console.error('Error status:', error.response?.status);
+      console.error('Error URL:', error.config?.url);
+    }
   };
 
   return (
@@ -274,7 +421,7 @@ useEffect(() => {
           <Carousel.Caption>
             <h1>Live DJ Sessions</h1>
             <p>Join live streams from top DJs around the world.</p>
-            <Button variant="primary" as={Link} to="/liveStreams">Join Now</Button>
+            <Button variant="primary" as={Link} to="/live-streams">Join Now</Button>
           </Carousel.Caption>
         </Carousel.Item>
       </Carousel>
@@ -306,14 +453,14 @@ useEffect(() => {
 
 
       <RecommendedSection
-        apiUrl={`http://localhost:5001/api/recommendations/collab/${user?.id || 1}`}
+        apiUrl={`/api/recommendations/collab/${user?.id || 1}`}
         title="People who liked what you like also liked..."
         onTrackSelect={handlePlayTrack}
       />
 
       {user && (
         <RecommendedSection
-          apiUrl={`http://localhost:5001/api/recommendations/recent-genre/${user.id}`}
+          apiUrl={`/api/recommendations/recent-genre/${user.id}`}
           title="Because You Listened To..."
           onTrackSelect={handlePlayTrack}
         />
@@ -322,65 +469,42 @@ useEffect(() => {
       {/* Recommended Section (from external component) */}
       <RecommendedSection
         title="Recommended For You"
-        apiUrl={`http://localhost:5001/api/recommendations/${user ? user.id : '1'}`}
+        apiUrl={`/api/recommendations/${user ? user.id : '1'}`}
         onTrackSelect={handlePlayTrack}
       />
 
-{!loadingFeatured && featuredPlaylists.length > 0 && (
-  <section className="mb-5">
-    <h2 className="mb-4">Featured Playlists</h2>
-    <Row>
-      {featuredPlaylists.map(playlist => (
-        <Col md={3} key={playlist.PlaylistID} className="mb-4">
-          <Card className="h-100 shadow-sm">
-            <Card.Img
-              variant="top"
-              src={playlist.CoverURL || '/default-cover.jpg'} // Fallback image
-            />
-            <Card.Body>
-              <Card.Title>{playlist.Name}</Card.Title>
-              <Card.Text>
-                {playlist.Description || 'No description'} <br />
-                {playlist.total_likes} likes • {playlist.total_plays} plays
-              </Card.Text>
-              <Button variant="success" size="sm">
-                <FaPlay className="me-1" /> Play
-              </Button>
-            </Card.Body>
-          </Card>
-        </Col>
-      ))}
-    </Row>
-    <div className="text-center mt-3">
-      <Button variant="outline-primary" as={Link} to="/playlists">View All Playlists</Button>
-    </div>
-  </section>
-)}
+      {/* Popular Albums */}
+      <AlbumsSection
+        title="Popular Albums"
+        apiUrl="/api/albums/popular"
+        limit={4}
+        onAlbumPlay={(album) => handlePlayAlbum(album.AlbumID)}
+        onLikeClick={handleLikeAlbum}
+      />
 
-{user && !loadingPersonalized && personalizedPlaylists.length > 0 && (
-  <section className="mb-5">
-    <h2 className="mb-4">Playlists You Might Like</h2>
-    <Row>
-      {personalizedPlaylists.map((playlist) => (
-        <Col md={3} key={playlist.PlaylistID} className="mb-4">
-          <Card className="h-100 shadow-sm">
-            <Card.Img variant="top" src={playlist.CoverURL || '/default-cover.jpg'} />
-            <Card.Body>
-              <Card.Title>{playlist.Name}</Card.Title>
-              <Card.Text>
-                {playlist.Description || 'No description'}<br />
-                {playlist.total_likes} likes • {playlist.total_plays} plays
-              </Card.Text>
-              <Button variant="success" size="sm">
-                <FaPlay className="me-1" /> Play
-              </Button>
-            </Card.Body>
-          </Card>
-        </Col>
-      ))}
-    </Row>
-  </section>
-)}
+      {/* Featured Playlists - using PlaylistSection */}
+      {!loadingFeatured && featuredPlaylists.length > 0 && (
+        <PlaylistSection
+          title="Featured Playlists"
+          playlists={featuredPlaylists}
+          loading={loadingFeatured}
+          onPlaylistClick={(playlistId) => handlePlayPlaylist(playlistId)}
+          onLikeClick={handleLikePlaylist}
+          onViewAllClick={() => navigate('/playlists')}
+        />
+      )}
+
+      {/* Playlists You Might Like - using PlaylistSection */}
+      {user && !loadingPersonalized && personalizedPlaylists.length > 0 && (
+        <PlaylistSection
+          title="Playlists You Might Like"
+          playlists={personalizedPlaylists}
+          loading={loadingPersonalized}
+          onPlaylistClick={(playlistId) => handlePlayPlaylist(playlistId)}
+          onLikeClick={handleLikePlaylist}
+        />
+      )}
+
 
       {/* Live Streams */}
       <section className="mb-5">
@@ -397,7 +521,7 @@ useEffect(() => {
             ))}
           </Row>
           <div className="text-center mt-3">
-            <Button variant="outline-primary" as={Link} to="/liveStreams">View All Live Streams</Button>
+            <Button variant="outline-primary" as={Link} to="/live-streams">View All Live Streams</Button>
           </div>
         </Container>
       </section>
@@ -417,19 +541,14 @@ useEffect(() => {
               {topArtists.map(artist => (
                 <Col md={2} key={artist.UserID} className="mb-4 text-center">
                   <Link to={`/profile/${artist.UserID}`} className="text-decoration-none">
-                    <img 
-                      src={artist.ProfileImage || 'https://placehold.co/300x300?text=Artist'} 
-                      alt={artist.Username} 
-                      className="rounded-circle mb-2 img-thumbnail"
-                      style={{ width: '120px', height: '120px', objectFit: 'cover' }}
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = 'https://placehold.co/300x300?text=Artist';
-                      }}
+                    <ProfileImage 
+                      src={artist.ProfileImage}
+                      alt={artist.Username}
+                      size={120}
                     />
-                    <h5>{artist.Username}</h5>
+                    <h5 className="mt-2 mb-0">{artist.Username}</h5>
                     <p className="text-muted small mb-1">{artist.Genre || 'Music'}</p>
-                    <p className="small text-secondary">{formatFollowers(artist.FollowerCount)}</p>
+                    <p className="small text-secondary">{formatFollowers(artist.FollowersCount || artist.FollowerCount)}</p>
                   </Link>
                 </Col>
               ))}
@@ -485,7 +604,7 @@ useEffect(() => {
                           )}
                         </td>
                         <td>{formatDuration(track.Duration)}</td>
-                        <td>{new Intl.NumberFormat('en-US').format(track.PlayCount)}</td>
+                        <td>{new Intl.NumberFormat('en-US').format(track.PlayCount || track.play_count || 0)}</td>
                         <td>
                           <Button 
                             variant="success" 
@@ -503,16 +622,6 @@ useEffect(() => {
             </Card>
           )}
         </Container>
-      </section>
-
-      {/* Popular Albums */}
-      <section className="mb-5">
-        <AlbumsSection
-          title="Popular Albums"
-          apiUrl="/api/albums/popular"
-          limit={4}
-          onAlbumPlay={handlePlayAlbum}
-        />
       </section>
 
       {/* Why Choose StreamDJ? */}

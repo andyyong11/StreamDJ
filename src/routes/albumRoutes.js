@@ -31,6 +31,85 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Mock popular albums data
+const mockPopularAlbums = [
+  {
+    AlbumID: 1,
+    Title: "Summer Hits",
+    Artist: "Various Artists",
+    CoverArtURL: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ca/Beach-sunset-sea-38-bi.jpg/800px-Beach-sunset-sea-38-bi.jpg",
+    ReleaseDate: "2023-06-15",
+    Genre: "Pop",
+    TrackCount: 12,
+    Description: "The hottest tracks of the summer"
+  },
+  {
+    AlbumID: 2,
+    Title: "Midnight Vibes",
+    Artist: "DJ Shadow",
+    CoverArtURL: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Nightscene-Berlin-Spree-reflections.jpg/800px-Nightscene-Berlin-Spree-reflections.jpg",
+    ReleaseDate: "2023-04-20",
+    Genre: "Electronic",
+    TrackCount: 8,
+    Description: "Perfect late-night electronic music"
+  },
+  {
+    AlbumID: 3,
+    Title: "Acoustic Sessions",
+    Artist: "The Strummers",
+    CoverArtURL: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Acoustic_guitar_with_keys.jpg/800px-Acoustic_guitar_with_keys.jpg",
+    ReleaseDate: "2023-02-10",
+    Genre: "Acoustic",
+    TrackCount: 10,
+    Description: "Unplugged and intimate performances"
+  },
+  {
+    AlbumID: 4,
+    Title: "Classical Masterpieces",
+    Artist: "London Symphony Orchestra",
+    CoverArtURL: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6f/OrquestaFilarmonicaJalisco.jpg/800px-OrquestaFilarmonicaJalisco.jpg",
+    ReleaseDate: "2022-11-05",
+    Genre: "Classical",
+    TrackCount: 6,
+    Description: "Timeless classical compositions"
+  }
+];
+
+// Get popular albums - based on number of tracks and profile visits
+router.get('/popular', async (req, res) => {
+  try {
+    const { limit = 8 } = req.query;
+    
+    // Get popular albums by combining various metrics
+    // Updated query to use Track table instead of AlbumTrack
+    const query = `
+      SELECT a.*, u."Username" AS Artist, 
+             (SELECT COUNT(*) FROM "Track" t WHERE t."AlbumID" = a."AlbumID") as "TrackCount"
+      FROM "Album" a
+      JOIN "User" u ON a."UserID" = u."UserID"
+      ORDER BY 
+        "TrackCount" DESC,
+        a."CreatedAt" DESC
+      LIMIT $1
+    `;
+    
+    const popularAlbums = await req.app.locals.db.any(query, [limit]);
+    
+    // Ensure all albums have consistent URL properties
+    const processedAlbums = popularAlbums.map(album => ({
+      ...album,
+      // Make sure we have CoverArt property for consistency
+      CoverArt: album.CoverArtURL || null
+    }));
+    
+    res.json(processedAlbums);
+  } catch (error) {
+    console.error('Error fetching popular albums:', error);
+    console.warn('Database query failed, returning mock popular albums');
+    res.json(mockPopularAlbums);
+  }
+});
+
 // Get a specific album by ID with its tracks
 router.get('/:id', async (req, res) => {
   try {
@@ -405,20 +484,101 @@ router.get('/search/:query', async (req, res) => {
   }
 });
 
-// Debug route to find album-related tables
-router.get('/debug/find-album-likes', async (req, res) => {
+// Check if an album is liked by a user
+router.get('/:id/like-status', async (req, res) => {
   try {
-    const tables = await req.app.locals.db.any(`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_schema = 'public' AND table_name LIKE '%album%'
-      ORDER BY table_name;
-    `);
+    const { userId } = req.query;
+    const albumId = req.params.id;
     
-    res.json(tables);
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    // Check if the album exists
+    const album = await albumModel.getById(albumId);
+    if (!album) {
+      return res.status(404).json({ error: 'Album not found' });
+    }
+    
+    // Check if the user has liked the album
+    const likeQuery = `
+      SELECT * FROM "AlbumLikes" 
+      WHERE "UserID" = $1 AND "AlbumID" = $2
+    `;
+    
+    const like = await req.app.locals.db.oneOrNone(likeQuery, [userId, albumId]);
+    
+    res.json({ liked: !!like });
   } catch (error) {
-    console.error('Error finding album tables:', error);
-    res.status(500).json({ error: 'Failed to find album tables' });
+    console.error('Error checking album like status:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Like an album
+router.post('/:id/like', authenticateToken, async (req, res) => {
+  try {
+    const albumId = req.params.id;
+    const userId = req.user.id;
+    
+    // Check if the album exists
+    const album = await albumModel.getById(albumId);
+    if (!album) {
+      return res.status(404).json({ error: 'Album not found' });
+    }
+    
+    // Check if already liked
+    const checkQuery = `
+      SELECT * FROM "AlbumLikes" 
+      WHERE "UserID" = $1 AND "AlbumID" = $2
+    `;
+    
+    const existingLike = await req.app.locals.db.oneOrNone(checkQuery, [userId, albumId]);
+    
+    if (existingLike) {
+      // Already liked, return success
+      return res.json({ success: true, message: 'Album already liked' });
+    }
+    
+    // Insert new like
+    const insertQuery = `
+      INSERT INTO "AlbumLikes" ("UserID", "AlbumID", "LikedAt")
+      VALUES ($1, $2, CURRENT_TIMESTAMP)
+    `;
+    
+    await req.app.locals.db.none(insertQuery, [userId, albumId]);
+    
+    res.json({ success: true, message: 'Album liked successfully' });
+  } catch (error) {
+    console.error('Error liking album:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Unlike an album
+router.post('/:id/unlike', authenticateToken, async (req, res) => {
+  try {
+    const albumId = req.params.id;
+    const userId = req.user.id;
+    
+    // Check if the album exists
+    const album = await albumModel.getById(albumId);
+    if (!album) {
+      return res.status(404).json({ error: 'Album not found' });
+    }
+    
+    // Delete the like
+    const deleteQuery = `
+      DELETE FROM "AlbumLikes" 
+      WHERE "UserID" = $1 AND "AlbumID" = $2
+    `;
+    
+    await req.app.locals.db.none(deleteQuery, [userId, albumId]);
+    
+    res.json({ success: true, message: 'Album unliked successfully' });
+  } catch (error) {
+    console.error('Error unliking album:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -427,49 +587,21 @@ router.get('/liked/:userId', async (req, res) => {
   try {
     const userId = req.params.userId;
     
-    // Find albums that are NOT created by this user, as those would be more likely to be "liked"
     const query = `
       SELECT a.*, u."Username" AS Artist 
       FROM "Album" a
+      JOIN "AlbumLikes" al ON a."AlbumID" = al."AlbumID"
       JOIN "User" u ON a."UserID" = u."UserID"
-      WHERE a."UserID" != $1
-      LIMIT 10
+      WHERE al."UserID" = $1
+      ORDER BY al."LikedAt" DESC
     `;
     
-    const otherAlbums = await req.app.locals.db.any(query, [userId]);
+    const likedAlbums = await req.app.locals.db.any(query, [userId]);
     
-    // For now, return other users' albums as "liked albums" since we don't have actual likes
-    res.json(otherAlbums);
+    res.json(likedAlbums);
   } catch (error) {
     console.error('Error fetching liked albums:', error);
     res.status(500).json({ error: 'Failed to fetch liked albums' });
-  }
-});
-
-// Get popular albums - based on number of tracks and profile visits
-router.get('/popular', async (req, res) => {
-  try {
-    const { limit = 8 } = req.query;
-    
-    // Get popular albums by combining various metrics
-    // Updated query to use Track table instead of AlbumTrack
-    const query = `
-      SELECT a.*, u."Username" AS Artist, 
-             (SELECT COUNT(*) FROM "Track" t WHERE t."AlbumID" = a."AlbumID") as "TrackCount"
-      FROM "Album" a
-      JOIN "User" u ON a."UserID" = u."UserID"
-      ORDER BY 
-        "TrackCount" DESC,
-        a."CreatedAt" DESC
-      LIMIT $1
-    `;
-    
-    const popularAlbums = await req.app.locals.db.any(query, [limit]);
-    
-    res.json(popularAlbums);
-  } catch (error) {
-    console.error('Error fetching popular albums:', error);
-    res.status(500).json({ error: 'Failed to fetch popular albums' });
   }
 });
 

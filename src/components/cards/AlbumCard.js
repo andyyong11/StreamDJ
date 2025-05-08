@@ -1,76 +1,158 @@
 import React from 'react';
 import { Card, Button } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
-import { FaPlay, FaMusic } from 'react-icons/fa';
+import { FaPlay, FaHeart, FaMusic, FaTrash } from 'react-icons/fa';
+import { Link, useNavigate } from 'react-router-dom';
+import CoverImage from '../ui/CoverImage';
 import '../../styles/PlayButton.css';
 
-const AlbumCard = ({ album, onPlayClick }) => {
+const AlbumCard = ({ album, onPlayClick, onLikeClick, onDeleteClick, isLiked = false, showLikeButton = true, showDelete = false }) => {
   const navigate = useNavigate();
 
-  const handleCardClick = () => {
+  // Handle link click separately to avoid triggering card click
+  const handleArtistClick = (e) => {
+    e.stopPropagation();
+  };
+
+  // Handle navigation to album page
+  const handleNavigateToAlbum = () => {
     navigate(`/albums/${album.AlbumID}`);
   };
 
+  // Handle play button click
   const handlePlayClick = (e) => {
-    e.stopPropagation(); // Prevent card click event
+    e.stopPropagation(); // Prevent card navigation
     if (onPlayClick) {
       onPlayClick(album);
-    } else {
-      navigate(`/albums/${album.AlbumID}`);
     }
   };
 
-  // Handle image error by providing a fallback image
-  const handleImageError = (e) => {
-    e.target.onerror = null;
-    e.target.src = 'https://placehold.co/300x300?text=Album';
+  // Handle like button click
+  const handleLikeClick = (e) => {
+    e.preventDefault(); // Prevent default behavior
+    e.stopPropagation(); // Prevent card navigation
+    
+    // Add debug logging
+    console.log('Album data in like click:', album);
+    
+    // Validate the album ID
+    if (!album || album.AlbumID === undefined) {
+      console.error('Invalid album or missing AlbumID:', album);
+      return;
+    }
+    
+    if (onLikeClick) {
+      // Ensure AlbumID is a number
+      const albumId = typeof album.AlbumID === 'number' ? 
+        album.AlbumID : 
+        parseInt(album.AlbumID, 10);
+        
+      console.log(`Calling onLikeClick with albumId: ${albumId}`);
+      onLikeClick(albumId, e);
+    }
   };
 
-  // Format track count
-  const formatTrackCount = (count) => {
-    if (!count && count !== 0) return '0';
-    return count.toString();
+  // Handle delete button click
+  const handleDeleteClick = (e) => {
+    e.preventDefault(); // Prevent default behavior
+    e.stopPropagation(); // Prevent card navigation
+    
+    if (onDeleteClick && album?.AlbumID) {
+      onDeleteClick(album.AlbumID);
+    }
+  };
+
+  // Format release year or date
+  const formatReleaseInfo = () => {
+    if (album.ReleaseDate) {
+      // Check if it's a full date or just a year
+      return album.ReleaseDate.length > 4 
+        ? new Date(album.ReleaseDate).getFullYear() 
+        : album.ReleaseDate;
+    }
+    return album.ReleaseYear || '';
   };
 
   return (
     <Card 
-      className="h-100 shadow-sm"
-      onClick={handleCardClick}
-      style={{ cursor: 'pointer' }}
+      className="h-100 border cursor-pointer" 
+      onClick={handleNavigateToAlbum}
+      style={{ 
+        textDecoration: 'none',
+        color: 'inherit',
+        borderRadius: '8px',
+        overflow: 'hidden'
+      }}
     >
-      <div className="position-relative">
-        <Card.Img 
-          variant="top" 
-          src={album.CoverArtURL ? 
-            `http://localhost:5001/${album.CoverArtURL.replace(/^\/+/, '')}` : 
-            'https://placehold.co/300x300?text=Album'
-          }
-          alt={album.Title}
-          style={{ height: '180px', objectFit: 'cover' }}
-          onError={handleImageError}
+      <div className="card-img-container">
+        <CoverImage
+          src={album.CoverArt || album.CoverArtURL}
+          alt={album.Title || 'Album'}
+          type="album"
+          className="cover-image"
+          rounded="sm"
         />
-        <Button 
-          variant="success" 
-          className="play-button"
+        <Button
+          variant="success"
+          className="play-button-circle"
           onClick={handlePlayClick}
+          aria-label="Play album"
         >
-          <FaPlay />
+          <FaPlay size={18} />
         </Button>
-        {album.TrackCount > 0 && (
-          <span className="position-absolute bottom-0 start-0 m-2 badge bg-dark text-white d-flex align-items-center">
-            <FaMusic className="me-1" />
-            {formatTrackCount(album.TrackCount)} tracks
-          </span>
+        
+        {showLikeButton && onLikeClick && (
+          <Button
+            variant={isLiked ? "danger" : "light"}
+            className={`like-button-circle ${isLiked ? 'liked' : ''}`}
+            onClick={handleLikeClick}
+            aria-label={isLiked ? "Unlike album" : "Like album"}
+          >
+            <FaHeart size={16} />
+          </Button>
+        )}
+
+        {showDelete && onDeleteClick && (
+          <Button
+            variant="danger"
+            className="delete-button-circle"
+            onClick={handleDeleteClick}
+            aria-label="Delete album"
+          >
+            <FaTrash size={16} />
+          </Button>
         )}
       </div>
-      <Card.Body>
-        <Card.Title className="text-truncate">{album.Title}</Card.Title>
-        <Card.Text className="text-muted small">
-          By {album.Artist || 'Unknown Artist'}
-        </Card.Text>
+      <Card.Body className="p-3">
+        <Card.Title className="mb-1 text-truncate fs-6 fw-bold">
+          {album.Title || 'Untitled Album'}
+        </Card.Title>
+        <div className="text-muted small">
+          By{' '}
+          {album.UserID ? (
+            <Link 
+              to={`/profile/${album.UserID}`} 
+              className="text-decoration-none text-muted"
+              onClick={handleArtistClick}
+            >
+              {album.Artist || album.ArtistName || album.Username || 'Unknown Artist'}
+            </Link>
+          ) : (
+            <span>{album.Artist || album.ArtistName || album.Username || 'Unknown Artist'}</span>
+          )}
+          
+          <div className="d-flex justify-content-between align-items-center mt-1">
+            <span className="small text-muted">
+              <FaMusic className="me-1" style={{ fontSize: '0.7rem' }} /> 
+              {album.TrackCount || 0} tracks
+            </span>
+            {(album.ReleaseDate || album.ReleaseYear) && (
+              <span className="small text-muted">{formatReleaseInfo()}</span>
+            )}
+          </div>
+        </div>
       </Card.Body>
     </Card>
   );
 };
 
-export default AlbumCard; 
+export default AlbumCard;

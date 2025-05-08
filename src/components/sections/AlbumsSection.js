@@ -5,6 +5,9 @@ import { useNavigate } from 'react-router-dom';
 import Slider from 'react-slick';
 import AlbumCard from '../cards/AlbumCard';
 import api from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import 'slick-carousel/slick/slick.css';
+import 'slick-carousel/slick/slick-theme.css';
 import '../../styles/PlayButton.css';
 
 // Custom arrows for the slider
@@ -32,11 +35,21 @@ const SlickArrowRight = ({ currentSlide, slideCount, ...props }) => (
   </button>
 );
 
-const AlbumsSection = ({ title = "Popular Albums", apiUrl, limit = 4, onAlbumPlay }) => {
+const AlbumsSection = ({ 
+  title = "Popular Albums", 
+  apiUrl, 
+  limit = 4, 
+  onAlbumPlay, 
+  onLikeClick,
+  onViewAllClick 
+}) => {
+  const { user } = useAuth();
   const [albums, setAlbums] = useState([]);
+  const [likedAlbums, setLikedAlbums] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Fetch albums from API
   useEffect(() => {
     const fetchAlbums = async () => {
       try {
@@ -44,7 +57,7 @@ const AlbumsSection = ({ title = "Popular Albums", apiUrl, limit = 4, onAlbumPla
         setError(null);
         
         // Use the api service for consistency
-        const response = await api.get(apiUrl.replace('http://localhost:5001', ''));
+        const response = await api.get(apiUrl);
         
         // Ensure it's an array before setting state
         if (Array.isArray(response?.data)) {
@@ -65,6 +78,58 @@ const AlbumsSection = ({ title = "Popular Albums", apiUrl, limit = 4, onAlbumPla
       fetchAlbums();
     }
   }, [apiUrl, limit]);
+  
+  // Fetch liked status for albums when user or albums change
+  useEffect(() => {
+    const checkLikedStatus = async () => {
+      if (!user || albums.length === 0) return;
+      
+      try {
+        const likedMap = {};
+        
+        // This would ideally be a bulk request in a real API
+        for (const album of albums) {
+          try {
+            console.log(`Checking like status for album ${album.AlbumID}, user ${user.id}`);
+            const response = await api.get(`/api/albums/${album.AlbumID}/like-status`, {
+              params: { userId: user.id }
+            });
+            console.log(`Like status response for album ${album.AlbumID}:`, response.data);
+            likedMap[album.AlbumID] = response?.data?.liked || false;
+          } catch (err) {
+            console.warn(`Error checking liked status for album ${album.AlbumID}:`, err);
+            console.warn('API error details:', err.response?.data || 'No response data');
+            likedMap[album.AlbumID] = false;
+          }
+        }
+        
+        setLikedAlbums(likedMap);
+      } catch (err) {
+        console.error('Error checking liked albums status:', err);
+      }
+    };
+    
+    checkLikedStatus();
+  }, [user, albums]);
+  
+  // Handle like/unlike with local state update for immediate UI feedback
+  const handleLikeAlbum = (albumId, e) => {
+    if (onLikeClick) {
+      // Log the album ID and ID type for debugging
+      console.log(`Handling like for album ${albumId}, type: ${typeof albumId}`, {
+        album: albums.find(a => a.AlbumID === albumId)
+      });
+      
+      // Update local state for immediate feedback
+      setLikedAlbums(prev => ({
+        ...prev,
+        [albumId]: !prev[albumId]
+      }));
+      
+      // Call the parent handler
+      onLikeClick(albumId, e);
+    }
+  };
 
   const settings = {
     dots: true,
@@ -83,12 +148,20 @@ const AlbumsSection = ({ title = "Popular Albums", apiUrl, limit = 4, onAlbumPla
     ]
   };
 
+  // Only render if we have albums
+  if (!albums || albums.length === 0) {
+    return null;
+  }
+
   if (loading) {
     return (
-      <Container className="text-center py-4">
-        <Spinner animation="border" role="status">
-          <span className="visually-hidden">Loading albums...</span>
-        </Spinner>
+      <Container className="albums-section mb-5">
+        <h2 className="mb-4">{title}</h2>
+        <div className="text-center py-4">
+          <Spinner animation="border" role="status">
+            <span className="visually-hidden">Loading albums...</span>
+          </Spinner>
+        </div>
       </Container>
     );
   }
@@ -97,22 +170,33 @@ const AlbumsSection = ({ title = "Popular Albums", apiUrl, limit = 4, onAlbumPla
     return null; // Hide section if there's an error
   }
 
-  if (albums.length === 0) {
-    return null; // Don't show empty albums
-  }
-
   return (
     <Container className="albums-section mb-5">
       <h2 className="mb-4">{title}</h2>
-      <div className="position-relative">
+      <div className="position-relative slider-container">
         <Slider {...settings}>
           {albums.map(album => (
             <div key={album.AlbumID} className="px-2">
-              <AlbumCard album={album} onPlayClick={onAlbumPlay} />
+              <AlbumCard 
+                album={album} 
+                onPlayClick={onAlbumPlay} 
+                onLikeClick={handleLikeAlbum}
+                isLiked={likedAlbums[album.AlbumID] || false}
+              />
             </div>
           ))}
         </Slider>
       </div>
+      {onViewAllClick && (
+        <div className="text-center mt-3 view-all-button">
+          <button 
+            className="btn btn-outline-primary"
+            onClick={onViewAllClick}
+          >
+            View All Albums
+          </button>
+        </div>
+      )}
     </Container>
   );
 };

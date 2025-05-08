@@ -3,10 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Card, Button, ListGroup, Modal, Form, Badge, Alert } from 'react-bootstrap';
 import { FaPlus, FaMusic, FaTrash, FaPen, FaArrowLeft, FaPlay } from 'react-icons/fa';
 import '../styles/PlayButton.css';
+import { useAuth } from '../context/AuthContext';
 
 const AlbumPage = ({ playTrack }) => {
   const { albumId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [album, setAlbum] = useState(null);
   const [tracks, setTracks] = useState([]);
   const [userTracks, setUserTracks] = useState([]);
@@ -17,6 +19,8 @@ const AlbumPage = ({ playTrack }) => {
   const [trackNumber, setTrackNumber] = useState('');
   const [showRemoveConfirmation, setShowRemoveConfirmation] = useState(false);
   const [trackToRemove, setTrackToRemove] = useState(null);
+  const [showDeleteAlbumModal, setShowDeleteAlbumModal] = useState(false);
+  const [deleteAlbumLoading, setDeleteAlbumLoading] = useState(false);
   
   // Fetch the album details when the component loads
   useEffect(() => {
@@ -176,6 +180,31 @@ const AlbumPage = ({ playTrack }) => {
     }
   };
   
+  // Handle delete album
+  const handleDeleteAlbum = async () => {
+    try {
+      setDeleteAlbumLoading(true);
+      const response = await fetch(`http://localhost:5001/api/albums/${albumId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete album');
+      }
+      
+      setDeleteAlbumLoading(false);
+      setShowDeleteAlbumModal(false);
+      navigate('/albums');
+    } catch (err) {
+      console.error('Error deleting album:', err);
+      alert(`Failed to delete album: ${err.message}`);
+      setDeleteAlbumLoading(false);
+    }
+  };
+  
   if (loading) {
     return (
       <Container className="py-5">
@@ -213,6 +242,9 @@ const AlbumPage = ({ playTrack }) => {
       </Container>
     );
   }
+
+  // Check if current user is the album owner
+  const isOwner = user && album && user.id === album.UserID;
   
   return (
     <Container className="py-4">
@@ -258,13 +290,25 @@ const AlbumPage = ({ playTrack }) => {
               )}
               
               <div className="mt-3 action-buttons-container">
-                <Button 
-                  variant="outline-primary" 
-                  className="creator-action-btn me-2"
-                  onClick={() => navigate(`/edit-album/${albumId}`)}
-                >
-                  <FaPen />
-                </Button>
+                {isOwner && (
+                  <>
+                    <Button 
+                      variant="outline-primary" 
+                      className="creator-action-btn me-2"
+                      onClick={() => navigate(`/edit-album/${albumId}`)}
+                    >
+                      <FaPen />
+                    </Button>
+                    
+                    <Button
+                      variant="outline-danger"
+                      className="creator-action-btn"
+                      onClick={() => setShowDeleteAlbumModal(true)}
+                    >
+                      <FaTrash />
+                    </Button>
+                  </>
+                )}
               </div>
             </Card.Body>
           </Card>
@@ -274,17 +318,19 @@ const AlbumPage = ({ playTrack }) => {
       <Card className="mb-4">
         <Card.Header className="d-flex justify-content-between align-items-center">
           <h4 className="mb-0">Tracks</h4>
-          <Button 
-            variant="success" 
-            size="sm"
-            className="d-flex align-items-center"
-            onClick={() => {
-              fetchUserTracks();
-              setShowAddTrackModal(true);
-            }}
-          >
-            <FaPlus className="me-2" /> Add Existing Track
-          </Button>
+          {isOwner && (
+            <Button 
+              variant="success" 
+              size="sm"
+              className="d-flex align-items-center"
+              onClick={() => {
+                fetchUserTracks();
+                setShowAddTrackModal(true);
+              }}
+            >
+              <FaPlus className="me-2" /> Add Existing Track
+            </Button>
+          )}
         </Card.Header>
         
         <ListGroup variant="flush">
@@ -320,13 +366,15 @@ const AlbumPage = ({ playTrack }) => {
                     >
                       <FaPlay />
                     </Button>
-                    <Button 
-                      variant="outline-danger" 
-                      className="creator-action-btn"
-                      onClick={() => confirmRemoveTrack(track.TrackID)}
-                    >
-                      <FaTrash />
-                    </Button>
+                    {isOwner && (
+                      <Button 
+                        variant="outline-danger" 
+                        className="creator-action-btn"
+                        onClick={() => confirmRemoveTrack(track.TrackID)}
+                      >
+                        <FaTrash />
+                      </Button>
+                    )}
                   </div>
                 </ListGroup.Item>
               ))
@@ -410,6 +458,29 @@ const AlbumPage = ({ playTrack }) => {
             onClick={handleRemoveTrack}
           >
             Remove
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      {/* Delete Album Confirmation Modal */}
+      <Modal show={showDeleteAlbumModal} onHide={() => setShowDeleteAlbumModal(false)}>
+        <Modal.Header closeButton>
+          <Modal.Title>Delete Album</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p>Are you sure you want to delete the album "{album?.Title}"?</p>
+          <p className="text-danger">This action cannot be undone.</p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDeleteAlbumModal(false)}>
+            Cancel
+          </Button>
+          <Button 
+            variant="danger" 
+            onClick={handleDeleteAlbum}
+            disabled={deleteAlbumLoading}
+          >
+            {deleteAlbumLoading ? 'Deleting...' : 'Delete Album'}
           </Button>
         </Modal.Footer>
       </Modal>

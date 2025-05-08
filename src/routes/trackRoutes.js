@@ -6,18 +6,6 @@ const router = express.Router();
 const { trackModel } = require('../db/models');
 const authenticateToken = require('../middleware/authenticateToken');
 
-// Simple test endpoint
-router.get('/test', (req, res) => {
-  console.log("Test endpoint hit!");
-  res.json({ message: "Track routes test endpoint working!" });
-});
-
-// Test endpoint for user tracks specifically
-router.get('/by-user-test/:id', (req, res) => {
-  console.log("User tracks test endpoint hit for user:", req.params.id);
-  res.json({ message: "User tracks test endpoint working!", userId: req.params.id });
-});
-
 // Multer setup for audio and cover uploads
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -83,6 +71,40 @@ router.get('/search', async (req, res) => {
     res.json(tracks);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Get popular tracks
+router.get('/popular', async (req, res) => {
+  try {
+    const { limit = 20 } = req.query;
+    
+    const popularTracks = await req.app.locals.db.any(`
+      SELECT 
+        t."TrackID",
+        t."Title",
+        t."Artist",
+        t."Genre",
+        t."CoverArt",
+        t."FilePath",
+        t."Duration", 
+        t."UserID",
+        u."Username",
+        COUNT(DISTINCT lh."PlayedAt") AS play_count,
+        COUNT(DISTINCT tl."UserID") AS like_count
+      FROM "Track" t
+      LEFT JOIN "ListenerHistory" lh ON t."TrackID" = lh."TrackID"
+      LEFT JOIN "TrackLikes" tl ON t."TrackID" = tl."TrackID"
+      LEFT JOIN "User" u ON t."UserID" = u."UserID"
+      GROUP BY t."TrackID", t."Title", t."Artist", t."Genre", t."CoverArt", t."FilePath", t."Duration", t."UserID", u."Username"
+      ORDER BY COUNT(DISTINCT tl."UserID") DESC, COUNT(DISTINCT lh."PlayedAt") DESC
+      LIMIT $1
+    `, [limit]);
+    
+    res.json(popularTracks);
+  } catch (error) {
+    console.error('Error fetching popular tracks:', error);
+    res.status(500).json({ error: 'Failed to fetch popular tracks' });
   }
 });
 
@@ -154,9 +176,7 @@ router.get('/:id', async (req, res, next) => {
   // Make sure ID doesn't match any of our specific endpoints before treating as a track ID
   if (req.params.id === 'search' || 
       req.params.id === 'search-all' || 
-      req.params.id === 'test' || 
       req.params.id === 'by-user' || 
-      req.params.id === 'by-user-test' || 
       req.params.id === 'artist' || 
       req.params.id === 'user') {
     return next();
@@ -182,7 +202,7 @@ router.post('/', async (req, res) => {
 });
 
 // Update track
-router.put('/:id', upload.fields([
+router.put('/:id', authenticateToken, upload.fields([
   { name: 'coverArt', maxCount: 1 }
 ]), async (req, res) => {
   try {
@@ -210,11 +230,27 @@ router.put('/:id', upload.fields([
 });
 
 // Delete track
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
   try {
-    await trackModel.delete(req.params.id);
+    const trackId = req.params.id;
+    const userId = req.user.id;
+    
+    // Verify the track exists and belongs to the user
+    const track = await trackModel.getById(trackId);
+    if (!track) {
+      return res.status(404).json({ error: 'Track not found' });
+    }
+    
+    // Check ownership
+    if (track.UserID !== userId) {
+      return res.status(403).json({ error: 'You do not have permission to delete this track' });
+    }
+    
+    // Delete the track
+    await trackModel.delete(trackId);
     res.status(204).send();
   } catch (error) {
+    console.error('Error deleting track:', error);
     res.status(400).json({ error: error.message });
   }
 });
@@ -400,41 +436,6 @@ router.get('/liked/:userId', async (req, res) => {
   } catch (error) {
     console.error('Error fetching liked tracks:', error);
     res.status(500).json({ error: 'Failed to fetch liked tracks' });
-  }
-});
-
-// Test route to list all tables in the database
-router.get('/debug/tables', async (req, res) => {
-  try {
-    const tables = await req.app.locals.db.any(`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_schema = 'public'
-      ORDER BY table_name;
-    `);
-    
-    res.json(tables);
-  } catch (error) {
-    console.error('Error listing tables:', error);
-    res.status(500).json({ error: 'Failed to list tables' });
-  }
-});
-
-// Test route to check columns in specific tables
-router.get('/debug/columns/:table', async (req, res) => {
-  try {
-    const tableName = req.params.table;
-    const columns = await req.app.locals.db.any(`
-      SELECT column_name, data_type, is_nullable
-      FROM information_schema.columns
-      WHERE table_schema = 'public' AND table_name = $1
-      ORDER BY ordinal_position;
-    `, [tableName]);
-    
-    res.json(columns);
-  } catch (error) {
-    console.error('Error listing columns:', error);
-    res.status(500).json({ error: 'Failed to list columns' });
   }
 });
 

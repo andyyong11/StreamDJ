@@ -1,9 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Container, Spinner } from 'react-bootstrap';
 import TrackCard from '../cards/TrackCard';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import Slider from 'react-slick';
 import api from '../../services/api';
+import { API_ENDPOINTS } from '../../config/apiConfig';
+import 'slick-carousel/slick/slick.css';
+import 'slick-carousel/slick/slick-theme.css';
 import '../../styles/PlayButton.css';
 
 // Custom arrows for the slider
@@ -31,19 +34,21 @@ const SlickArrowRight = ({ currentSlide, slideCount, ...props }) => (
   </button>
 );
 
-const RecommendedSection = ({ apiUrl, title = "Recommended For You", onTrackSelect }) => {
+const RecommendedSection = ({ apiUrl, title = "Recommended For You", onTrackSelect, onViewAllClick }) => {
   const [tracks, setTracks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchRecommendations = async () => {
+      if (!apiUrl) return;
+      
       try {
         setLoading(true);
         setError(null);
         
         // Use the api service for consistency
-        const response = await api.get(apiUrl.replace('http://localhost:5001', ''));
+        const response = await api.get(apiUrl);
         
         // Ensure it's an array before setting state
         if (Array.isArray(response?.data)) {
@@ -60,9 +65,7 @@ const RecommendedSection = ({ apiUrl, title = "Recommended For You", onTrackSele
       }
     };
   
-    if (apiUrl) {
-      fetchRecommendations();
-    }
+    fetchRecommendations();
   }, [apiUrl]);
 
   const settings = {
@@ -82,12 +85,20 @@ const RecommendedSection = ({ apiUrl, title = "Recommended For You", onTrackSele
     ]
   };
 
+  // Only render if we have tracks
+  if (!tracks || tracks.length === 0) {
+    return null;
+  }
+
   if (loading) {
     return (
-      <Container className="text-center py-4">
-        <Spinner animation="border" role="status">
-          <span className="visually-hidden">Loading recommendations...</span>
-        </Spinner>
+      <Container className="recommended-section mb-5">
+        <h2 className="mb-4">{title}</h2>
+        <div className="text-center py-4">
+          <Spinner animation="border" role="status">
+            <span className="visually-hidden">Loading recommendations...</span>
+          </Spinner>
+        </div>
       </Container>
     );
   }
@@ -96,14 +107,10 @@ const RecommendedSection = ({ apiUrl, title = "Recommended For You", onTrackSele
     return null; // Hide section if there's an error
   }
 
-  if (tracks.length === 0) {
-    return null; // Don't show empty recommendations
-  }
-
   return (
     <Container className="recommended-section mb-5">
       <h2 className="mb-4">{title}</h2>
-      <div className="position-relative">
+      <div className="position-relative slider-container">
         <Slider {...settings}>
           {tracks.map(track => (
             <div key={track.TrackID || track.id} className="px-2">
@@ -112,6 +119,16 @@ const RecommendedSection = ({ apiUrl, title = "Recommended For You", onTrackSele
           ))}
         </Slider>
       </div>
+      {onViewAllClick && (
+        <div className="text-center mt-3 view-all-button">
+          <button 
+            className="btn btn-outline-primary"
+            onClick={onViewAllClick}
+          >
+            View All Tracks
+          </button>
+        </div>
+      )}
     </Container>
   );
 };

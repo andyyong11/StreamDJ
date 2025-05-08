@@ -5,10 +5,11 @@ import { FaPlay, FaEdit, FaTrash, FaMusic, FaCompactDisc, FaList, FaPlus, FaSync
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import AlbumCard from '../components/cards/AlbumCard';
+import PlaylistCard from '../components/cards/PlaylistCard';
 import '../styles/PlayButton.css';
 
-// Default placeholder image - using a reliable source
-const DEFAULT_PLACEHOLDER = 'https://placehold.co/300x300';
+// Default placeholder image - using the correct local image file
+const DEFAULT_PLACEHOLDER = '/images/Default Track.png';
 
 // Simple global cache for component data
 const DASHBOARD_CACHE = {
@@ -379,25 +380,37 @@ const CreatorDashboard = ({ section, playTrack }) => {
     try {
       switch (type) {
         case 'track':
-          await api.delete(`/api/tracks/${item.TrackID || item.id}`);
-          setMyTracks(myTracks.filter(track => (track.TrackID || track.id) !== (item.TrackID || item.id)));
+          const trackId = item.TrackID || item.id;
+          console.log(`Deleting track with ID: ${trackId}`);
+          
+          await api.delete(`/api/tracks/${trackId}`);
+          setMyTracks(myTracks.filter(track => 
+            (track.TrackID || track.id) !== trackId
+          ));
           break;
         case 'album':
           await api.delete(`/api/albums/${item.AlbumID || item.id}`);
-          setMyAlbums(myAlbums.filter(album => (album.AlbumID || album.id) !== (item.AlbumID || item.id)));
+          setMyAlbums(myAlbums.filter(album => 
+            (album.AlbumID || album.id) !== (item.AlbumID || item.id)
+          ));
           break;
         case 'playlist':
           await api.delete(`/api/playlists/${item.PlaylistID || item.id}`);
-          setMyPlaylists(myPlaylists.filter(playlist => (playlist.PlaylistID || playlist.id) !== (item.PlaylistID || item.id)));
+          setMyPlaylists(myPlaylists.filter(playlist => 
+            (playlist.PlaylistID || playlist.id) !== (item.PlaylistID || item.id)
+          ));
           break;
         default:
           throw new Error('Unknown item type');
       }
     } catch (err) {
       console.error(`Error deleting ${type}:`, err);
+      const errorMsg = err?.response?.data?.error || err?.message || `Failed to delete ${type}. Please try again.`;
+      console.error('Detailed error:', errorMsg);
+      
       setErrors(prev => ({
         ...prev,
-        general: `Failed to delete ${type}. Please try again.`
+        general: errorMsg
       }));
     } finally {
       setShowDeleteModal(false);
@@ -420,15 +433,31 @@ const CreatorDashboard = ({ section, playTrack }) => {
   };
 
   // Safely get cover image or return default placeholder
-  const getCoverImage = (imageUrl) => {
-    if (!imageUrl) return DEFAULT_PLACEHOLDER;
+  const getCoverImage = (imageUrl, type = 'track') => {
+    if (!imageUrl) {
+      // Use the correct image path based on type
+      if (type === 'track') {
+        return `/images/Default Track.png`;
+      } else if (type === 'album') {
+        return `/images/Default Album.png`;
+      } else if (type === 'playlist') {
+        return `/images/Default Playlist.png`;
+      } else {
+        return DEFAULT_PLACEHOLDER;
+      }
+    }
     
     // Handle relative server paths
-    if (!imageUrl.startsWith('http')) {
+    if (!imageUrl.startsWith('http') && !imageUrl.startsWith('/images/')) {
       return `http://localhost:5001/${imageUrl.replace(/^\/+/, '')}`;
     }
     
     return imageUrl;
+  };
+
+  // Add this function to handle album playback
+  const handlePlayAlbum = (album) => {
+    navigate(`/albums/${album.AlbumID || album.id}?autoplay=true`);
   };
 
   // Render the appropriate content based on active section
@@ -516,6 +545,7 @@ const CreatorDashboard = ({ section, playTrack }) => {
                     <thead>
                       <tr>
                         <th>#</th>
+                        <th>Cover</th>
                         <th>Title</th>
                         <th>Duration</th>
                         <th>Plays</th>
@@ -527,9 +557,25 @@ const CreatorDashboard = ({ section, playTrack }) => {
                       {myTracks.map((track, index) => (
                         <tr key={track.TrackID || track.id}>
                           <td>{index + 1}</td>
+                          <td>
+                            <img 
+                              src={getCoverImage(track.CoverArt || track.coverArt, 'track')} 
+                              alt={track.Title || track.title} 
+                              style={{
+                                width: '40px',
+                                height: '40px',
+                                objectFit: 'cover',
+                                borderRadius: '4px'
+                              }}
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = DEFAULT_PLACEHOLDER;
+                              }}
+                            />
+                          </td>
                           <td>{track.Title || track.title}</td>
                           <td>{formatDuration(track.Duration || track.duration)}</td>
-                          <td>{track.PlayCount || 0}</td>
+                          <td>{track.PlayCount || track.play_count || 0}</td>
                           <td>{formatDate(track.CreatedAt || track.uploadDate)}</td>
                           <td>
                         <div className="action-buttons-container">
@@ -623,7 +669,12 @@ const CreatorDashboard = ({ section, playTrack }) => {
               <Row>
                 {myAlbums.map(album => (
                   <Col md={3} key={album.AlbumID || album.id} className="mb-4">
-                    <AlbumCard album={album} />
+                    <AlbumCard 
+                      album={album} 
+                      onPlayClick={handlePlayAlbum} 
+                      onDeleteClick={(albumId) => confirmDelete(album, 'album')}
+                      showDelete={true}
+                    />
                   </Col>
                 ))}
               </Row>
@@ -687,45 +738,19 @@ const CreatorDashboard = ({ section, playTrack }) => {
               <Row>
                 {myPlaylists.map(playlist => (
                   <Col md={3} key={playlist.PlaylistID || playlist.id} className="mb-4">
-                    <Card className="h-100 shadow-sm">
-                      <Card.Img 
-                        variant="top" 
-                    src={getCoverImage(playlist.CoverUrl || playlist.image)} 
-                        alt={playlist.Title || playlist.title}
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = DEFAULT_PLACEHOLDER;
-                    }}
-                      />
-                      <Card.Body>
-                        <Card.Title>{playlist.Title || playlist.title}</Card.Title>
-                        <Card.Text>
-                          {playlist.TrackCount || playlist.tracks || 0} tracks<br/>
-                          <small className="text-muted">Created: {formatDate(playlist.CreatedAt || playlist.createdDate)}</small>
-                        </Card.Text>
-                        <div className="d-flex flex-column gap-2">
-                          <Button variant="primary" as={Link} to={`/playlist/${playlist.PlaylistID || playlist.id}`}>
-                            View Playlist
-                          </Button>
-                          <div className="d-flex gap-2">
-                            <Button 
-                              variant="outline-primary" 
-                              as={Link} 
-                              to={`/edit-playlist/${playlist.PlaylistID || playlist.id}`}
-                              className="flex-grow-1"
-                            >
-                              <FaEdit /> Edit
-                            </Button>
-                            <Button 
-                              variant="outline-danger"
-                              onClick={() => confirmDelete(playlist, 'playlist')}
-                            >
-                              <FaTrash />
-                            </Button>
-                          </div>
-                        </div>
-                      </Card.Body>
-                    </Card>
+                    <PlaylistCard 
+                      playlist={{
+                        ...playlist,
+                        Title: playlist.Title || playlist.title,
+                        PlaylistID: playlist.PlaylistID || playlist.id,
+                        CoverURL: playlist.CoverURL || playlist.CoverUrl || playlist.image,
+                        TrackCount: playlist.TrackCount || playlist.Quantity || playlist.trackCount || 0,
+                        CreatorName: user?.username || 'You'
+                      }} 
+                      onPlayClick={() => navigate(`/playlists/${playlist.PlaylistID || playlist.id}?autoplay=true`)}
+                      onDeleteClick={(playlistId) => confirmDelete(playlist, 'playlist')}
+                      showDelete={true}
+                    />
                   </Col>
                 ))}
               </Row>

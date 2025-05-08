@@ -156,7 +156,7 @@ const AlbumViewPage = ({ playTrack }) => {
                     <div>
                       <div className="mb-0 fw-medium">{track.Title}</div>
                       <small className="text-muted d-block">
-                        {track.PlayCount || 0} plays
+                        {track.PlayCount || track.play_count || 0} plays
                       </small>
                     </div>
                   </div>
