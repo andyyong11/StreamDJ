@@ -332,7 +332,7 @@ const ProfilePage = ({ playTrack, openLoginModal }) => {
   const renderPlaylists = () => {
     if (loading.playlists) {
       return (
-        <div className="text-center py-4">
+        <div className="text-white text-center py-4">
           <Spinner animation="border" role="status">
             <span className="visually-hidden">Loading playlists...</span>
           </Spinner>
@@ -345,7 +345,7 @@ const ProfilePage = ({ playTrack, openLoginModal }) => {
     }
 
     if (playlists.length === 0) {
-      return <p className="text-muted">No playlists found.</p>;
+      return <p className="text-white">No playlists found.</p>;
     }
 
     return (
@@ -410,7 +410,7 @@ const ProfilePage = ({ playTrack, openLoginModal }) => {
     }
 
     if (tracks.length === 0) {
-      return <p className="text-muted">No tracks found.</p>;
+      return <p className="text-white">No tracks found.</p>;
     }
 
     return (
@@ -506,7 +506,7 @@ const ProfilePage = ({ playTrack, openLoginModal }) => {
     }
 
     if (albums.length === 0) {
-      return <p className="text-muted">No albums found.</p>;
+      return <p className="text-white">No albums found.</p>;
     }
 
     const handlePlayAlbum = (album) => {
@@ -584,7 +584,7 @@ const ProfilePage = ({ playTrack, openLoginModal }) => {
     }
 
     if (tracks.length === 0) {
-      return <p className="text-muted">No tracks found.</p>;
+      return <p className="text-white">No tracks found.</p>;
     }
 
     return (

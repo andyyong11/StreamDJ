@@ -72,7 +72,7 @@ const NavigationBar = ({ onTrackSelect, openLoginModal, openRegisterModal }) => 
             <Nav.Link as={Link} to="/discover">Discover</Nav.Link>
             {user && (
               <>
-                <Nav.Link as={Link} to="/library"><FaHeadphones className="me-1" /> Library</Nav.Link>
+                <Nav.Link as={Link} to="/library/:id"><FaHeadphones className="me-1" /> Library</Nav.Link>
                 <Nav.Link as={Link} to="/upload"><FaUpload className="me-1" /> Upload</Nav.Link>
               </>
             )}

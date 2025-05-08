@@ -19,7 +19,7 @@ import ProfileSettingsPage from './pages/ProfileSettingsPage';
 import DiscoverPage from './pages/discoverPage';
 import LibraryPage from './pages/libraryPage';
 import LikedSongsPage from './pages/LikedSongsPage';
-import LiveStreamsPage from './pages/liveStreamsPage';
+import LiveStreamsPage from './pages/LiveStreamsPage';
 import UploadPage from './pages/uploadPage';
 import StreamPlayerPage from './pages/StreamPlayerPage';
 import PlaylistPage from './pages/PlaylistPage';
@@ -224,7 +224,7 @@ function AppContent() {
               }
             />
             <Route
-              path="/library"
+              path="/library/:id"
               element={
                 <Layout onTrackSelect={handleTrackSelect} currentTrack={currentTrack}>
                   <PrivateRoute>

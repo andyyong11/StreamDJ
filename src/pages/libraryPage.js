@@ -67,13 +67,13 @@ const LibraryPage = ({ user, userId, activeSection, handleSectionChange, renderC
     );
   };
 
-  if (!user) {
+  if (!user || !userId) {
     return (
       <Container className="py-5 text-center">
         <h3>Please log in to view your library</h3>
       </Container>
     );
-  }
+  }  
 
   return (
     <Container className="py-4">
