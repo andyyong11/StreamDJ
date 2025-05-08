@@ -43,7 +43,7 @@ const RecommendedSection = ({ apiUrl, title = "Recommended For You", onTrackSele
         setError(null);
         
         // Use the api service for consistency
-        const response = await api.get(apiUrl.replace('http://localhost:5001', ''));
+        const response = await api.get(apiUrl);
         
         // Ensure it's an array before setting state
         if (Array.isArray(response?.data)) {

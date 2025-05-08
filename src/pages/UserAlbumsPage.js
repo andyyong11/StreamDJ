@@ -17,6 +17,11 @@ const UserAlbumsPage = () => {
   const isCurrentUser = user && (!userId || user.id === parseInt(userId));
   const targetUserId = userId || (user ? user.id : null);
   
+  // Handle playing an album
+  const handlePlayAlbum = (album) => {
+    navigate(`/albums/${album.AlbumID}?autoplay=true`);
+  };
+  
   useEffect(() => {
     if (!targetUserId) {
       setLoading(false);
@@ -110,7 +115,7 @@ const UserAlbumsPage = () => {
         <Row>
           {albums.map(album => (
             <Col key={album.AlbumID} sm={6} md={4} lg={3} className="mb-4">
-              <AlbumCard album={album} />
+              <AlbumCard album={album} onPlayClick={handlePlayAlbum} />
             </Col>
           ))}
         </Row>

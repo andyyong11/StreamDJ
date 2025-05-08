@@ -81,40 +81,26 @@ router.get('/user/:userId', auth, async (req, res) => {
   }
 });
 
-// Debug route to find playlist-related tables
-router.get('/debug/find-playlist-likes', async (req, res) => {
-    try {
-        const tables = await req.app.locals.db.any(`
-            SELECT table_name 
-            FROM information_schema.tables 
-            WHERE table_schema = 'public' AND table_name LIKE '%playlist%'
-            ORDER BY table_name;
-        `);
-        
-        res.json(tables);
-    } catch (error) {
-        console.error('Error finding playlist tables:', error);
-        res.status(500).json({ error: 'Failed to find playlist tables' });
-    }
-});
-
 // Get liked playlists for a user - MUST come before /:id route
 router.get('/liked/:userId', async (req, res) => {
     try {
         const userId = req.params.userId;
         
-        // Try a simpler approach to get playlists by this user
         const query = `
-            SELECT p.*, u."Username" AS CreatorName
+            SELECT p.*, u."Username" AS CreatorName, 
+                   COUNT(pt."TrackID") AS TrackCount
             FROM "Playlist" p
+            JOIN "PlaylistLikes" pl ON p."PlaylistID" = pl."PlaylistID"
             JOIN "User" u ON p."UserID" = u."UserID"
-            WHERE p."UserID" = $1
+            LEFT JOIN "PlaylistTrack" pt ON p."PlaylistID" = pt."PlaylistID"
+            WHERE pl."UserID" = $1
+            GROUP BY p."PlaylistID", u."Username", pl."LikedAt"
+            ORDER BY pl."LikedAt" DESC
         `;
         
-        const userPlaylists = await req.app.locals.db.any(query, [userId]);
+        const likedPlaylists = await db.any(query, [userId]);
         
-        // For now, return the user's own playlists since we don't have actual likes
-        res.json(userPlaylists);
+        res.json(likedPlaylists);
     } catch (error) {
         console.error('Error fetching liked playlists:', error);
         res.status(500).json({ error: 'Failed to fetch liked playlists' });
@@ -124,8 +110,12 @@ router.get('/liked/:userId', async (req, res) => {
 // Get playlist by ID - Must come AFTER specific routes like /liked/:userId
 router.get('/:id', async (req, res) => {
   try {
+    // Step 1: Get the playlist basic info first with creator name
     const playlist = await db.oneOrNone(
-      `SELECT * FROM "Playlist" WHERE "PlaylistID" = $1`,
+      `SELECT p.*, u."Username" as "CreatorName", u."UserID" as "CreatorID"
+       FROM "Playlist" p
+       LEFT JOIN "User" u ON p."UserID" = u."UserID" 
+       WHERE p."PlaylistID" = $1`,
       [req.params.id]
     );
 
@@ -133,35 +123,42 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Playlist not found' });
     }
 
-    const tracks = await db.any(
-      `SELECT t.*
-       FROM "Track" t
-       JOIN "PlaylistTrack" pt ON pt."TrackID" = t."TrackID"
-       WHERE pt."PlaylistID" = $1
-       ORDER BY pt."Position" ASC`,
-      [req.params.id]
-    );
-
-    res.json({ ...playlist, tracks }); // ✅ Combine and send
+    try {
+      // Step 2: Get tracks separately with error handling
+      // Removed the ORDER BY pt."Position" clause since the column doesn't exist
+      const tracks = await db.any(
+        `SELECT t.*
+         FROM "Track" t
+         JOIN "PlaylistTrack" pt ON pt."TrackID" = t."TrackID"
+         WHERE pt."PlaylistID" = $1
+         ORDER BY pt."AddedAt"`,
+        [req.params.id]
+      );
+      
+      // Step 3: Return both together
+      res.json({ 
+        ...playlist, 
+        Tracks: tracks 
+      });
+    } catch (trackError) {
+      console.error(`ERROR fetching tracks for playlist ${req.params.id}:`, trackError);
+      // If we can't get tracks, still return the playlist info
+      res.json({ 
+        ...playlist, 
+        Tracks: [],
+        trackError: trackError.message
+      });
+    }
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error(`ERROR in playlist/${req.params.id} endpoint:`, error);
+    res.status(500).json({ 
+      error: error.message,
+      stack: process.env.NODE_ENV === 'production' ? undefined : error.stack
+    });
   }
 });
 
-
-
-// router.get('/:id', async (req, res) => {
-//   try {
-//     const playlist = await db.oneOrNone(`SELECT * FROM "Playlist" WHERE "PlaylistID" = $1`, [req.params.id]);
-//     if (!playlist) return res.status(404).json({ error: 'Playlist not found' });
-//     res.json(playlist);
-//   } catch (error) {
-//     res.status(500).json({ error: error.message });
-//   }
-// });
-
 // Create new playlist (protected)
-
 router.post('/', auth, async (req, res) => {
   try {
     const { title, isPublic = true, description = '', coverURL = null } = req.body;
@@ -211,7 +208,7 @@ router.delete('/:id', auth, async (req, res) => {
 // Add track to playlist (protected + ownership check)
 router.post('/:id/tracks', auth, async (req, res) => {
   try {
-    const { trackId, position = null } = req.body;
+    const { trackId } = req.body;
 
     const playlist = await db.oneOrNone(
       `SELECT * FROM "Playlist" WHERE "PlaylistID" = $1`,
@@ -222,21 +219,11 @@ router.post('/:id/tracks', auth, async (req, res) => {
       return res.status(403).json({ error: 'Unauthorized to modify this playlist' });
     }
 
-    // ✅ Calculate position if not provided
-    let finalPosition = position;
-    if (finalPosition === null) {
-      const existing = await db.oneOrNone(
-        `SELECT MAX("Position") + 1 AS pos FROM "PlaylistTrack" WHERE "PlaylistID" = $1`,
-        [req.params.id]
-      );
-      finalPosition = existing?.pos || 1;
-    }
-
-    // ✅ Insert with AddedAt
+    // ✅ Insert with AddedAt, removing position parameter
     const result = await db.one(
-      `INSERT INTO "PlaylistTrack" ("PlaylistID", "TrackID", "Position", "AddedAt")
-       VALUES ($1, $2, $3, NOW()) RETURNING *`,
-      [req.params.id, trackId, finalPosition]
+      `INSERT INTO "PlaylistTrack" ("PlaylistID", "TrackID", "AddedAt")
+       VALUES ($1, $2, NOW()) RETURNING *`,
+      [req.params.id, trackId]
     );
 
     res.status(201).json(result);
@@ -244,7 +231,6 @@ router.post('/:id/tracks', auth, async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 });
-
 
 // Remove track from playlist (protected + ownership check)
 router.delete('/:id/tracks/:trackId', auth, async (req, res) => {
@@ -268,12 +254,111 @@ router.get('/:id/covers', async (req, res) => {
       FROM "PlaylistTrack" pt
       JOIN "Track" t ON t."TrackID" = pt."TrackID"
       WHERE pt."PlaylistID" = $1
-      ORDER BY pt."Position"
+      ORDER BY pt."AddedAt"
       LIMIT 4
     `, [req.params.id]);
 
     res.json(covers.map(c => c.CoverArt));
   } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Like a playlist
+router.post('/:id/like', async (req, res) => {
+  const { userId } = req.body;
+  const playlistId = parseInt(req.params.id);
+
+  try {
+    await db.none(
+      `INSERT INTO "PlaylistLikes" ("UserID", "PlaylistID") VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+      [userId, playlistId]
+    );
+    res.sendStatus(200);
+  } catch (err) {
+    console.error('Error liking playlist:', err);
+    res.status(500).json({ error: 'Failed to like playlist.' });
+  }
+});
+
+// Unlike a playlist
+router.post('/:id/unlike', async (req, res) => {
+  const { userId } = req.body;
+  const playlistId = parseInt(req.params.id);
+
+  try {
+    await db.none(
+      `DELETE FROM "PlaylistLikes" WHERE "UserID" = $1 AND "PlaylistID" = $2`,
+      [userId, playlistId]
+    );
+    res.sendStatus(200);
+  } catch (err) {
+    console.error('Error unliking playlist:', err);
+    res.status(500).json({ error: 'Failed to unlike playlist.' });
+  }
+});
+
+// Get like status for a playlist
+router.get('/:id/like-status', async (req, res) => {
+  const { userId } = req.query;
+  const playlistId = parseInt(req.params.id);
+
+  try {
+    const exists = await db.oneOrNone(
+      `SELECT 1 FROM "PlaylistLikes" WHERE "UserID" = $1 AND "PlaylistID" = $2`,
+      [userId, playlistId]
+    );
+    res.json({ liked: !!exists });
+  } catch (err) {
+    console.error('Error checking playlist like status:', err);
+    res.status(500).json({ error: 'Failed to fetch playlist like status.' });
+  }
+});
+
+// Get featured playlists with covers
+router.get('/featured/covers', async (req, res) => {
+    try {
+        const featuredWithCovers = await db.any(`
+            SELECT p."PlaylistID", 
+                   p."Title", 
+                   p."UserID",
+                   u."Username" as "CreatorName",
+                   (
+                     SELECT "CoverArt"
+                     FROM "PlaylistTrack" pt
+                     JOIN "Track" t ON t."TrackID" = pt."TrackID"
+                     WHERE pt."PlaylistID" = p."PlaylistID"
+                     LIMIT 1
+                   ) as "CoverUrl"
+            FROM "Playlist" p
+            JOIN "User" u ON p."UserID" = u."UserID"
+            WHERE p."IsPublic" = true
+            LIMIT 8
+        `);
+        
+        res.json(featuredWithCovers);
+    } catch (err) {
+        console.error('Error fetching featured playlists with covers:', err);
+        res.status(500).json({ error: 'Failed to fetch featured playlists with covers' });
+    }
+});
+
+// Get playlist cover art (first 4 tracks)
+router.get('/:id/cover-art', async (req, res) => {
+  try {
+    // Get cover images from up to 4 tracks in the playlist
+    const coverImages = await db.any(`
+      SELECT t."CoverArt"
+      FROM "PlaylistTrack" pt
+      JOIN "Track" t ON t."TrackID" = pt."TrackID"
+      WHERE pt."PlaylistID" = $1
+      ORDER BY pt."AddedAt"
+      LIMIT 4
+    `, [req.params.id]);
+    
+    res.json(coverImages);
+  } catch (error) {
+    console.error('Error getting playlist cover art:', error);
     res.status(500).json({ error: error.message });
   }
 });

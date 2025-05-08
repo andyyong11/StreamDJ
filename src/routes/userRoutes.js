@@ -58,10 +58,48 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Get user by ID
+// Get top users - MUST be before /:id route
+router.get('/top', async (req, res) => {
+    try {
+        const { limit = 10 } = req.query;
+        
+        const topUsers = await req.app.locals.db.any(`
+            SELECT 
+                u."UserID", 
+                u."Username", 
+                u."Email", 
+                u."ProfileImage", 
+                u."BannerImage", 
+                u."Bio",
+                u."FollowerCount",
+                u."FollowingCount",
+                COUNT(DISTINCT t."TrackID") as "TrackCount",
+                COUNT(DISTINCT s."StreamID") as "StreamCount"
+            FROM "User" u
+            LEFT JOIN "Track" t ON u."UserID" = t."UserID"
+            LEFT JOIN "Stream" s ON u."UserID" = s."UserID"
+            GROUP BY u."UserID"
+            ORDER BY u."FollowerCount" DESC, "TrackCount" DESC
+            LIMIT $1
+        `, [limit]);
+        
+        res.json(topUsers);
+    } catch (error) {
+        console.error('Error fetching top users:', error);
+        res.status(500).json({ error: 'Failed to fetch top users' });
+    }
+});
+
+// Get user by ID (must come AFTER specific routes like /top)
 router.get('/:id', async (req, res) => {
     try {
-        const user = await userModel.getById(req.params.id);
+        // Check if the id is a valid integer before trying to fetch the user
+        const userId = parseInt(req.params.id);
+        if (isNaN(userId)) {
+            return res.status(400).json({ error: 'Invalid user ID' });
+        }
+        
+        const user = await userModel.getById(userId);
         res.json(user);
     } catch (error) {
         res.status(404).json({ error: 'User not found' });

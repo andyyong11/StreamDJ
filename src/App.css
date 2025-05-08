@@ -284,3 +284,32 @@
 .chat-messages::-webkit-scrollbar-thumb:hover {
   background: var(--accent-color);
 }
+
+/* Loading Fallback */
+.loading-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  width: 100%;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-size: 1.2rem;
+  opacity: 0.8;
+}
+
+.loading-fallback::after {
+  content: '';
+  width: 24px;
+  height: 24px;
+  margin-left: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--primary-color);
+  border-top-color: transparent;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

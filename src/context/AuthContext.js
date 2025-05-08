@@ -75,7 +75,7 @@ export const AuthProvider = ({ children }) => {
     // Add login with retry
     const loginWithRetry = async (email, password) => {
         const response = await fetchWithRetry(
-            'http://localhost:5001/api/auth/login',
+            '/api/auth/login',
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -85,7 +85,7 @@ export const AuthProvider = ({ children }) => {
         
         const data = await response.json();
         if (!response.ok) {
-            throw new Error(data.error || 'Login failed');
+            throw new Error(data.error || 'Invalid credentials');
         }
         
         login(data.user, data.token);
@@ -95,7 +95,7 @@ export const AuthProvider = ({ children }) => {
     // Add register with retry
     const registerWithRetry = async (username, email, password) => {
         const response = await fetchWithRetry(
-            'http://localhost:5001/api/auth/register',
+            '/api/auth/register',
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

@@ -5,6 +5,7 @@ import { FaPlay, FaEdit, FaTrash, FaMusic, FaCompactDisc, FaList, FaPlus, FaSync
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import AlbumCard from '../components/cards/AlbumCard';
+import PlaylistCard from '../components/cards/playlistCard';
 import '../styles/PlayButton.css';
 
 // Default placeholder image - using a reliable source
@@ -431,6 +432,11 @@ const CreatorDashboard = ({ section, playTrack }) => {
     return imageUrl;
   };
 
+  // Add this function to handle album playback
+  const handlePlayAlbum = (album) => {
+    navigate(`/albums/${album.AlbumID || album.id}?autoplay=true`);
+  };
+
   // Render the appropriate content based on active section
   const renderContent = () => {
     // Show error message if there's a general error
@@ -623,7 +629,7 @@ const CreatorDashboard = ({ section, playTrack }) => {
               <Row>
                 {myAlbums.map(album => (
                   <Col md={3} key={album.AlbumID || album.id} className="mb-4">
-                    <AlbumCard album={album} />
+                    <AlbumCard album={album} onPlayClick={handlePlayAlbum} />
                   </Col>
                 ))}
               </Row>
@@ -687,45 +693,17 @@ const CreatorDashboard = ({ section, playTrack }) => {
               <Row>
                 {myPlaylists.map(playlist => (
                   <Col md={3} key={playlist.PlaylistID || playlist.id} className="mb-4">
-                    <Card className="h-100 shadow-sm">
-                      <Card.Img 
-                        variant="top" 
-                    src={getCoverImage(playlist.CoverUrl || playlist.image)} 
-                        alt={playlist.Title || playlist.title}
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = DEFAULT_PLACEHOLDER;
-                    }}
-                      />
-                      <Card.Body>
-                        <Card.Title>{playlist.Title || playlist.title}</Card.Title>
-                        <Card.Text>
-                          {playlist.TrackCount || playlist.tracks || 0} tracks<br/>
-                          <small className="text-muted">Created: {formatDate(playlist.CreatedAt || playlist.createdDate)}</small>
-                        </Card.Text>
-                        <div className="d-flex flex-column gap-2">
-                          <Button variant="primary" as={Link} to={`/playlist/${playlist.PlaylistID || playlist.id}`}>
-                            View Playlist
-                          </Button>
-                          <div className="d-flex gap-2">
-                            <Button 
-                              variant="outline-primary" 
-                              as={Link} 
-                              to={`/edit-playlist/${playlist.PlaylistID || playlist.id}`}
-                              className="flex-grow-1"
-                            >
-                              <FaEdit /> Edit
-                            </Button>
-                            <Button 
-                              variant="outline-danger"
-                              onClick={() => confirmDelete(playlist, 'playlist')}
-                            >
-                              <FaTrash />
-                            </Button>
-                          </div>
-                        </div>
-                      </Card.Body>
-                    </Card>
+                    <PlaylistCard 
+                      playlist={{
+                        ...playlist,
+                        Title: playlist.Title || playlist.title,
+                        PlaylistID: playlist.PlaylistID || playlist.id,
+                        CoverURL: playlist.CoverURL || playlist.CoverUrl || playlist.image,
+                        TrackCount: playlist.TrackCount || playlist.tracks || 0,
+                        CreatorName: user?.username || 'You'
+                      }} 
+                      onPlayClick={() => navigate(`/playlists/${playlist.PlaylistID || playlist.id}?autoplay=true`)}
+                    />
                   </Col>
                 ))}
               </Row>

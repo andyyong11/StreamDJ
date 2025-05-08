@@ -1,10 +1,65 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Button } from 'react-bootstrap';
-import { FaPlay, FaHeadphones, FaUser } from 'react-icons/fa';
+import { FaPlay, FaHeadphones, FaUser, FaHeart } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import '../../styles/PlayButton.css';
+import { formatImageUrl, handleImageError } from '../../utils/imageUtils';
+import api from '../../services/api';
 
 const TrackCard = ({ track, onTrackSelect }) => {
+  const { user } = useAuth();
+  const [isLiked, setIsLiked] = useState(false);
+  const [isLikeLoading, setIsLikeLoading] = useState(false);
+
+  // Check if the track is liked by current user on component mount
+  useEffect(() => {
+    const checkLikeStatus = async () => {
+      if (!user || !track || !track.TrackID) return;
+      
+      try {
+        // Use API service instead of direct fetch
+        const response = await api.get(
+          `/api/tracks/${track.TrackID}/like-status`, 
+          { params: { userId: user.id } }
+        );
+        
+        if (response && response.data) {
+          setIsLiked(response.data.liked);
+        }
+      } catch (error) {
+        console.error('Error checking like status:', error);
+      }
+    };
+    
+    checkLikeStatus();
+  }, [track, user]);
+
+  const handleLikeToggle = async (e) => {
+    e.stopPropagation(); // Prevent card click
+    
+    if (!user || !track || !track.TrackID) return;
+    
+    setIsLikeLoading(true);
+    try {
+      const endpoint = isLiked ? 'unlike' : 'like';
+      
+      // Use API service instead of direct fetch
+      const response = await api.post(
+        `/api/tracks/${track.TrackID}/${endpoint}`, 
+        { userId: user.id }
+      );
+      
+      if (response) {
+        setIsLiked(!isLiked);
+      }
+    } catch (error) {
+      console.error(`Error ${isLiked ? 'unliking' : 'liking'} track:`, error);
+    } finally {
+      setIsLikeLoading(false);
+    }
+  };
+
   const handleCardClick = () => {
     if (onTrackSelect) {
       onTrackSelect(track);
@@ -39,12 +94,6 @@ const TrackCard = ({ track, onTrackSelect }) => {
     e.stopPropagation();
   };
 
-  // Handle image error by providing a fallback image
-  const handleImageError = (e) => {
-    e.target.onerror = null;
-    e.target.src = 'https://placehold.co/300x300?text=Track';
-  };
-
   return (
     <Card 
       className="h-100 shadow-sm"
@@ -54,13 +103,10 @@ const TrackCard = ({ track, onTrackSelect }) => {
       <div className="position-relative">
         <Card.Img 
           variant="top" 
-          src={track.CoverArt ? 
-            `http://localhost:5001/${track.CoverArt.replace(/^\/+/, '')}` : 
-            'https://placehold.co/300x300?text=Track'
-          }
-          alt={track.Title}
+          src={formatImageUrl(track.CoverArt, 'track')}
+          alt={track.Title || 'Track'}
           style={{ height: '180px', objectFit: 'cover' }}
-          onError={handleImageError}
+          onError={(e) => handleImageError(e, 'track')}
         />
         <Button 
           variant="success"
@@ -69,6 +115,17 @@ const TrackCard = ({ track, onTrackSelect }) => {
         >
           <FaPlay />
         </Button>
+        {user && (
+          <Button
+            variant={isLiked ? "danger" : "outline-light"}
+            className="position-absolute top-0 end-0 m-2"
+            size="sm"
+            onClick={handleLikeToggle}
+            disabled={isLikeLoading}
+          >
+            <FaHeart />
+          </Button>
+        )}
         {track.PlayCount > 0 && (
           <span className="position-absolute bottom-0 start-0 m-2 badge bg-dark text-white d-flex align-items-center">
             <FaHeadphones className="me-1" />
@@ -77,7 +134,7 @@ const TrackCard = ({ track, onTrackSelect }) => {
         )}
       </div>
       <Card.Body>
-        <Card.Title className="text-truncate">{track.Title}</Card.Title>
+        <Card.Title className="text-truncate">{track.Title || 'Untitled Track'}</Card.Title>
         <div className="d-flex align-items-center">
           <FaUser className="text-muted me-1" style={{ fontSize: '0.8rem' }} />
           {track.UserID ? (

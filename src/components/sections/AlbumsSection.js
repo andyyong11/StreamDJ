@@ -44,7 +44,7 @@ const AlbumsSection = ({ title = "Popular Albums", apiUrl, limit = 4, onAlbumPla
         setError(null);
         
         // Use the api service for consistency
-        const response = await api.get(apiUrl.replace('http://localhost:5001', ''));
+        const response = await api.get(apiUrl);
         
         // Ensure it's an array before setting state
         if (Array.isArray(response?.data)) {

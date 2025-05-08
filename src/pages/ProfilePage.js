@@ -10,6 +10,7 @@ import TrackActionMenu from '../components/modals/TrackActionMenu';
 import AddToPlaylistModal from '../components/modals/AddToPlaylistModal';
 import DeleteTrackModal from '../components/modals/DeleteTrackModal';
 import '../styles/PlayButton.css';
+import { formatImageUrl, handleImageError } from '../utils/imageUtils';
 
 const ProfilePage = ({ playTrack, openLoginModal }) => {
   // Get the profile ID from the URL
@@ -87,8 +88,8 @@ const ProfilePage = ({ playTrack, openLoginModal }) => {
         Username: `User${id}`,
         FollowersCount: 0,
         FollowingCount: 0,
-        ProfileImage: 'https://via.placeholder.com/150?text=User',
-        BannerImage: 'https://via.placeholder.com/1200x300?text=Profile+Banner',
+        ProfileImage: 'https://upload.wikimedia.org/wikipedia/commons/8/89/Portrait_Placeholder.png',
+        BannerImage: 'https://upload.wikimedia.org/wikipedia/commons/8/89/Portrait_Placeholder.png',
         Bio: 'This user has not added a bio yet.'
       });
     } finally {
@@ -356,19 +357,10 @@ const ProfilePage = ({ playTrack, openLoginModal }) => {
               <div className="position-relative">
                 <Card.Img 
                   variant="top" 
-                  src={
-                    playlist.CoverURL 
-                      ? (playlist.CoverURL.startsWith('http') 
-                        ? playlist.CoverURL 
-                        : `http://localhost:5001/${playlist.CoverURL.replace(/^\/+/, '')}`)
-                      : 'https://placehold.co/300x300?text=Playlist'
-                  } 
-                  alt={playlist.Title}
+                  src={formatImageUrl(playlist.CoverURL, 'playlist')}
+                  alt={playlist.Title || 'Playlist'}
                   style={{ height: '180px', objectFit: 'cover' }}
-                  onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = 'https://placehold.co/300x300?text=Playlist';
-                  }}
+                  onError={(e) => handleImageError(e, 'playlist')}
                 />
                 <Button 
                   variant="success" 
@@ -433,16 +425,10 @@ const ProfilePage = ({ playTrack, openLoginModal }) => {
                   <td className="text-center">{index + 1}</td>
                   <td>
                     <img 
-                      src={track.CoverArt ? 
-                        `http://localhost:5001/${track.CoverArt.replace(/^\/+/, '')}` : 
-                        'https://placehold.co/50x50?text=Track'
-                      } 
-                      alt={track.Title}
+                      src={formatImageUrl(track.CoverArt, 'track')}
+                      alt={track.Title || 'Track'}
                       style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }}
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = 'https://placehold.co/50x50?text=Track';
-                      }}
+                      onError={(e) => handleImageError(e, 'track')}
                     />
                   </td>
                   <td>{track.Title}</td>
@@ -510,8 +496,8 @@ const ProfilePage = ({ playTrack, openLoginModal }) => {
     }
 
     const handlePlayAlbum = (album) => {
-      // Navigate to album page which will handle playing the album
-      navigate(`/albums/${album.AlbumID}`);
+      // Navigate to album page with autoplay flag to start playing immediately
+      navigate(`/albums/${album.AlbumID}?autoplay=true`);
     };
 
     return (
@@ -608,16 +594,10 @@ const ProfilePage = ({ playTrack, openLoginModal }) => {
                   <td className="text-center">{index + 1}</td>
                   <td>
                     <img 
-                      src={track.CoverArt ? 
-                        `http://localhost:5001/${track.CoverArt.replace(/^\/+/, '')}` : 
-                        'https://placehold.co/50x50?text=Track'
-                      } 
-                      alt={track.Title}
+                      src={formatImageUrl(track.CoverArt, 'track')}
+                      alt={track.Title || 'Track'}
                       style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }}
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = 'https://placehold.co/50x50?text=Track';
-                      }}
+                      onError={(e) => handleImageError(e, 'track')}
                     />
                   </td>
                   <td>{track.Title}</td>
@@ -659,18 +639,8 @@ const ProfilePage = ({ playTrack, openLoginModal }) => {
   };
 
   // Update the getSafeImageUrl function to properly handle internal vs external URLs
-  const getSafeImageUrl = (imagePath) => {
-    if (!imagePath) return 'https://placehold.co/300x300?text=Image';
-    
-    // If it's already a full URL, return it as is
-    if (imagePath.startsWith('http')) return imagePath;
-    
-    // For local paths from the server, ensure they have the proper base URL
-    // Clean up any redundant slashes
-    const cleanPath = imagePath.replace(/^\/+/, '');
-    
-    // Return a properly formed URL to the server
-    return `http://localhost:5001/${cleanPath}`;
+  const getSafeImageUrl = (imagePath, type = 'artist') => {
+    return formatImageUrl(imagePath, type);
   };
 
   // Show loading state
@@ -739,7 +709,7 @@ const ProfilePage = ({ playTrack, openLoginModal }) => {
                 <img
                   src={profileData.ProfileImage 
                     ? getSafeImageUrl(profileData.ProfileImage) 
-                    : 'https://placehold.co/150x150?text=User'}
+                    : 'https://upload.wikimedia.org/wikipedia/commons/8/89/Portrait_Placeholder.png'}
                   alt={profileData.Username}
                   className="rounded-circle border border-3 border-white"
                   style={{ 
@@ -750,7 +720,7 @@ const ProfilePage = ({ playTrack, openLoginModal }) => {
                   }}
                   onError={(e) => {
                     e.target.onerror = null;
-                    e.target.src = 'https://placehold.co/150x150?text=User';
+                    e.target.src = 'https://upload.wikimedia.org/wikipedia/commons/8/89/Portrait_Placeholder.png';
                   }}
                 />
                 {isOwnProfile && (

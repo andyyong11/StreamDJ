@@ -1,27 +1,33 @@
 import axios from 'axios';
+import { API_BASE_URL, DEFAULT_TIMEOUT } from '../config/apiConfig';
 
 // Create a simpler axios instance with proper defaults
 const instance = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || '/',
-  timeout: 10000,
+  baseURL: API_BASE_URL, // Using relative URL to avoid CORS
+  timeout: DEFAULT_TIMEOUT,
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  // Add CORS support
+  withCredentials: true,
+  // Add max content size for request headers
+  maxContentLength: 2000000, // 2MB
+  maxBodyLength: 2000000, // 2MB
 });
 
 // Request cache to prevent duplicate requests
 const requestCache = new Map();
 
-// Cache timeout in milliseconds (10 minutes - increased from 5)
-const CACHE_TIMEOUT = 10 * 60 * 1000;
+// Cache timeout in milliseconds (15 minutes - increased from 10)
+const CACHE_TIMEOUT = 15 * 60 * 1000;
 
 // Rate limiting parameters
 const MAX_RETRIES = 3;
-const RETRY_DELAY_MS = 2000; // Increased from 1000ms to 2000ms (2 seconds)
+const RETRY_DELAY_MS = 5000; // Increased from 3000ms to 5000ms (5 seconds)
 const RATE_LIMIT_STATUS = 429;
 
 // Circuit breaker parameters
-const CIRCUIT_OPEN_DURATION = 5000; // 5 seconds
+const CIRCUIT_OPEN_DURATION = 60000; // Increased from 30 seconds to 60 seconds
 const circuitBreakers = new Map();
 
 // Pending requests queue to prevent duplicate in-flight requests
@@ -39,13 +45,13 @@ const getCacheKey = (method, url, params, data) => {
 
 // Helper function to add "jitter" to delay times to prevent request stampedes
 const getJitter = (delay) => {
-  // Add random jitter of +/- 20% to delay time
-  const jitterFactor = 0.8 + (Math.random() * 0.4); // 0.8 to 1.2
+  // Add random jitter of +/- 50% to delay time (increased from 30%)
+  const jitterFactor = 0.5 + Math.random(); // 0.5 to 1.5
   return Math.floor(delay * jitterFactor);
 };
 
 // Delay function for retry logic
-const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, getJitter(ms)));
 
 // Check if a cached response is still valid
 const isCacheValid = (timestamp) => {
@@ -73,11 +79,64 @@ const openCircuitBreaker = (url) => {
   console.warn(`Circuit breaker opened for ${pattern} until ${new Date(openUntil).toISOString()}`);
 };
 
+// Group similar requests to avoid hammering the same endpoints
+const activeEndpoints = new Set();
+const endpointQueue = new Map();
+
+// Process queued requests for an endpoint
+const processEndpointQueue = async (endpoint) => {
+  if (!endpointQueue.has(endpoint)) return;
+  
+  const queue = endpointQueue.get(endpoint);
+  if (queue.length === 0) {
+    endpointQueue.delete(endpoint);
+    activeEndpoints.delete(endpoint);
+    return;
+  }
+  
+  const { config, resolve, reject } = queue.shift();
+  
+  try {
+    const response = await instance(config);
+    resolve(response);
+  } catch (error) {
+    reject(error);
+  } finally {
+    // Wait a short period before processing the next request to this endpoint
+    setTimeout(() => {
+      processEndpointQueue(endpoint);
+    }, getJitter(300)); // ~300ms between requests to same endpoint
+  }
+};
+
+// Queue a request for a specific endpoint
+const queueRequest = (endpoint, config) => {
+  return new Promise((resolve, reject) => {
+    if (!endpointQueue.has(endpoint)) {
+      endpointQueue.set(endpoint, []);
+    }
+    
+    endpointQueue.get(endpoint).push({ config, resolve, reject });
+    
+    if (!activeEndpoints.has(endpoint)) {
+      activeEndpoints.add(endpoint);
+      processEndpointQueue(endpoint);
+    }
+  });
+};
+
 // Create a safe request function
 const safeRequest = async (config, retryCount = 0) => {
   try {
     // Clone the config to avoid mutation issues
     const safeConfig = { ...config };
+    
+    // Debug logging
+    console.log('Making API request:', {
+      url: safeConfig.url,
+      method: safeConfig.method || 'GET',
+      hasData: !!safeConfig.data
+    });
     
     // Ensure method is always defined and uppercase
     safeConfig.method = (safeConfig.method || 'GET').toUpperCase();
@@ -89,6 +148,29 @@ const safeRequest = async (config, retryCount = 0) => {
         ...safeConfig.headers,
         Authorization: `Bearer ${token}`
       };
+    }
+
+    // Fix endpoint URLs - ensure they have the /api prefix if needed
+    if (safeConfig.url && !safeConfig.url.startsWith('/api') && 
+        !safeConfig.url.startsWith('http') && 
+        !safeConfig.url.startsWith('/uploads')) {
+      const oldUrl = safeConfig.url;
+      safeConfig.url = `/api${safeConfig.url.startsWith('/') ? '' : '/'}${safeConfig.url}`;
+      console.log(`Rewriting URL: ${oldUrl} -> ${safeConfig.url}`);
+    }
+    
+    // Remove localhost prefix if it's still present in any URL
+    if (safeConfig.url && safeConfig.url.includes('http://localhost:5001')) {
+      const oldUrl = safeConfig.url;
+      safeConfig.url = safeConfig.url.replace('http://localhost:5001', '');
+      console.log(`Removing localhost prefix: ${oldUrl} -> ${safeConfig.url}`);
+    }
+    
+    // Ensure URLs don't have double /api prefixes
+    if (safeConfig.url && safeConfig.url.includes('/api/api/')) {
+      const oldUrl = safeConfig.url;
+      safeConfig.url = safeConfig.url.replace('/api/api/', '/api/');
+      console.log(`Fixed double API prefix: ${oldUrl} -> ${safeConfig.url}`);
     }
     
     // Generate request key
@@ -139,8 +221,11 @@ const safeRequest = async (config, retryCount = 0) => {
       // Create a promise for this request and store it
       const requestPromise = (async () => {
         try {
-          // Make the request
-          const response = await instance(safeConfig);
+          // Extract endpoint pattern for queue management
+          const endpoint = safeConfig.url.split('?')[0];
+          
+          // Make the request through the queue system
+          const response = await queueRequest(endpoint, safeConfig);
           
           // Cache the response
           requestCache.set(requestKey, {
@@ -171,8 +256,9 @@ const safeRequest = async (config, retryCount = 0) => {
       return requestPromise;
     }
     
-    // For non-GET requests, just make the request
-    return await instance(safeConfig);
+    // For non-GET requests, just make the request (still using queue for rate control)
+    const endpoint = safeConfig.url.split('?')[0];
+    return await queueRequest(endpoint, safeConfig);
     
   } catch (error) {
     // Handle rate limiting with exponential backoff
