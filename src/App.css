@@ -159,3 +159,22 @@
   display: none !important;
 }
 
+.navbar .nav-link {
+  color: white !important;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.navbar .nav-link:hover {
+  color: #1db954 !important;
+}
+
+input.form-control::placeholder {
+  color: #888;
+  font-size: 0.9rem;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+

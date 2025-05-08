@@ -72,8 +72,8 @@ const HomePage = ({ onTrackSelect }) => {
           <Carousel.Caption>
             <h3>Welcome to StreamDJ</h3>
             <p>Your ultimate music streaming platform for DJs and music lovers.</p>
-            <Button variant="primary" className="me-2">Start Listening</Button>
-            <Button variant="outline-light">Explore</Button>
+            <Button variant="primary" className="me-2" as={Link} to="/library">Start Listening</Button>
+            <Button variant="outline-light" as={Link} to="/discover">Explore</Button>
           </Carousel.Caption>
         </Carousel.Item>
         <Carousel.Item>
@@ -86,7 +86,7 @@ const HomePage = ({ onTrackSelect }) => {
           <Carousel.Caption>
             <h3>Live DJ Sessions</h3>
             <p>Join live streams from top DJs around the world.</p>
-            <Button variant="primary">Join Now</Button>
+            <Button variant="primary" as={Link} to="/liveStreams">Join Now</Button>
           </Carousel.Caption>
         </Carousel.Item>
       </Carousel>
@@ -218,7 +218,7 @@ const HomePage = ({ onTrackSelect }) => {
           ))}
         </Row>
         <div className="text-center mt-3">
-          <Button variant="outline-primary" as={Link} to="/live">View All Live Streams</Button>
+          <Button variant="outline-primary" as={Link} to="/liveStreams">View All Live Streams</Button>
         </div>
       </section>
 
