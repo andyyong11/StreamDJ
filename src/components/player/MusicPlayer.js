@@ -388,39 +388,48 @@ const MusicPlayer = ({
           track={track}
           userId={user?.id}
         />
-        
+                
         {showPlaylist && (
-          <Row className="mt-2">
-            <Col>
-              <div className="bg-dark border border-secondary rounded p-2" style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                <h6 className="mb-2">Now Playing</h6>
-                <ul className="list-unstyled">
-                  {currentPlaylist.map((t, idx) => (
-                    <li 
-                      key={t.TrackID || idx} 
-                      className={`d-flex align-items-center py-1 ${t.TrackID === track.TrackID ? 'text-success' : ''}`}
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => {
-                        if (onNext && currentPlaylist.indexOf(t) > currentPlaylist.indexOf(track)) {
-                          for (let i = currentPlaylist.indexOf(track); i < currentPlaylist.indexOf(t); i++) {
-                            onNext();
-                          }
-                        } else if (onPrevious && currentPlaylist.indexOf(t) < currentPlaylist.indexOf(track)) {
-                          for (let i = currentPlaylist.indexOf(track); i > currentPlaylist.indexOf(t); i--) {
-                            onPrevious();
-                          }
-                        }
-                      }}
-                    >
-                      <span className="me-2">{idx + 1}.</span>
-                      <span className="text-truncate">{t.Title} - {t.Artist || t.ArtistName || 'Unknown Artist'}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </Col>
-          </Row>
+          <div 
+            className="position-fixed bottom-0 end-0 m-3 bg-dark border border-secondary rounded shadow"
+            style={{ width: '300px', maxHeight: '350px', overflowY: 'auto', zIndex: 1050 }}
+          >
+            <div className="d-flex justify-content-between align-items-center p-2 border-bottom border-secondary">
+              <h6 className="mb-0 text-white">Now Playing</h6>
+              <button
+                className="btn btn-sm btn-outline-light"
+                onClick={() => setShowPlaylist(false)}
+                title="Close"
+              >
+                ×
+              </button>
+            </div>
+            <ul className="list-unstyled m-0 p-2">
+              {currentPlaylist.map((t, idx) => (
+                <li 
+                  key={t.TrackID || idx} 
+                  className={`d-flex align-items-center py-1 ${t.TrackID === track.TrackID ? 'text-success' : 'text-white'}`}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => {
+                    if (onNext && currentPlaylist.indexOf(t) > currentPlaylist.indexOf(track)) {
+                      for (let i = currentPlaylist.indexOf(track); i < currentPlaylist.indexOf(t); i++) {
+                        onNext();
+                      }
+                    } else if (onPrevious && currentPlaylist.indexOf(t) < currentPlaylist.indexOf(track)) {
+                      for (let i = currentPlaylist.indexOf(track); i > currentPlaylist.indexOf(t); i--) {
+                        onPrevious();
+                      }
+                    }
+                  }}
+                >
+                  <span className="me-2">{idx + 1}.</span>
+                  <span className="text-truncate">{t.Title} - {t.Artist || t.ArtistName || 'Unknown Artist'}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
+
       </Container>
     </div>
   );
