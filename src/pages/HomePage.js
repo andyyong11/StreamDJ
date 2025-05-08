@@ -260,7 +260,7 @@ useEffect(() => {
           <Carousel.Caption>
             <h1>Welcome to StreamDJ</h1>
             <p>Your ultimate music streaming platform for DJs and music lovers.</p>
-            <Button variant="primary" className="me-2" as={Link} to="/discover">Start Listening</Button>
+            <Button variant="primary" className="me-2" as={Link} to="/library">Start Listening</Button>
             <Button variant="outline-light" as={Link} to="/discover">Explore</Button>
           </Carousel.Caption>
         </Carousel.Item>
@@ -274,6 +274,7 @@ useEffect(() => {
           <Carousel.Caption>
             <h1>Live DJ Sessions</h1>
             <p>Join live streams from top DJs around the world.</p>
+            <Button variant="primary" as={Link} to="/liveStreams">Join Now</Button>
             <Button variant="primary" as={Link} to="/liveStreams">Join Now</Button>
           </Carousel.Caption>
         </Carousel.Item>
@@ -357,49 +358,44 @@ useEffect(() => {
   </section>
 )}
 
-{user && !loadingPersonalized && personalizedPlaylists.length > 0 && (
-  <section className="mb-5">
-    <h2 className="mb-4">Playlists You Might Like</h2>
-    <Row>
-      {personalizedPlaylists.map((playlist) => (
-        <Col md={3} key={playlist.PlaylistID} className="mb-4">
-          <Card className="h-100 shadow-sm">
-            <Card.Img variant="top" src={playlist.CoverURL || '/default-cover.jpg'} />
-            <Card.Body>
-              <Card.Title>{playlist.Name}</Card.Title>
-              <Card.Text>
-                {playlist.Description || 'No description'}<br />
-                {playlist.total_likes} likes • {playlist.total_plays} plays
-              </Card.Text>
-              <Button variant="success" size="sm">
-                <FaPlay className="me-1" /> Play
-              </Button>
-            </Card.Body>
-          </Card>
-        </Col>
-      ))}
-    </Row>
-  </section>
-)}
-
       {/* Live Streams */}
       <section className="mb-5">
-        <Container>
-          <h2 className="mb-4">Live Now</h2>
-          <Row>
-            {liveStreams.map(stream => (
-              <Col md={4} key={stream.LiveStreamID} className="mb-4">
-                <LiveStreamCard 
-                  stream={stream} 
-                  onJoinClick={() => handleJoinStream(stream.LiveStreamID)} 
-                />
-              </Col>
-            ))}
-          </Row>
-          <div className="text-center mt-3">
-            <Button variant="outline-primary" as={Link} to="/liveStreams">View All Live Streams</Button>
-          </div>
-        </Container>
+        <h2 className="mb-4">Live Now</h2>
+        <Row>
+          {liveStreams.map(stream => (
+            <Col md={4} key={stream.id} className="mb-4">
+              <Card className="h-100 shadow-sm">
+                <div className="position-relative">
+                  <Card.Img variant="top" src={stream.image} />
+                  <Badge 
+                    bg="danger" 
+                    className="position-absolute top-0 start-0 m-2"
+                  >
+                    LIVE
+                  </Badge>
+                  <Badge 
+                    bg="dark" 
+                    className="position-absolute bottom-0 end-0 m-2"
+                  >
+                    <FaHeadphones className="me-1" /> {stream.listeners.toLocaleString()}
+                  </Badge>
+                </div>
+                <Card.Body>
+                  <Card.Title>{stream.title}</Card.Title>
+                  <Card.Text>
+                    By {stream.dj}
+                  </Card.Text>
+                  <Button variant="primary" className="w-100">
+                    Join Stream
+                  </Button>
+                </Card.Body>
+              </Card>
+            </Col>
+          ))}
+        </Row>
+        <div className="text-center mt-3">
+          <Button variant="outline-primary" as={Link} to="/liveStreams">View All Live Streams</Button>
+        </div>
       </section>
 
       {/* Top Artists */}

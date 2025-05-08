@@ -76,8 +76,27 @@ if (process.env.NODE_ENV !== 'production') {
   }));
 }
 
-// Import the library routes that isn't already imported
-const libraryRoutes = require('./src/routes/libraryRoutes');
+// Import routes
+const authRoutes = require('./src/routes/authRoutes');
+const userRoutes = require('./src/routes/userRoutes');
+const playlistRoutes = require('./src/routes/playlistRoutes');
+const publicPlaylistRoutes = require('./src/routes/publicPlaylistRoutes');
+const trackRoutes = require('./src/routes/trackRoutes');
+const albumRoutes = require('./src/routes/albumRoutes');
+const uploadRoutes = require('./src/routes/uploadRoutes'); 
+
+const trendingRoutes = require('./src/routes/trendingRoutes');
+const recommendRoutes = require('./src/routes/recommendRoutes');
+
+const streamRoutes = require('./src/routes/streamRoutes');
+
+
+// Import middleware
+const authenticateToken = require('./src/middleware/authenticateToken');
+
+// Import services
+const StreamKeyService = require('./src/services/streamKeyService');
+const nms = require('./src/services/streamServer');
 
 // Creating express object
 const app = express();
@@ -120,44 +139,19 @@ app.use('/api/albums', standardLimiter);
 app.use('/api/playlists', standardLimiter);
 app.use('/api/streams', standardLimiter);
 
-// Static file serving - updated for better path handling
-app.use('/uploads', (req, res, next) => {
-  // Decode URL components to fix encoding issues
-  req.url = decodeURIComponent(req.url);
-  next();
-}, express.static(UPLOADS_PATH));
+app.use('/api', uploadRoutes);
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-app.use('/uploads/album_covers', (req, res, next) => {
-  req.url = decodeURIComponent(req.url);
-  next();
-}, express.static(ALBUM_COVERS_PATH));
+// Middleware
+app.use(bodyParser.json());
 
-app.use('/uploads/covers', (req, res, next) => {
-  req.url = decodeURIComponent(req.url);
-  next();
-}, express.static(COVERS_PATH));
+// Enable ETag caching for improved performance and reduced requests
+app.set('etag', 'strong');
 
-app.use('/uploads/profiles', (req, res, next) => {
-  req.url = decodeURIComponent(req.url);
-  next();
-}, express.static(PROFILES_PATH));
-
-app.use('/uploads/banners', (req, res, next) => {
-  req.url = decodeURIComponent(req.url);
-  next();
-}, express.static(BANNERS_PATH));
-
-// Add 404 handler for image files to debug missing files
-app.use('/uploads', (req, res, next) => {
-  const extension = path.extname(req.url).toLowerCase();
-  const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'];
-  
-  if (imageExtensions.includes(extension)) {
-    logger.info(`Image not found: ${req.method} ${req.originalUrl} -> ${req.url}`);
-    return res.status(404).send('Image not found');
-  }
-  next();
-});
+// Serve uploaded audio and cover images
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads/album_covers', express.static(path.join(__dirname, 'uploads/album_covers')));
+app.use('/uploads/covers', express.static(path.join(__dirname, 'uploads/covers')));
 
 // Test database connection route
 app.get('/test-db', async (req, res) => {
