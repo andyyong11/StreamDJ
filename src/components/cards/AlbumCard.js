@@ -1,142 +1,130 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Card, Button } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
-import { FaPlay, FaMusic, FaHeart } from 'react-icons/fa';
-import { useAuth } from '../../context/AuthContext';
+import { FaPlay, FaHeart, FaMusic } from 'react-icons/fa';
+import { Link } from 'react-router-dom';
+import CoverImage from '../ui/CoverImage';
 import '../../styles/PlayButton.css';
-import api from '../../services/api';
 
-const AlbumCard = ({ album, onPlayClick }) => {
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const [isLiked, setIsLiked] = useState(false);
-  const [isLikeLoading, setIsLikeLoading] = useState(false);
-
-  // Check if the album is liked when component mounts
-  useEffect(() => {
-    const checkLikeStatus = async () => {
-      if (!user || !album || !album.AlbumID) return;
-      
-      try {
-        // Use API service instead of direct fetch
-        const response = await api.get(
-          `/api/albums/${album.AlbumID}/like-status`, 
-          { params: { userId: user.id } }
-        );
-        
-        if (response && response.data) {
-          setIsLiked(response.data.liked);
-        }
-      } catch (error) {
-        console.error('Error checking album like status:', error);
-      }
-    };
-    
-    checkLikeStatus();
-  }, [album, user]);
-
-  const handleLikeToggle = async (e) => {
-    e.stopPropagation(); // Prevent card click
-    
-    if (!user || !album || !album.AlbumID) return;
-    
-    setIsLikeLoading(true);
-    try {
-      const endpoint = isLiked ? 'unlike' : 'like';
-      
-      // Use API service instead of direct fetch
-      const response = await api.post(
-        `/api/albums/${album.AlbumID}/${endpoint}`, 
-        { userId: user.id }
-      );
-      
-      if (response) {
-        setIsLiked(!isLiked);
-      }
-    } catch (error) {
-      console.error(`Error ${isLiked ? 'unliking' : 'liking'} album:`, error);
-    } finally {
-      setIsLikeLoading(false);
-    }
+const AlbumCard = ({ album, onPlayClick, onLikeClick, isLiked = false, showLikeButton = true }) => {
+  // Handle link click separately to avoid triggering card click
+  const handleArtistClick = (e) => {
+    e.stopPropagation();
   };
 
-  const handleCardClick = () => {
-    navigate(`/albums/${album.AlbumID}`);
-  };
-
+  // Handle play button click
   const handlePlayClick = (e) => {
-    e.stopPropagation(); // Prevent card click event
+    e.stopPropagation(); // Prevent card navigation
     if (onPlayClick) {
       onPlayClick(album);
-    } else {
-      navigate(`/albums/${album.AlbumID}?autoplay=true`);
     }
   };
 
-  // Format track count
-  const formatTrackCount = (count) => {
-    if (!count && count !== 0) return '0';
-    return count.toString();
+  // Handle like button click
+  const handleLikeClick = (e) => {
+    e.stopPropagation(); // Prevent card navigation
+    
+    // Add debug logging
+    console.log('Album data in like click:', album);
+    
+    // Validate the album ID
+    if (!album || album.AlbumID === undefined) {
+      console.error('Invalid album or missing AlbumID:', album);
+      return;
+    }
+    
+    if (onLikeClick) {
+      // Ensure AlbumID is a number
+      const albumId = typeof album.AlbumID === 'number' ? 
+        album.AlbumID : 
+        parseInt(album.AlbumID, 10);
+        
+      console.log(`Calling onLikeClick with albumId: ${albumId}`);
+      onLikeClick(albumId, e);
+    }
   };
 
-  // Default image handling functions
-  const formatImageUrl = (url, type) => {
-    if (!url) return `/images/default-${type}.jpg`;
-    return url;
-  };
-
-  const handleImageError = (e, type) => {
-    e.target.src = `/images/default-${type}.jpg`;
+  // Format release year or date
+  const formatReleaseInfo = () => {
+    if (album.ReleaseDate) {
+      // Check if it's a full date or just a year
+      return album.ReleaseDate.length > 4 
+        ? new Date(album.ReleaseDate).getFullYear() 
+        : album.ReleaseDate;
+    }
+    return album.ReleaseYear || '';
   };
 
   return (
     <Card 
-      className="h-100 shadow-sm"
-      onClick={handleCardClick}
-      style={{ cursor: 'pointer' }}
+      className="h-100 border" 
+      as={Link} 
+      to={`/albums/${album.AlbumID}`}
+      style={{ 
+        textDecoration: 'none',
+        color: 'inherit',
+        borderRadius: '8px',
+        overflow: 'hidden'
+      }}
     >
-      <div className="position-relative">
-        <Card.Img 
-          variant="top" 
-          src={formatImageUrl(album.CoverArtURL, 'album')}
+      <div className="card-img-container">
+        <CoverImage
+          src={album.CoverArt || album.CoverArtURL}
           alt={album.Title || 'Album'}
-          style={{ height: '180px', objectFit: 'cover' }}
-          onError={(e) => handleImageError(e, 'album')}
+          type="album"
+          className="cover-image"
+          rounded="sm"
         />
-        <Button 
-          variant="success" 
-          className="play-button"
+        <Button
+          variant="success"
+          className="play-button-circle"
           onClick={handlePlayClick}
+          aria-label="Play album"
         >
-          <FaPlay />
+          <FaPlay size={18} />
         </Button>
-        {user && (
+        
+        {showLikeButton && onLikeClick && (
           <Button
-            variant={isLiked ? "danger" : "outline-light"}
-            className="position-absolute top-0 end-0 m-2"
-            size="sm"
-            onClick={handleLikeToggle}
-            disabled={isLikeLoading}
+            variant={isLiked ? "danger" : "light"}
+            className={`like-button-circle ${isLiked ? 'liked' : ''}`}
+            onClick={handleLikeClick}
+            aria-label={isLiked ? "Unlike album" : "Like album"}
           >
-            <FaHeart />
+            <FaHeart size={16} />
           </Button>
         )}
-        {album.TrackCount > 0 && (
-          <span className="position-absolute bottom-0 start-0 m-2 badge bg-dark text-white d-flex align-items-center">
-            <FaMusic className="me-1" />
-            {formatTrackCount(album.TrackCount)} tracks
-          </span>
-        )}
       </div>
-      <Card.Body>
-        <Card.Title className="text-truncate">{album.Title || 'Untitled Album'}</Card.Title>
-        <Card.Text className="text-muted small">
-          By {album.Artist || 'Unknown Artist'}
-          {album.ReleaseYear && ` • ${album.ReleaseYear}`}
-        </Card.Text>
+      <Card.Body className="p-3">
+        <Card.Title className="mb-1 text-truncate fs-6 fw-bold">
+          {album.Title || 'Untitled Album'}
+        </Card.Title>
+        <div className="text-muted small">
+          By{' '}
+          {album.UserID ? (
+            <Link 
+              to={`/profile/${album.UserID}`} 
+              className="text-decoration-none text-muted"
+              onClick={handleArtistClick}
+            >
+              {album.Artist || album.ArtistName || album.Username || 'Unknown Artist'}
+            </Link>
+          ) : (
+            <span>{album.Artist || album.ArtistName || album.Username || 'Unknown Artist'}</span>
+          )}
+          
+          <div className="d-flex justify-content-between align-items-center mt-1">
+            <span className="small text-muted">
+              <FaMusic className="me-1" style={{ fontSize: '0.7rem' }} /> 
+              {album.TrackCount || 0} tracks
+            </span>
+            {(album.ReleaseDate || album.ReleaseYear) && (
+              <span className="small text-muted">{formatReleaseInfo()}</span>
+            )}
+          </div>
+        </div>
       </Card.Body>
     </Card>
   );
 };
 
-export default AlbumCard; 
+export default AlbumCard;

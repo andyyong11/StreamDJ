@@ -1,21 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { Card, Button } from 'react-bootstrap';
-import { FaPlay, FaHeadphones, FaUser, FaHeart } from 'react-icons/fa';
+import { FaPlay, FaHeart } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import '../../styles/PlayButton.css';
 import api from '../../services/api';
+import CoverImage from '../ui/CoverImage';
 
-const TrackCard = ({ track, onTrackSelect }) => {
+const TrackCard = ({ track, onTrackSelect, isLiked: propIsLiked, onLikeClick }) => {
   const { user } = useAuth();
-  const [isLiked, setIsLiked] = useState(false);
+  const [isLiked, setIsLiked] = useState(propIsLiked || false);
   const [isLikeLoading, setIsLikeLoading] = useState(false);
 
-  // Check if the track is liked by current user on component mount
+  // Update local state if prop changes
   useEffect(() => {
+    if (propIsLiked !== undefined) {
+      setIsLiked(propIsLiked);
+    }
+  }, [propIsLiked]);
+
+  // Check if the track is liked by current user on component mount (if not provided via props)
+  useEffect(() => {
+    // Skip if isLiked is provided via props or if user/track is missing
+    if (propIsLiked !== undefined || !user || !track || !track.TrackID) return;
+    
     const checkLikeStatus = async () => {
-      if (!user || !track || !track.TrackID) return;
-      
       try {
         // Use API service instead of direct fetch
         const response = await api.get(
@@ -32,10 +41,16 @@ const TrackCard = ({ track, onTrackSelect }) => {
     };
     
     checkLikeStatus();
-  }, [track, user]);
+  }, [track, user, propIsLiked]);
 
   const handleLikeToggle = async (e) => {
     e.stopPropagation(); // Prevent card click
+    
+    // If a custom like handler is provided, use that instead
+    if (onLikeClick) {
+      onLikeClick(track);
+      return;
+    }
     
     if (!user || !track || !track.TrackID) return;
     
@@ -72,109 +87,78 @@ const TrackCard = ({ track, onTrackSelect }) => {
     }
   };
 
-  // Format play count
-  const formatPlayCount = (count) => {
-    if (!count && count !== 0) return '0';
-    
-    const numCount = typeof count === 'string' ? parseInt(count, 10) : count;
-    
-    if (isNaN(numCount)) return '0';
-    
-    if (numCount >= 1000000) {
-      return `${(numCount / 1000000).toFixed(1)}M`;
-    } else if (numCount >= 1000) {
-      return `${(numCount / 1000).toFixed(1)}K`;
-    }
-    return numCount.toLocaleString();
-  };
-
   // Handle username click to prevent card click
   const handleUsernameClick = (e) => {
     e.stopPropagation();
   };
 
-  // Default image handling functions
-  const formatImageUrl = (url, type) => {
-    if (!url) return `/images/default-${type}.jpg`;
-    return url;
+  // Get artist information to display
+  const getArtistDisplay = () => {
+    let artistText = track.Username || track.Artist || 'Unknown Artist';
+    
+    if (track.Artist && track.Artist !== track.Username) {
+      artistText = track.Artist;
+    }
+    
+    return artistText;
   };
-
-  const handleImageError = (e, type) => {
-    e.target.src = `/images/default-${type}.jpg`;
-  };
-
+  
   return (
     <Card 
-      className="h-100 shadow-sm"
+      className="h-100 border"
       onClick={handleCardClick}
-      style={{ cursor: 'pointer' }}
+      style={{ cursor: 'pointer', borderRadius: '8px', overflow: 'hidden' }}
     >
-      <div className="position-relative">
-        <Card.Img 
-          variant="top" 
-          src={formatImageUrl(track.CoverArt, 'track')}
-          alt={track.Title || 'Track'}
-          style={{ height: '180px', objectFit: 'cover' }}
-          onError={(e) => handleImageError(e, 'track')}
+      <div className="card-img-container">
+        <CoverImage 
+          src={track.CoverArt}
+          alt={track.Title || 'Track'} 
+          type="track"
+          className="cover-image"
+          rounded="sm"
         />
+        <Button
+          variant={isLiked ? "danger" : "light"}
+          className={`like-button-circle ${isLiked ? 'liked' : ''}`}
+          onClick={handleLikeToggle}
+          disabled={isLikeLoading}
+          aria-label={isLiked ? "Unlike track" : "Like track"}
+        >
+          <FaHeart size={16} />
+        </Button>
+        
         <Button 
           variant="success"
-          className="play-button"
+          className="play-button-circle"
           onClick={handlePlayClick}
+          aria-label="Play track"
         >
-          <FaPlay />
+          <FaPlay size={18} />
         </Button>
-        {user && (
-          <Button
-            variant={isLiked ? "danger" : "outline-light"}
-            className="position-absolute top-0 end-0 m-2"
-            size="sm"
-            onClick={handleLikeToggle}
-            disabled={isLikeLoading}
-          >
-            <FaHeart />
-          </Button>
-        )}
-        {track.PlayCount > 0 && (
-          <span className="position-absolute bottom-0 start-0 m-2 badge bg-dark text-white d-flex align-items-center">
-            <FaHeadphones className="me-1" />
-            {formatPlayCount(track.PlayCount)}
-          </span>
-        )}
       </div>
-      <Card.Body>
-        <Card.Title className="text-truncate">{track.Title || 'Untitled Track'}</Card.Title>
-        <div className="d-flex align-items-center">
-          <FaUser className="text-muted me-1" style={{ fontSize: '0.8rem' }} />
+      <Card.Body className="p-3">
+        <Card.Title className="mb-1 text-truncate fs-6 fw-bold">
+          {track.Title || 'Untitled Track'}
+        </Card.Title>
+        <div className="text-muted small">
           {track.UserID ? (
             <Link 
               to={`/profile/${track.UserID}`} 
-              className="text-muted mb-0 text-decoration-none"
+              className="text-decoration-none text-muted"
               onClick={handleUsernameClick}
-              style={{ 
-                ':hover': { textDecoration: 'underline' } 
-              }}
             >
-              {track.Username || 'Unknown User'}
+              {getArtistDisplay()}
             </Link>
           ) : (
-            <Card.Text className="text-muted mb-0">
-              {track.Username || 'Unknown User'}
-            </Card.Text>
+            <span>{getArtistDisplay()}</span>
+          )}
+          {track.Artist && track.Artist !== track.Username && track.Username && (
+            <span className="d-block small text-muted">{track.Username}</span>
           )}
         </div>
-        
-        {/* Show Artist information if it's different from Username */}
-        {(track.Artist && track.Artist !== track.Username) && (
-          <div className="d-flex align-items-center mt-1">
-            <small className="text-muted">
-              {track.Artist}
-            </small>
-          </div>
-        )}
       </Card.Body>
     </Card>
   );
 };
 
-export default TrackCard; 
+export default TrackCard;

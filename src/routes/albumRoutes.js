@@ -95,7 +95,14 @@ router.get('/popular', async (req, res) => {
     
     const popularAlbums = await req.app.locals.db.any(query, [limit]);
     
-    res.json(popularAlbums);
+    // Ensure all albums have consistent URL properties
+    const processedAlbums = popularAlbums.map(album => ({
+      ...album,
+      // Make sure we have CoverArt property for consistency
+      CoverArt: album.CoverArtURL || null
+    }));
+    
+    res.json(processedAlbums);
   } catch (error) {
     console.error('Error fetching popular albums:', error);
     console.warn('Database query failed, returning mock popular albums');
@@ -477,54 +484,101 @@ router.get('/search/:query', async (req, res) => {
   }
 });
 
-// Like an album
-router.post('/:id/like', async (req, res) => {
-  const { userId } = req.body;
-  const albumId = parseInt(req.params.id);
-
+// Check if an album is liked by a user
+router.get('/:id/like-status', async (req, res) => {
   try {
-    await req.app.locals.db.none(
-      `INSERT INTO "AlbumLikes" ("UserID", "AlbumID") VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-      [userId, albumId]
-    );
-    res.sendStatus(200);
-  } catch (err) {
-    console.error('Error liking album:', err);
-    res.status(500).json({ error: 'Failed to like album.' });
+    const { userId } = req.query;
+    const albumId = req.params.id;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+    
+    // Check if the album exists
+    const album = await albumModel.getById(albumId);
+    if (!album) {
+      return res.status(404).json({ error: 'Album not found' });
+    }
+    
+    // Check if the user has liked the album
+    const likeQuery = `
+      SELECT * FROM "AlbumLikes" 
+      WHERE "UserID" = $1 AND "AlbumID" = $2
+    `;
+    
+    const like = await req.app.locals.db.oneOrNone(likeQuery, [userId, albumId]);
+    
+    res.json({ liked: !!like });
+  } catch (error) {
+    console.error('Error checking album like status:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Like an album
+router.post('/:id/like', authenticateToken, async (req, res) => {
+  try {
+    const albumId = req.params.id;
+    const userId = req.user.id;
+    
+    // Check if the album exists
+    const album = await albumModel.getById(albumId);
+    if (!album) {
+      return res.status(404).json({ error: 'Album not found' });
+    }
+    
+    // Check if already liked
+    const checkQuery = `
+      SELECT * FROM "AlbumLikes" 
+      WHERE "UserID" = $1 AND "AlbumID" = $2
+    `;
+    
+    const existingLike = await req.app.locals.db.oneOrNone(checkQuery, [userId, albumId]);
+    
+    if (existingLike) {
+      // Already liked, return success
+      return res.json({ success: true, message: 'Album already liked' });
+    }
+    
+    // Insert new like
+    const insertQuery = `
+      INSERT INTO "AlbumLikes" ("UserID", "AlbumID", "LikedAt")
+      VALUES ($1, $2, CURRENT_TIMESTAMP)
+    `;
+    
+    await req.app.locals.db.none(insertQuery, [userId, albumId]);
+    
+    res.json({ success: true, message: 'Album liked successfully' });
+  } catch (error) {
+    console.error('Error liking album:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
 // Unlike an album
-router.post('/:id/unlike', async (req, res) => {
-  const { userId } = req.body;
-  const albumId = parseInt(req.params.id);
-
+router.post('/:id/unlike', authenticateToken, async (req, res) => {
   try {
-    await req.app.locals.db.none(
-      `DELETE FROM "AlbumLikes" WHERE "UserID" = $1 AND "AlbumID" = $2`,
-      [userId, albumId]
-    );
-    res.sendStatus(200);
-  } catch (err) {
-    console.error('Error unliking album:', err);
-    res.status(500).json({ error: 'Failed to unlike album.' });
-  }
-});
-
-// Get like status for an album
-router.get('/:id/like-status', async (req, res) => {
-  const { userId } = req.query;
-  const albumId = parseInt(req.params.id);
-
-  try {
-    const exists = await req.app.locals.db.oneOrNone(
-      `SELECT 1 FROM "AlbumLikes" WHERE "UserID" = $1 AND "AlbumID" = $2`,
-      [userId, albumId]
-    );
-    res.json({ liked: !!exists });
-  } catch (err) {
-    console.error('Error checking album like status:', err);
-    res.status(500).json({ error: 'Failed to fetch album like status.' });
+    const albumId = req.params.id;
+    const userId = req.user.id;
+    
+    // Check if the album exists
+    const album = await albumModel.getById(albumId);
+    if (!album) {
+      return res.status(404).json({ error: 'Album not found' });
+    }
+    
+    // Delete the like
+    const deleteQuery = `
+      DELETE FROM "AlbumLikes" 
+      WHERE "UserID" = $1 AND "AlbumID" = $2
+    `;
+    
+    await req.app.locals.db.none(deleteQuery, [userId, albumId]);
+    
+    res.json({ success: true, message: 'Album unliked successfully' });
+  } catch (error) {
+    console.error('Error unliking album:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 

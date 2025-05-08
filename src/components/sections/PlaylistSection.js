@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Container, Spinner } from 'react-bootstrap';
-import TrackCard from '../cards/TrackCard';
+import PlaylistCard from '../cards/PlaylistCard';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import Slider from 'react-slick';
-import api from '../../services/api';
-import { API_ENDPOINTS } from '../../config/apiConfig';
 import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 import '../../styles/PlayButton.css';
@@ -34,43 +32,18 @@ const SlickArrowRight = ({ currentSlide, slideCount, ...props }) => (
   </button>
 );
 
-const RecommendedSection = ({ apiUrl, title = "Recommended For You", onTrackSelect, onViewAllClick }) => {
-  const [tracks, setTracks] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const fetchRecommendations = async () => {
-      if (!apiUrl) return;
-      
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Use the api service for consistency
-        const response = await api.get(apiUrl);
-        
-        // Ensure it's an array before setting state
-        if (Array.isArray(response?.data)) {
-          setTracks(response.data);
-        } else {
-          console.warn("Expected array but got:", response?.data);
-          setTracks([]); // fallback to empty to prevent map error
-        }
-      } catch (err) {
-        console.error('Failed to fetch recommendations:', err);
-        setError("Couldn't load recommendations");
-      } finally {
-        setLoading(false);
-      }
-    };
+/**
+ * PlaylistSection - Shows playlists in a slider similar to RecommendedSection
+ */
+const PlaylistSection = ({ title, playlists, loading, onPlaylistClick, onViewAllClick, onLikeClick }) => {
+  // Only render if we have playlists
+  if (!playlists || playlists.length === 0) {
+    return null;
+  }
   
-    fetchRecommendations();
-  }, [apiUrl]);
-
   const settings = {
     dots: true,
-    infinite: tracks.length > 5,
+    infinite: playlists.length > 5,
     speed: 500,
     slidesToShow: 5,
     slidesToScroll: 1,
@@ -85,36 +58,39 @@ const RecommendedSection = ({ apiUrl, title = "Recommended For You", onTrackSele
     ]
   };
 
-  // Only render if we have tracks
-  if (!tracks || tracks.length === 0) {
-    return null;
-  }
-
   if (loading) {
     return (
-      <Container className="recommended-section mb-5">
+      <Container className="playlist-section mb-5">
         <h2 className="mb-4">{title}</h2>
         <div className="text-center py-4">
           <Spinner animation="border" role="status">
-            <span className="visually-hidden">Loading recommendations...</span>
+            <span className="visually-hidden">Loading playlists...</span>
           </Spinner>
         </div>
       </Container>
     );
   }
 
-  if (error) {
-    return null; // Hide section if there's an error
-  }
-
   return (
-    <Container className="recommended-section mb-5">
+    <Container className="playlist-section mb-5">
       <h2 className="mb-4">{title}</h2>
       <div className="position-relative slider-container">
         <Slider {...settings}>
-          {tracks.map(track => (
-            <div key={track.TrackID || track.id} className="px-2">
-              <TrackCard track={track} onTrackSelect={onTrackSelect} />
+          {playlists.map(playlist => (
+            <div key={playlist.PlaylistID || playlist.id} className="px-2">
+              <PlaylistCard 
+                playlist={{
+                  ...playlist,
+                  PlaylistID: playlist.PlaylistID || playlist.id,
+                  Title: playlist.Title || playlist.Name,
+                  TrackCount: playlist.TrackCount || 0,
+                  CreatorName: playlist.CreatorName || playlist.Username || 'Unknown Creator'
+                }} 
+                onPlayClick={() => onPlaylistClick(playlist.PlaylistID || playlist.id)}
+                onLikeClick={onLikeClick ? (e) => onLikeClick(playlist.PlaylistID || playlist.id, e) : undefined}
+                showLikeButton={!!onLikeClick}
+                isLiked={playlist.IsLiked}
+              />
             </div>
           ))}
         </Slider>
@@ -125,7 +101,7 @@ const RecommendedSection = ({ apiUrl, title = "Recommended For You", onTrackSele
             className="btn btn-outline-primary"
             onClick={onViewAllClick}
           >
-            View All Tracks
+            View All Playlists
           </button>
         </div>
       )}
@@ -133,4 +109,4 @@ const RecommendedSection = ({ apiUrl, title = "Recommended For You", onTrackSele
   );
 };
 
-export default RecommendedSection; 
+export default PlaylistSection; 

@@ -157,6 +157,12 @@ app.use('/uploads/banners', (req, res, next) => {
   next();
 }, express.static(BANNERS_PATH));
 
+// Serve static files from the public/images directory
+app.use('/images', (req, res, next) => {
+  req.url = decodeURIComponent(req.url);
+  next();
+}, express.static(path.join(__dirname, 'public/images')));
+
 // Catch-all for missing image files to provide fallback images
 app.use(['*.jpg', '*.jpeg', '*.png', '*.gif', '*.webp', '*.svg'], (req, res) => {
   const extension = path.extname(req.url).toLowerCase();

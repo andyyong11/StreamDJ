@@ -6,9 +6,11 @@ import Slider from 'react-slick';
 import TrendingSection from '../components/sections/TrendingSection';
 import RecommendedSection from '../components/sections/RecommendedSection';
 import AlbumsSection from '../components/sections/AlbumsSection';
+import PlaylistSection from '../components/sections/PlaylistSection';
 import PlaylistCard from '../components/cards/PlaylistCard';
 import LiveStreamCard from '../components/cards/LiveStreamCard';
 import TrackCard from '../components/cards/TrackCard';
+import ProfileImage from '../components/ui/ProfileImage';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { API_ENDPOINTS } from '../config/apiConfig';
@@ -300,6 +302,67 @@ const HomePage = ({ playTrack }) => {
     navigate(`/albums/${albumId}?autoplay=true`);
   };
 
+  // Handle liking a playlist
+  const handleLikePlaylist = async (playlistId, e) => {
+    e.stopPropagation();
+    if (!user) {
+      // Redirect to login or show login modal
+      navigate('/login');
+      return;
+    }
+
+    try {
+      await api.post(`/api/playlists/${playlistId}/like`, { userId: user.id });
+      // Could update UI to show liked status
+    } catch (error) {
+      console.error('Error liking playlist:', error);
+    }
+  };
+
+  // Handle liking an album
+  const handleLikeAlbum = async (albumId, e) => {
+    e.stopPropagation();
+    if (!user) {
+      // Redirect to login or show login modal
+      navigate('/login');
+      return;
+    }
+
+    // Log the album ID and ensure it's a valid value
+    console.log(`Album ID received: ${albumId}, type: ${typeof albumId}`);
+    
+    // Make sure albumId is treated as a number
+    const albumIdNum = parseInt(albumId, 10);
+    if (isNaN(albumIdNum)) {
+      console.error('Invalid album ID:', albumId);
+      return;
+    }
+
+    try {
+      console.log(`Checking like status for album ${albumIdNum}, endpoint: /api/albums/${albumIdNum}/like-status`);
+      // First check the current like status
+      const checkResponse = await api.get(`/api/albums/${albumIdNum}/like-status`, {
+        params: { userId: user.id }
+      });
+      
+      console.log(`Current like status for album ${albumIdNum}:`, checkResponse.data);
+      const isLiked = checkResponse?.data?.liked;
+      const endpoint = isLiked ? 'unlike' : 'like';
+      
+      console.log(`Sending ${endpoint} request for album ${albumIdNum}, endpoint: /api/albums/${albumIdNum}/${endpoint}`);
+      // Perform the like/unlike operation
+      const likeResponse = await api.post(`/api/albums/${albumIdNum}/${endpoint}`, { userId: user.id });
+      console.log(`Album ${endpoint} response:`, likeResponse.data);
+      
+      // UI feedback happens via the AlbumsSection component state
+    } catch (error) {
+      console.error(`Error toggling album like status for album ${albumIdNum}:`, error);
+      console.error('API error details:', error.response?.data || 'No response data');
+      console.error('Error status:', error.response?.status);
+      console.error('Error URL:', error.config?.url);
+    }
+  };
+
   return (
     <div className="pb-5">
       {/* Hero Banner */}
@@ -380,54 +443,38 @@ const HomePage = ({ playTrack }) => {
         onTrackSelect={handlePlayTrack}
       />
 
-{!loadingFeatured && featuredPlaylists.length > 0 && (
-  <section className="mb-5">
-    <Container>
-      <h2 className="mb-4">Featured Playlists</h2>
-      <Row>
-        {featuredPlaylists.map(playlist => (
-          <Col md={3} key={playlist.PlaylistID} className="mb-4">
-            <PlaylistCard 
-              playlist={{
-                ...playlist,
-                Title: playlist.Title || playlist.Name,
-                TrackCount: playlist.TrackCount || 0,
-                CreatedBy: playlist.CreatorName || 'Unknown Creator'
-              }} 
-              onPlayClick={() => handlePlayPlaylist(playlist.PlaylistID)}
-            />
-          </Col>
-        ))}
-      </Row>
-      <div className="text-center mt-3">
-        <Button variant="outline-primary" as={Link} to="/playlists">View All Playlists</Button>
-      </div>
-    </Container>
-  </section>
-)}
+      {/* Popular Albums */}
+      <AlbumsSection
+        title="Popular Albums"
+        apiUrl="/api/albums/popular"
+        limit={4}
+        onAlbumPlay={(album) => handlePlayAlbum(album.AlbumID)}
+        onLikeClick={handleLikeAlbum}
+      />
 
-{user && !loadingPersonalized && personalizedPlaylists.length > 0 && (
-  <section className="mb-5">
-    <Container>
-      <h2 className="mb-4">Playlists You Might Like</h2>
-      <Row>
-        {personalizedPlaylists.map((playlist) => (
-          <Col md={3} key={playlist.PlaylistID} className="mb-4">
-            <PlaylistCard 
-              playlist={{
-                ...playlist,
-                Title: playlist.Title || playlist.Name,
-                TrackCount: playlist.TrackCount || 0,
-                CreatedBy: playlist.CreatorName || 'Unknown Creator'
-              }} 
-              onPlayClick={() => handlePlayPlaylist(playlist.PlaylistID)}
-            />
-          </Col>
-        ))}
-      </Row>
-    </Container>
-  </section>
-)}
+      {/* Featured Playlists - using PlaylistSection */}
+      {!loadingFeatured && featuredPlaylists.length > 0 && (
+        <PlaylistSection
+          title="Featured Playlists"
+          playlists={featuredPlaylists}
+          loading={loadingFeatured}
+          onPlaylistClick={(playlistId) => handlePlayPlaylist(playlistId)}
+          onLikeClick={handleLikePlaylist}
+          onViewAllClick={() => navigate('/playlists')}
+        />
+      )}
+
+      {/* Playlists You Might Like - using PlaylistSection */}
+      {user && !loadingPersonalized && personalizedPlaylists.length > 0 && (
+        <PlaylistSection
+          title="Playlists You Might Like"
+          playlists={personalizedPlaylists}
+          loading={loadingPersonalized}
+          onPlaylistClick={(playlistId) => handlePlayPlaylist(playlistId)}
+          onLikeClick={handleLikePlaylist}
+        />
+      )}
+
 
       {/* Live Streams */}
       <section className="mb-5">
@@ -464,19 +511,14 @@ const HomePage = ({ playTrack }) => {
               {topArtists.map(artist => (
                 <Col md={2} key={artist.UserID} className="mb-4 text-center">
                   <Link to={`/profile/${artist.UserID}`} className="text-decoration-none">
-                    <img 
-                      src={artist.ProfileImage || 'https://placehold.co/300x300?text=Artist'} 
-                      alt={artist.Username} 
-                      className="rounded-circle mb-2 img-thumbnail"
-                      style={{ width: '120px', height: '120px', objectFit: 'cover' }}
-                      onError={(e) => {
-                        e.target.onerror = null;
-                        e.target.src = 'https://placehold.co/300x300?text=Artist';
-                      }}
+                    <ProfileImage 
+                      src={artist.ProfileImage}
+                      alt={artist.Username}
+                      size={120}
                     />
-                    <h5>{artist.Username}</h5>
+                    <h5 className="mt-2 mb-0">{artist.Username}</h5>
                     <p className="text-muted small mb-1">{artist.Genre || 'Music'}</p>
-                    <p className="small text-secondary">{formatFollowers(artist.FollowerCount)}</p>
+                    <p className="small text-secondary">{formatFollowers(artist.FollowersCount || artist.FollowerCount)}</p>
                   </Link>
                 </Col>
               ))}
@@ -550,16 +592,6 @@ const HomePage = ({ playTrack }) => {
             </Card>
           )}
         </Container>
-      </section>
-
-      {/* Popular Albums */}
-      <section className="mb-5">
-        <AlbumsSection
-          title="Popular Albums"
-          apiUrl="/api/albums/popular"
-          limit={4}
-          onAlbumPlay={(album) => handlePlayAlbum(album.AlbumID)}
-        />
       </section>
 
       {/* Why Choose StreamDJ? */}

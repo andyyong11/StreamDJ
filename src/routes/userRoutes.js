@@ -71,15 +71,15 @@ router.get('/top', async (req, res) => {
                 u."ProfileImage", 
                 u."BannerImage", 
                 u."Bio",
-                u."FollowerCount",
+                u."FollowersCount",
                 u."FollowingCount",
                 COUNT(DISTINCT t."TrackID") as "TrackCount",
-                COUNT(DISTINCT s."StreamID") as "StreamCount"
+                COUNT(DISTINCT ls."LiveStreamID") as "StreamCount"
             FROM "User" u
             LEFT JOIN "Track" t ON u."UserID" = t."UserID"
-            LEFT JOIN "Stream" s ON u."UserID" = s."UserID"
+            LEFT JOIN "LiveStream" ls ON u."UserID" = ls."UserID"
             GROUP BY u."UserID"
-            ORDER BY u."FollowerCount" DESC, "TrackCount" DESC
+            ORDER BY u."FollowersCount" DESC, "TrackCount" DESC
             LIMIT $1
         `, [limit]);
         
